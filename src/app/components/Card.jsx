@@ -18,9 +18,9 @@ const Card = ({ image, title, description }) => {
         </div>
       </div>
       {/* Title */}
-      <h3 className="text-lg font-semibold text-black mb-2">{title}</h3>
+      <h3 className="text-2xl lg:text-lg font-semibold text-black mb-2">{title}</h3>
       {/* Description */}
-      <p className="text-gray-600 text-sm">{description}</p>
+      <p className="text-gray-600 text-lg lg:text-sm">{description}</p>
     </div>
   );
 };

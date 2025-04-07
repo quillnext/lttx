@@ -23,15 +23,16 @@ const Navbar = () => {
 
   return (
     <nav
-      className={`fixed top-0 left-0 w-full z-50 p-4 flex justify-between items-center mt-3 px-16 transition-all duration-300 rounded-full ${
-        isSticky ? "bg-primary shadow-lg py-3" : "bg-primary"
+      className={`fixed top-0 left-0 w-full z-50 px-8 flex justify-between items-center mt-3 transition-all duration-300 rounded-[40px] h-[84px] ${
+        isSticky ? "bg-primary shadow-lg py-3" : "bg-primary py-4"
       }`}
+      style={{ maxWidth: "100vw", boxSizing: "border-box" }}
     >
       {/* Logo */}
-      <div className="text-xl font-bold text-white">LTTX</div>
+      <div className="text-4xl font-bold text-white">LTT<span className="text-green-500">X</span></div>
 
       {/* Desktop Menu */}
-      <div className="hidden md:flex space-x-6 text-white">
+      <div className="hidden md:flex space-x-6 text-white text-xl">
         <Link href="/" className="hover:underline">Home</Link>
         <Link href="/why-lttx" className="hover:underline">Why LTTX</Link>
         <Link href="/eligibility" className="hover:underline">Eligibility</Link>

@@ -19,7 +19,7 @@ const TravelExpertSection = () => {
     
       <div className="md:w-1/2 mb-8 md:mb-0">
       <Image
-                src='/travelexpert.png'
+                src='/travelexpert.svg'
                 width={500}
                 height={400}
                 alt='Expert'
@@ -28,7 +28,7 @@ const TravelExpertSection = () => {
       </div>
    
       <div className="md:w-1/2">
-        <h2 className="text-4xl font-bold text-black mb-4">Are You a Travel Expert?</h2>
+        <h2 className="text-2xl lg:text-4xl font-bold text-black mb-4">Are You a Travel Expert?</h2>
         <p className="text-black mb-6">
           LTTX is NOT a platform for travel agents. This is an invite-only membership for professionals who shape the travel industry.
         </p>
@@ -37,7 +37,7 @@ const TravelExpertSection = () => {
             <li key={index}>{category}</li>
           ))}
         </ul>
-       <Button btn='Apply '/>
+       <Button btn='Apply  Now'/>
       </div>
     </div>
   </section>

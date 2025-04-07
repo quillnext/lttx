@@ -37,27 +37,31 @@ const WhyLTTXSection = () => {
   ];
 
   return (
-    <section className="bg-secondary p-12  rounded-2xl">
-     <div className="container mx-auto px-4 flex flex-col md:flex-row items-center">
+    <section className="bg-secondary p-2 py-10 md:px-8  rounded-[40px]">
+     <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
         {/* Illustration */}
         <div className="md:w-1/3 mb-8 md:mb-0">
         <Image
-        src='/lttxexpert.png'
+        src='/lttxexpert.svg'
         width={300}
         height={300}
         alt='Expert'
+        className="w-full h-auto object-cover "
         /> 
-          <h2 className="text-5xl font-bold text-black mb-5 mt-5">Why Become </h2>
-          <h2 className="text-5xl font-bold text-black mb-8">An LTTX Expert?</h2>
+          <h2 className="text-2xl lg:text-5xl font-bold text-black mb-5 mt-5">Why Become 
+
+          <span className="text-2xl lg:text-5xl font-bold text-black mb-8">  An LTTX Expert?</span>
+          </h2>
+         
         </div>
         {/* Content */}
-        <div className="md:w-2/3">
+        <div className="md:w-2/3 -mt-20 md:-mt-0">
          
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {cards.map((card, index) => (
               <Card
                 key={index}
-                image={card.image} // Changed from icon to image
+                image={card.image} 
                 title={card.title}
                 description={card.description}
               />
