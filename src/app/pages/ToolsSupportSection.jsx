@@ -2,7 +2,7 @@ import Image from 'next/image';
 import React from 'react';
 
 const BulletSVG = ({ circleColor, arrowColor }) => (
-  <svg width="50" height="50" viewBox="0 0 50 50">
+  <svg width="32" height="32" viewBox="0 0 50 50">
     <circle cx="14" cy="25" r="8" fill={circleColor} />
     <polygon points="25,17 36,25 25,33" fill={arrowColor} />
   </svg>
