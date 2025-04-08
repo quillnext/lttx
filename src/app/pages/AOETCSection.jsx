@@ -16,9 +16,9 @@ const AOETCSection = () => {
     'Opportunities to Shape Travel Policies & Best Practices',
   ];
   const bulletStyles = [
-    { circleColor: "#FF6A00", arrowColor: "#FF9900" }, // Orange
-    { circleColor: "#1DA1F2", arrowColor: "#007BFF" }, // Blue
-    { circleColor: "#E91E63", arrowColor: "#FF1493" }, // Pink
+    // { circleColor: "#FF6A00", arrowColor: "#FF9900" }, // Orange
+    // { circleColor: "#1DA1F2", arrowColor: "#007BFF" }, // Blue
+    // { circleColor: "#E91E63", arrowColor: "#FF1493" }, // Pink
     { circleColor: "#FFD700", arrowColor: "#FFB300" }, // Yellow
     { circleColor: "#9C27B0", arrowColor: "#BA55D3" }, // Purple
   ];
@@ -32,7 +32,7 @@ const AOETCSection = () => {
               LTTX Experts Are Automatically Part of{' '}
               <span className="text-2xl lg:text-4xl">AOETC</span>
             </h2>
-            <p className="text-textcolor text-lg mb-4">
+            <p className="text-textcolor font-semibold text-lg mb-4">
               (The Most Prestigious Travel Expert Body)
             </p>
             <p className="text-textcolor mb-6 text-base sm:text-lg md:text-xl">
@@ -48,13 +48,13 @@ const AOETCSection = () => {
             <h3 className="text-xl font-semibold text-textcolor mb-4">
               Exclusive Benefits:
             </h3>
-            <ul className="list-disc list-inside text-textcolor">
+            <ul className="text-textcolor space-y-1">
               {benefits.map((benefit, index) => {
                 const style = bulletStyles[index % bulletStyles.length];
                 return (
                   // Using the BulletSVG component to render the bullet points
                   // and passing the circleColor and arrowColor as props
-                  <li key={index} className="mb-2 flex items-center gap-3 text-[14px]">
+                  <li key={index} className="flex items-center   text-[14px]">
                     <BulletSVG
                       circleColor={style.circleColor}
                       arrowColor={style.arrowColor}
@@ -67,7 +67,7 @@ const AOETCSection = () => {
             </ul>
           </div>
         </div>
-        <h3 className="text-xl font-semibold text-secondary underline mb-4">
+        <h3 className="text-lg lg:text-xl font-semibold text-secondary underline mb-4">
               Apply to Join LTTX & Become an AOETC Member
             </h3>
       </div>

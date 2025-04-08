@@ -46,7 +46,7 @@ const WhyLTTXSection = () => {
         width={300}
         height={300}
         alt='Expert'
-        className="w-full h-auto object-cover "
+        className="w-[85%] h-auto object-cover "
         /> 
           <h2 className="text-2xl lg:text-5xl font-bold text-textcolor mb-5 mt-5">Why Become 
 

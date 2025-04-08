@@ -42,16 +42,17 @@ const ComparisonSection = () => {
           <div className="overflow-x-auto md:overflow-x-visible px-1 pb-4">
             <div className="flex gap-4 w-max md:w-full">
               {/* Features Column */}
-              <div className="flex-[1] bg-white rounded-3xl min-w-[210px]">
+              <div className="flex-[1] bg-white rounded-3xl min-w-[210px]  ">
                 <h3 className="text-2xl md:text-3xl font-semibold text-textcolor mb-5 text-center mt-5">
                   Feature
                 </h3>
-                <div className="bg-primary h-1 w-full" />
-                <ul>
+                <hr className="border-3" />
+                <div className="bg-primary  w-full" />
+                <ul className=" p-3">
                   {features.map((feature, index) => (
                     <li
                       key={index}
-                      className="text-secondary text-xl lg:text-2xl font-semibold py-2 px-4"
+                      className="text-secondary text-lg lg:text-xl font-semibold py-2 px-4"
                     >
                       {feature}
                     </li>
@@ -60,12 +61,13 @@ const ComparisonSection = () => {
               </div>
 
               {/* Travel Agent Column */}
-              <div className="flex-[2] bg-white rounded-3xl min-w-[300px]">
+              <div className="flex-[2] bg-white rounded-3xl min-w-[300px] ">
                 <h3 className="text-2xl md:text-3xl font-semibold text-textcolor mb-5 mt-5 text-center">
                   Travel Agent
                 </h3>
-                <div className="bg-primary h-1 w-full" />
-                <ul>
+                <hr className="border-3" />
+                <div className="bg-primary  w-full" />
+                <ul className=" p-3">
                   {travelAgentData.map((item, index) => (
                     <li
                       key={index}
@@ -78,16 +80,17 @@ const ComparisonSection = () => {
               </div>
 
               {/* Travel Expert Column */}
-              <div className="flex-[2] bg-secondary rounded-3xl min-w-[300px]">
-                <h3 className="text-2xl md:text-3xl font-semibold text-textcolor mb-5 mt-5 text-center">
+              <div className="flex-[2] bg-secondary rounded-3xl min-w-[300px] ">
+                <h3 className="text-2xl md:text-3xl font-semibold text-white mb-5 mt-5 text-center">
                   Travel Expert (LTTX)
                 </h3>
-                <div className="bg-primary h-1 w-full" />
-                <ul>
+                <hr className="border-3" />
+                <div className="bg-primary  w-full" />
+                <ul className=" p-3">
                   {travelExpertData.map((item, index) => (
                     <li
                       key={index}
-                      className="text-textcolor text-lg lg:text-xl py-2 px-4"
+                      className="text-white text-lg lg:text-xl py-2 px-4"
                     >
                       {item}
                     </li>

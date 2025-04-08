@@ -24,9 +24,9 @@ const TravelExpertSection = () => {
 
   // Matching your image's color scheme
   const bulletStyles = [
-    { circleColor: "#FF6A00", arrowColor: "#FF9900" }, // Orange
-    { circleColor: "#1DA1F2", arrowColor: "#007BFF" }, // Blue
-    { circleColor: "#E91E63", arrowColor: "#FF1493" }, // Pink
+    // { circleColor: "#FF6A00", arrowColor: "#FF9900" }, // Orange
+    // { circleColor: "#1DA1F2", arrowColor: "#007BFF" }, // Blue
+    // { circleColor: "#E91E63", arrowColor: "#FF1493" }, // Pink
     { circleColor: "#FFD700", arrowColor: "#FFB300" }, // Yellow
     { circleColor: "#9C27B0", arrowColor: "#BA55D3" }, // Purple
   ];
@@ -42,7 +42,7 @@ const TravelExpertSection = () => {
             width={400}
             height={300}
             alt="Expert"
-            className="w-full h-auto object-cover rounded-lg"
+            className="w-[85%] h-auto object-cover rounded-lg"
           />
         </div>
 
@@ -55,11 +55,11 @@ const TravelExpertSection = () => {
             LTTX is NOT a platform for travel agents. This is an invite-only
             membership for professionals who shape the travel industry.
           </p>
-          <ul className="text-textcolor mb-6 space-y-3">
+          <ul className="text-textcolor mb-6 space-y-1">
             {expertCategories.map((category, index) => {
               const style = bulletStyles[index % bulletStyles.length];
               return (
-                <li key={index} className="flex items-center gap-1 text-[14px]">
+                <li key={index} className="flex items-center  text-[14px]">
                   <BulletSVG
                     circleColor={style.circleColor}
                     arrowColor={style.arrowColor}
