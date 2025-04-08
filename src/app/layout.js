@@ -2,6 +2,8 @@ import { Raleway } from "next/font/google";
 import "./globals.css";
 
 import Footer from "./pages/Footer";
+import Navbar from "./components/Navbar";
+
 
 const ralewaySans = Raleway({
   variable: "--font-ralewaySans-sans",
@@ -21,9 +23,11 @@ export default function RootLayout({ children }) {
         className={`${ralewaySans.variable}  antialiased  `}
       > 
      
-
+<div className="px-2">
+<Navbar/>
     
-        {children}
+    {children}
+</div>
         <Footer/>
       </body>
 

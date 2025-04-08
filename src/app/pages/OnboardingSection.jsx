@@ -22,10 +22,10 @@ const OnboardingSection = () => {
   ];
 
   return (
-    <section className="py-12 bg-white">
+    <section id='joining-process' className="py-12 bg-white px-4 md:px-8 lg:px-12 ">
       <div className="container mx-auto px-4">
         {/* Heading */}
-        <h2 className="text-2xl lg:text-4xl font-bold text-black text-center  mb-12 lg:mb-30">
+        <h2 className="text-2xl lg:text-5xl font-bold text-textcolor text-center  mb-12 lg:mb-30">
           Simple & Seamless Expert Onboarding
         </h2>
         {/* Steps */}

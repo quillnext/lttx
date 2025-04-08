@@ -50,7 +50,7 @@ const Footer = () => {
           </div>
 
           {/* Right Section */}
-          <div className="text-start flex flex-col items-center md:items-start">
+          <div className="text-start flex flex-col items-start">
 
             <Image src='/plant.svg' width={32} height={32} alt='paant' className='w-40 h-20 ' />
             <p className="mb-4">
@@ -59,17 +59,26 @@ const Footer = () => {
                 Let’s Travel is backed by Planit Holidays
               </span>
             </p>
-            <p className='font-style-italic'>
-              <span className="font-bold text-2xl"><span className='text-red-700'>L</span>ET’S  </span>
-              <br />
-              <span className="font-bold text-2xl"><span className='text-red-700'>T</span>ALK</span>
-              <br/>
-              <span className="font-bold text-2xl"><span className='text-red-700'>T</span>RAVEL</span>
-              <span className="text-sm">
-                <br/>
+
+        
+          <div className="text-start flex flex-col items-start mt-5">
+          <Image
+           src='/letstalk.svg'
+            width={32}
+            height={32}
+            alt="Let’s Talk Travel"
+            className='w-20 h-20'
+             
+           />
+           
+             
+           
+              <p className="text-sm">
+                
                 We turn every trip into an unforgettable experience.
-              </span>
-            </p>
+              </p>
+            </div>
+          
           </div>
         </div>
 

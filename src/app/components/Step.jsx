@@ -7,11 +7,11 @@ const Step = ({ number, description, isLast = false, hasArrow = false, index }) 
       {/* Circle with Number or Checkmark */}
       <div
         className={`w-20 h-20 md:w-25 md:h-25 rounded-full flex items-center justify-center mb-4 ${
-          isLast ? 'bg-blue-200' : 'bg-[#D4AF37]'
+          isLast ? 'bg-blue-200' : 'bg-secondary'
         }`}
       >
         {isLast ? (
-          <Image src="/facheck.png" width={90} height={90} alt="Checkmark" />
+          <Image src="/facheck.svg" width={90} height={90} alt="Checkmark" />
         ) : (
           <span className="text-white text-3xl md:text-5xl font-bold">{number}</span>
         )}

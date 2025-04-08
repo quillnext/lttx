@@ -1,109 +1,134 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
+import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 
 const VideoBlogPage = () => {
-  // State to track the active video index
   const [activeIndex, setActiveIndex] = useState(0);
+  const scrollContainerRef = useRef(null);
 
-  // Example YouTube video IDs (replace with your own video IDs)
   const videoIds = [
-    'JfnVHQ6DZW4', // Example video 1
-    'IFO0DIt9GLs', // Example video 2
-    '3TWPCXOmVKI', // Example video 3
+    '4obhi0uV4cs',
+    'nCBCYQZNcEI',
+    '3TWPCXOmVKI',
+    '6xC7BE1bwm0',
+    'e48dojEIrY8',
   ];
 
-  // Update activeIndex based on scroll position (optional, can be enhanced with Intersection Observer)
-  const handleScroll = (e) => {
-    const scrollLeft = e.target.scrollLeft;
-    const cardWidth = e.target.children[0].offsetWidth + 24; // Width + gap
-    const newIndex = Math.round(scrollLeft / cardWidth);
-    if (newIndex !== activeIndex && newIndex < videoIds.length) {
-      setActiveIndex(newIndex);
+  // Scroll to index
+  const scrollToIndex = (index) => {
+    if (scrollContainerRef.current) {
+      const container = scrollContainerRef.current;
+      const childWidth = container.children[0].offsetWidth;
+      container.scrollTo({
+        left: index * (childWidth + 16), // includes margin
+        behavior: 'smooth',
+      });
+    }
+    setActiveIndex(index);
+  };
+
+  const nextVideo = () => {
+    const newIndex = (activeIndex + 1) % videoIds.length;
+    scrollToIndex(newIndex);
+  };
+
+  const prevVideo = () => {
+    const newIndex = (activeIndex - 1 + videoIds.length) % videoIds.length;
+    scrollToIndex(newIndex);
+  };
+
+  // Sync index on manual scroll
+  const handleScroll = () => {
+    if (scrollContainerRef.current) {
+      const scrollLeft = scrollContainerRef.current.scrollLeft;
+      const childWidth = scrollContainerRef.current.children[0].offsetWidth + 16;
+      const newIndex = Math.round(scrollLeft / childWidth);
+      if (newIndex !== activeIndex) {
+        setActiveIndex(newIndex);
+      }
     }
   };
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    container?.addEventListener('scroll', handleScroll, { passive: true });
+    return () => container?.removeEventListener('scroll', handleScroll);
+  }, [activeIndex]);
+
   return (
-    <div className="container mx-auto bg-white flex flex-col items-center justify-center ">
-      {/* Video Slider for mobile, Three-column layout for desktop */}
-      <div className="w-full">
-        {/* Mobile Slider with Scroll */}
-        <div className="md:hidden">
-          <div
-            className="overflow-x-scroll scrollbar-hide flex gap-6 pb-4"
-            onScroll={handleScroll}
-          >
-            {videoIds.map((videoId, index) => (
-              <div
-                key={index}
-                className=" rounded-2xl p-4 min-w-[350px] flex-shrink-0"
-              >
-                <iframe
-                  width="100%"
-                  height="300"
-                  src={`https://www.youtube.com/embed/${videoId}?rel=0`}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  title={`Video ${index + 1}`}
-                  className="rounded-xl"
-                ></iframe>
-              </div>
-            ))}
-          </div>
+    <div className="container mx-auto flex flex-col items-center justify-center p-6 px-4 md:px-8 lg:px-12">
+      {/* Mobile View */}
+      <div className="w-full md:hidden relative">
+        {/* Scrollable Carousel */}
+        <div
+          className="overflow-x-auto flex space-x-4 w-full px-2 scrollbar-thin snap-x snap-mandatory scroll-smooth"
+          ref={scrollContainerRef}
+        >
+          {videoIds.map((id, index) => (
+            <div
+              key={index}
+              className="min-w-[85%] flex-shrink-0 snap-start"
+            >
+              <iframe
+                width="100%"
+                height="300"
+                src={`https://www.youtube.com/embed/${id}?rel=0`}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={`Video ${index + 1}`}
+                className="rounded-xl"
+              ></iframe>
+            </div>
+          ))}
         </div>
 
-        <div className="hidden md:flex md:flex-row gap-6 w-full">
-        
-          <div className="bg-gray-200 rounded-2xl w-full md:w-1/3 flex items-center justify-center p-4">
-            <iframe
-              width="100%"
-              height="300"
-              src={`https://www.youtube.com/embed/${videoIds[0]}?rel=0`}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title="Video 1"
-              className="rounded-xl"
-            ></iframe>
-          </div>
-
-   
-          <div className="bg-gray-200 rounded-2xl w-full md:w-1/3 flex items-center justify-center p-4">
-            <iframe
-              width="100%"
-              height="200"
-              src={`https://www.youtube.com/embed/${videoIds[1]}?rel=0`}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title="Video 2"
-              className="rounded-xl"
-            ></iframe>
-          </div>
-
-      
-          <div className="bg-gray-200 rounded-2xl w-full md:w-1/3 flex items-center justify-center p-4">
-            <iframe
-              width="100%"
-              height="200"
-              src={`https://www.youtube.com/embed/${videoIds[2]}?rel=0`}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title="Video 3"
-              className="rounded-xl"
-            ></iframe>
-          </div>
+        {/* Navigation Buttons */}
+        <div className="absolute top-1/2 left-2 z-10">
+          <button
+            onClick={prevVideo}
+            className="bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/70 transition-all focus:outline-none"
+          >
+            <FaArrowLeft size={20} />
+          </button>
+        </div>
+        <div className="absolute top-1/2 right-2 z-10">
+          <button
+            onClick={nextVideo}
+            className="bg-black/50 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/70 transition-all focus:outline-none"
+          >
+            <FaArrowRight size={20} />
+          </button>
         </div>
       </div>
 
-   
+      {/* Desktop View */}
+      <div className="hidden md:flex md:flex-wrap gap-6 w-full justify-center mt-6">
+        {videoIds.map((id, index) => (
+          <div key={index} className="rounded-2xl w-full md:w-[18%] flex items-center justify-center p-4">
+            <iframe
+              width="100%"
+              height="300"
+              src={`https://www.youtube.com/embed/${id}?rel=0`}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={`Video ${index + 1}`}
+              className="rounded-xl"
+            ></iframe>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress Indicators */}
       <div className="flex items-center justify-center mt-6 space-x-4">
         {videoIds.map((_, index) => (
           <div
             key={index}
-            className={`w-4 h-4 rounded-full ${activeIndex === index ? 'bg-yellow-400' : 'bg-gray-300'}`}
-            onClick={() => setActiveIndex(index)}
+            className={`w-4 h-4 rounded-full cursor-pointer ${
+              activeIndex === index ? 'bg-yellow-400' : 'bg-gray-300'
+            }`}
+            onClick={() => scrollToIndex(index)}
           ></div>
         ))}
       </div>

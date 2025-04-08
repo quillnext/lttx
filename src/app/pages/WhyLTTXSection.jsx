@@ -37,7 +37,7 @@ const WhyLTTXSection = () => {
   ];
 
   return (
-    <section className="bg-secondary p-2 py-10 md:px-8  rounded-[40px]">
+    <section id='why-lttx' className=" scroll-mt-[100px] bg-secondary p-2 py-10   rounded-[40px] ">
      <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
         {/* Illustration */}
         <div className="md:w-1/3 mb-8 md:mb-0">
@@ -48,9 +48,9 @@ const WhyLTTXSection = () => {
         alt='Expert'
         className="w-full h-auto object-cover "
         /> 
-          <h2 className="text-2xl lg:text-5xl font-bold text-black mb-5 mt-5">Why Become 
+          <h2 className="text-2xl lg:text-5xl font-bold text-textcolor mb-5 mt-5">Why Become 
 
-          <span className="text-2xl lg:text-5xl font-bold text-black mb-8">  An LTTX Expert?</span>
+          <span className="text-2xl lg:text-5xl font-bold text-textcolor mb-8">  An LTTX Expert?</span>
           </h2>
          
         </div>

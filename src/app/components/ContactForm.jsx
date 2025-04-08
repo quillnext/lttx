@@ -146,13 +146,13 @@ const ContactForm = () => {
   };
 
   return (
-    <section className="py-12 bg-secondary rounded-[40px]">
+    <section id='apply' className="py-12 bg-secondary rounded-[40px]">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 max-w-3xl mx-auto">
-          <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">
+          <h2 className="text-2xl lg:text-5xl font-bold text-primary mb-4">
             Shape the Future of Travel Consultancy with LTTX
           </h2>
-          <p className="text-primary">
+          <p className="text-primary text-base sm:text-lg md:text-xl">
           Step beyond the ordinary and join an elite, invite-only community where your expertise gets the recognition it deserves. Gain exclusive access to global travellers, establish yourself as a verified travel expert, and unlock opportunities to earn, learn, and lead.
           </p>
         </div>

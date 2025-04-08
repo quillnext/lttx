@@ -10,24 +10,34 @@ import Button from "./components/Button";
 import ToolsSupportSection from "./pages/ToolsSupportSection";
 import Hero from "./pages/Hero";
 import VideoBlogPage from "./pages/VideoBlogPage";
-import Navbar from "./components/Navbar";
+
 
 export default function Home() {
   return (
-    <div className="px-4 md:px-8 lg:px-12">
-      <Navbar/>
-      <Hero/>
+    <>
 
-  <WhyLTTXSection/>
+      <Hero/>
+ <div className="px-4 md:px-8 lg:px-12 ">
+ <WhyLTTXSection/>
+ </div>
+
   <TravelExpertSection/>
   <OnboardingSection/>
+  <div className="px-4 md:px-8 lg:px-12 ">
   <ComparisonSection/>
+ </div>
+
   <AOETCSection/>
   <VideoBlogPage/>
   <EngagementSection/>
   <ToolsSupportSection/>
+  
+  <div className="px-4 md:px-8 lg:px-12 ">
   <ContactForm/>
-  </div>
+ </div>
+  
+
+  </>
     
 
   );

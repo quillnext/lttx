@@ -1,6 +1,13 @@
 import Image from 'next/image';
 import React from 'react';
 
+const BulletSVG = ({ circleColor, arrowColor }) => (
+  <svg width="32" height="32" viewBox="0 0 50 50">
+    <circle cx="14" cy="25" r="8" fill={circleColor} />
+    <polygon points="25,17 36,25 25,33" fill={arrowColor} />
+  </svg>
+);
+
 const ToolsSupportSection = () => {
   const features = [
     'Profile Moderation & Verification to maintain LTTX’s high standards.',
@@ -10,22 +17,36 @@ const ToolsSupportSection = () => {
     'Performance-Based Levels & Rewards for progressing through LTTX tiers.',
     'Personal Branding & Marketing Tools to get promoted as a travel expert.',
   ];
+  const bulletStyles = [
+    { circleColor: "#FF6A00", arrowColor: "#FF9900" }, // Orange
+    { circleColor: "#1DA1F2", arrowColor: "#007BFF" }, // Blue
+    { circleColor: "#E91E63", arrowColor: "#FF1493" }, // Pink
+    { circleColor: "#FFD700", arrowColor: "#FFB300" }, // Yellow
+    { circleColor: "#9C27B0", arrowColor: "#BA55D3" }, // Purple
+  ];
 
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 bg-white px-4 md:px-8 lg:px-12 ">
       <div className="container mx-auto px-4">
         <div className="flex flex-col-reverse md:flex-row items-center gap-8">
           {/* Left Side */}
           <div className="md:w-1/2">
-            <h2 className="text-2xl lg:text-4xl font-bold text-black mb-6">
+            <h2 className="text-2xl lg:text-5xl font-bold text-textcolor mb-6">
               Powerful Tools & Support for Travel Experts
             </h2>
-            <ul className="list-disc list-inside text-black text-md md:text-xl">
-              {features.map((feature, index) => (
-                <li key={index} className="mb-3">
-                  {feature}
-                </li>
-              ))}
+            <ul className="list-disc list-inside text-textcolor text-md md:text-xl">
+              {features.map((feature, index) => {
+                const style = bulletStyles[index % bulletStyles.length];
+                return (
+                  <li key={index} className="flex items-center mb-4 text-[14px] gap-3">
+                    <BulletSVG
+                      circleColor={style.circleColor}
+                      arrowColor={style.arrowColor}
+                    />
+                    <span className="ml-2">{feature}</span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
           {/* Right Side:  */}

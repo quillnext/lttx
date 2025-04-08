@@ -30,12 +30,12 @@ const EngagementSection = () => {
   ];
 
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 bg-white px-4 md:px-8 lg:px-12 ">
       <div className="container mx-auto px-2 lg:px-4">
         <div className="flex flex-col-reverse md:flex-row items-center gap-8">
           {/* Left Side: Cards */}
           <div className="md:w-1/2">
-            <h2 className="hidden md:block text-2xl font-semibold text-black mb-6">
+            <h2 className="hidden md:block text-2xl font-semibold text-textcolor mb-6">
               LTTX Keeps Experts Engaged Through:
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-2 gap-6">
@@ -51,10 +51,10 @@ const EngagementSection = () => {
           </div>
           {/* Right Side: Call to Action */}
           <div className="md:w-1/2 text-start lg:ml-10">
-            <h3 className="text-2xl lg:text-5xl font-bold text-black mb-4">
+            <h3 className="text-2xl lg:text-5xl font-bold text-textcolor mb-4">
               Engage. Answer. Lead.
             </h3>
-            <p className="text-black mb-6 text-xl">
+            <p className="text-textcolor mb-6 text-xl">
               Stay active, earn points, and be featured as a top-ranked expert in
               your category!
             </p>
