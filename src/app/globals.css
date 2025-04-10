@@ -42,3 +42,97 @@ html {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+
+
+
+
+
+/* Ensure these styles have high specificity */
+.custom-select__control {
+  width: 100% !important;
+  padding: 0.75rem !important; 
+  border: 1px solid #000000 !important; 
+  border-radius: 1rem !important;
+  background-color: #ffffff !important;
+  box-shadow: none !important;
+  min-height: 48px !important;
+}
+
+/* Hover and focus states */
+.custom-select__control--is-focused,
+.custom-select__control:hover {
+  border: 1px solid #d1d5db !important;
+  box-shadow: none !important;
+}
+
+/* Placeholder text */
+.custom-select__placeholder {
+  color: #9ca3af !important; 
+}
+
+/* Selected tags (multi-value) */
+.custom-select__multi-value {
+  background-color: #e5e7eb !important; 
+  margin: 2px !important;
+}
+
+/* Tag label */
+.custom-select__multi-value__label {
+  color: #374151 !important;
+  padding: 2px 6px !important;
+}
+
+/* Remove button on tags */
+.custom-select__multi-value__remove {
+  cursor: pointer !important;
+  padding: 2px !important;
+}
+
+.custom-select__multi-value__remove:hover {
+  background-color: #f87171 !important;
+  color: white !important;
+  border-radius: 50% !important;
+}
+
+/* Dropdown menu */
+.custom-select__menu {
+  border-radius: 1rem !important; 
+  border: 1px solid #d1d5db !important;
+  background-color: #ffffff !important;
+  margin-top: 4px !important;
+}
+
+/* Options in dropdown */
+.custom-select__option {
+  padding: 0.75rem !important;
+  color: #374151 !important;
+}
+
+.custom-select__option--is-focused {
+  background-color: #f3f4f6 !important; 
+}
+
+.custom-select__option--is-selected {
+  background-color: #e5e7eb !important; 
+}
+
+/* Input inside CreatableSelect */
+.custom-select__input input {
+  color: #374151 !important; 
+  padding: 0 !important;
+}
+
+/* Ensure the dropdown indicator aligns with input */
+.custom-select__indicators {
+  padding: 0 0.5rem !important;
+}
+
+.custom-select__indicator {
+  padding: 0 !important;
+  color: #9ca3af !important;
+}
+
+.custom-select__indicator:hover {
+  color: #6b7280 !important;
+}
