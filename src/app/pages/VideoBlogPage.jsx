@@ -61,7 +61,7 @@ const VideoBlogPage = () => {
       <div className="w-full md:hidden relative">
         {/* Scrollable Carousel */}
         <div
-          className="overflow-x-auto flex space-x-4 w-full px-2 scrollbar-thin snap-x snap-mandatory scroll-smooth"
+          className="overflow-x-auto flex space-x-2 w-full px-2 scrollbar-thin snap-x snap-mandatory scroll-smooth"
           ref={scrollContainerRef}
         >
           {videoIds.map((id, index) => (
@@ -103,7 +103,7 @@ const VideoBlogPage = () => {
       </div>
 
       {/* Desktop View */}
-      <div className="hidden md:flex md:flex-wrap gap-6 w-full justify-center mt-6">
+      <div className="hidden md:flex md:flex-wrap gap-3 w-full justify-center mt-6">
         {videoIds.map((id, index) => (
           <div key={index} className="rounded-2xl w-full md:w-[18%] flex items-center justify-center p-4">
             <iframe
@@ -121,7 +121,7 @@ const VideoBlogPage = () => {
       </div>
 
       {/* Progress Indicators */}
-      <div className="flex items-center justify-center mt-6 space-x-4">
+      <div className="md:hidden flex items-center justify-center mt-6 space-x-4">
         {videoIds.map((_, index) => (
           <div
             key={index}

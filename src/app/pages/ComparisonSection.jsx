@@ -39,7 +39,7 @@ const ComparisonSection = () => {
 
         {/* Scrollable Row */}
         <div className="relative mt-4 pb-6">
-          <div className="overflow-x-auto md:overflow-x-visible px-1 pb-4">
+          <div className="overflow-x-auto lg:overflow-x-visible px-1 pb-4">
             <div className="flex gap-4 w-max md:w-full">
               {/* Features Column */}
               <div className="flex-[1] bg-white rounded-3xl min-w-[210px]  ">
