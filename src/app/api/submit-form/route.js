@@ -90,8 +90,8 @@ A user has submitted their profile using a valid invite code. Here are the detai
   • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
   • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}
   • Languages Spoken: ${language?.join(", ") || "[Not Provided]"}
-  • Current Designation: ${designation || "[Not Provided]"}
-  • Current Organization: ${organization || "[Not Provided]"}
+  • Current Designation: ${designation}
+  • Current Organization: ${organization}
   • Linkedin: ${linkedin || "[Not Provided]"}
   • Invite Code Used: ${inviteCode}
 

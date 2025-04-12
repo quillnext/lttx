@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { email, fullName, phone, residence, typeOfTravel, industrySegment, destinationExpertise, language } = await request.json();
+    const { email, fullName, phone, residence, typeOfTravel, industrySegment, destinationExpertise, designation, organization,linkedin, language } = await request.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
