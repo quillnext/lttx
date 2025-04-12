@@ -30,13 +30,13 @@ const AOETCSection = () => {
           <div className="md:w-1/2">
             <h2 className=" text-2xl lg:text-5xl font-bold text-textcolor mb-2">
               LTTX Experts Are Automatically Part of{' '}
-              <span className="text-2xl lg:text-4xl">AOETC</span>
+              <span className="text-2xl lg:text-4xl">ASSOTEC</span>
             </h2>
             <p className="text-textcolor font-semibold text-lg mb-4">
               (The Most Prestigious Travel Expert Body)
             </p>
             <p className="text-textcolor mb-6 text-base sm:text-lg md:text-xl">
-              Every approved expert on LTTX gains exclusive membership to AOETC
+              Every approved expert on LTTX gains exclusive membership to ASSOTEC
               (Association of Travel Experts & Consultants), the only global body
               uniting verified travel consultants.
             </p>
@@ -68,7 +68,7 @@ const AOETCSection = () => {
           </div>
         </div>
         <h3 className="text-lg lg:text-xl font-semibold text-secondary underline mb-4">
-              Apply to Join LTTX & Become an AOETC Member
+              Apply to Join LTTX & Become an ASSOTEC Member
             </h3>
       </div>
     </section>
