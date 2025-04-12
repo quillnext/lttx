@@ -58,10 +58,14 @@ A new user has requested an invite code to join the platform as a Travel Expert.
   • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
   • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}
   • Languages Spoken: ${language?.join(", ") || "[Not Provided]"}
+  • Current Designation: ${designation || "[Not Provided]"}
+  • Current Organization: ${organization || "[Not Provided]"}
+  • Linkedin: ${linkedin || "[Not Provided]"}
+
 
 Please review and issue an invite code if the profile is suitable.
 
-Best,
+Warm regards,
 LTTX Team 
       `.trim(),
     });

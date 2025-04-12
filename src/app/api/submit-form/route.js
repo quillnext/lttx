@@ -82,12 +82,17 @@ export async function POST(request) {
 Hi Team,
 
 A user has submitted their profile using a valid invite code. Here are the details:
-  • Name: ${fullName}
+  • Name: ${fullName || "[Not Provided]"}
   • Email: ${email}
-  • Phone Number: ${phone}
+  • Phone Number: ${phone || "[Not Provided]"}
+  • City & Country of Residence: ${residence || "[Not Provided]"}
+  • Type of Travel: ${typeOfTravel?.join(", ") || "[Not Provided]"}
+  • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
+  • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}
+  • Languages Spoken: ${language?.join(", ") || "[Not Provided]"}
+  • Current Designation: ${designation || "[Not Provided]"}
   • Current Organization: ${organization || "[Not Provided]"}
-  • Designation: ${designation || "[Not Provided]"}
-  • Languages Spoken: ${language.join(", ") || "[Not Provided]"}
+  • Linkedin: ${linkedin || "[Not Provided]"}
   • Invite Code Used: ${inviteCode}
 
 Please review the profile and send the profile creation link to the user if approved.
