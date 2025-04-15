@@ -13,11 +13,18 @@ const Footer = () => {
       <div className="container mx-auto px-16 lg:px-32 py-8">
         <div className="flex flex-col md:flex-row justify-between items-center gap-8">
           {/* Left Section */}
-          <div className="text-center md:text-left">
-            <h2 className="text-7xl font-bold mb-4">
-              LTT<span className="text-green-500">X</span>
-            </h2>
-            <div className="flex justify-center md:justify-start gap-4 mt-5">
+          <div className="text-center">
+           
+               <Image
+                                  src='/logolttx.svg'
+                                   width={100}
+                                   height={100}
+                                   alt="Let’s Talk Travel"
+                                   className='w-100'
+                                    
+                                  />
+          
+            <div className="flex justify-center  gap-4 mt-5">
               <a href="/" target="_blank" rel="noopener noreferrer">
                 <FaFacebookF className="text-white hover:text-green-500" size={20} />
               </a>

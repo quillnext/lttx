@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { FiMenu, FiX } from "react-icons/fi";
 import Button from "./Button";
+import Image from "next/image";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,7 +44,14 @@ const Navbar = () => {
 
         {/* Logo */}
         <div className="text-4xl font-bold text-white">
-          LTT<span className="text-green-500">X</span>
+          <Image
+                    src='/logolttx.svg'
+                     width={100}
+                     height={32}
+                     alt="Let’s Talk Travel"
+                     className='w-50 h-20'
+                      
+                    />
         </div>
 
         {/* Desktop Menu */}
