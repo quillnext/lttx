@@ -23,7 +23,7 @@ const ComparisonSection = () => {
     'Earns by sharing trusted knowledge',
     'Deep insights, experience, and industry expertise',
     'Independent, verified professional',
-    'LTTX Experts NEVER solicit bookings',
+    'Travel eXperts at Xmytravel.com NEVER solicit bookings',
   ];
 
   return (
@@ -103,7 +103,7 @@ const ComparisonSection = () => {
 
         {/* Footer Note */}
         <p className="text-white text-center mt-6">
-          The experts at LTTX do not solicit bookings. We provide unbiased, expert travel guidance.
+        The Travel eXperts at Xmytravel.com do not solicit bookings. We provide unbiased, expert travel guidance.
         </p>
 
         {/* Scrollbar Style */}

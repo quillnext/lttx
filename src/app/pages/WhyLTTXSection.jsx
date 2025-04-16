@@ -50,7 +50,7 @@ const WhyLTTXSection = () => {
         /> 
           <h2 className="text-2xl lg:text-5xl font-bold text-textcolor mb-5 mt-5">Why Become 
 
-          <span className="text-2xl lg:text-5xl font-bold text-textcolor mb-8">  An LTTX Expert?</span>
+          <span className="text-2xl lg:text-5xl font-bold text-textcolor mb-8">   a Travel eXpert on Xmytravel.com?</span>
           </h2>
          
         </div>

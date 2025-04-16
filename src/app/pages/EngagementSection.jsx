@@ -36,7 +36,7 @@ const EngagementSection = () => {
           {/* Left Side: Cards */}
           <div className="md:w-1/2">
             <h2 className="hidden md:block text-2xl font-semibold text-textcolor mb-6">
-              LTTX Keeps Experts Engaged Through:
+            Xmytravel.com Keeps Travel eXperts Engaged Through:
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-2 gap-6">
               {cards.map((card, index) => (

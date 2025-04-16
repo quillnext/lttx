@@ -373,7 +373,7 @@ const Step2 = ({ setStep, isLoading }) => {
 };
 
 const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData }) => { 
-  const { register, formState: { errors }, watch, reset } = useFormContext();
+  const { register, formState: { errors }, watch, reset,getValues } = useFormContext();
   const inviteCode = watch("inviteCode");
 
   const handleRequestCode = async () => {
@@ -384,12 +384,31 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData }) => {
     }
     try {
       setIsLoading(true); 
+      const currentFormData = getValues();
+      const fullData = {
+        ...formData,
+        ...currentFormData,
+        fullName: formData.fullName || currentFormData.fullName || "",
+        email: email,
+        phone: formData.phone || currentFormData.phone || "",
+        residence: formData.residence || currentFormData.residence || "",
+        destinationExpertise: formData.destinationExpertise || currentFormData.destinationExpertise || [],
+        language: formData.language || currentFormData.language || [],
+        typeOfTravel: formData.typeOfTravel || currentFormData.typeOfTravel || [],
+        industrySegment: formData.industrySegment || currentFormData.industrySegment || [],
+        designation: currentFormData.designation || "",
+        organization: currentFormData.organization || "",
+        linkedin: currentFormData.linkedin || "",
+        inviteCode: currentFormData.inviteCode || "",
+      };
       const response = await fetch("/api/request-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, ...formData }), 
+        body: JSON.stringify(fullData),
       });
+      // console.log("Request Code fullData:", fullData);
       const result = await response.json();
+      // console.log("Request Code Result:", result);
       if (response.ok) {
         toast.success("Code request submitted! Check your email.");
         reset(); 
@@ -404,6 +423,7 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData }) => {
       setIsLoading(false); 
     }
   };
+
 
   return (
     <div className="space-y-4">
@@ -573,7 +593,7 @@ const ContactForm = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">
-            Shape the Future of Travel Consultancy with LTTX
+          Shape the Future of Travel Consultancy with Xmytravel.com
           </h2>
           <p className="text-primary">
             Step beyond the ordinary and join an elite, invite-only community where your expertise gets the recognition it deserves...

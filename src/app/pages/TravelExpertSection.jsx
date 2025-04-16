@@ -52,7 +52,7 @@ const TravelExpertSection = () => {
             Are You a Travel Expert?
           </h2>
           <p className="text-textcolor mb-6 text-base sm:text-lg md:text-xl">
-            LTTX is NOT a platform for travel agents. This is an invite-only
+          Xmytravel.com is NOT a platform for travel agents. This is an invite-only
             membership for professionals who shape the travel industry.
           </p>
           <ul className="text-textcolor mb-6 space-y-1">

@@ -10,7 +10,7 @@ const BulletSVG = ({ circleColor, arrowColor }) => (
 
 const ToolsSupportSection = () => {
   const features = [
-    'Profile Moderation & Verification to maintain LTTX’s high standards.',
+    'Profile Moderation & Verification to maintain Xmytravel.com’s high standards.',
     'Custom Q&A Moderation to prevent spam and ensure quality expert responses.',
     'Daily Question-of-the-Day with handpicked industry-relevant topics.',
     'Real-Time Analytics Dashboard to view expert rankings, engagement, and impact.',

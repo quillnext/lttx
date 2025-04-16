@@ -45,7 +45,7 @@ const Footer = () => {
             <p className="mb-2">
               <span className="font-semibold text-md">E-mail</span>
               <br />
-              info@letstalktravel.in
+              Info@xmytravel.com
             </p>
             <p>
               <span className="font-semibold text-md">Location</span>

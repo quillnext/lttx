@@ -77,6 +77,8 @@ export async function POST(request) {
     // Email to Admin - Profile Submitted with Invite Code
     await sendEmail({
       to: process.env.ADMIN_EMAIL,
+      cc: process.env.ADMIN_EMAIL_CC ,
+      bcc: process.env.ADMIN_EMAIL_BCC ,
       subject: `New Travel Expert Profile Submitted – ${fullName}`,
       text: `
 Hi Team,
@@ -105,6 +107,8 @@ Your LTTX Team
     // Email to User - Profile Submission Acknowledgment
     await sendEmail({
       to: email,
+      cc: process.env.ADMIN_EMAIL_CC ,
+      bcc: process.env.ADMIN_EMAIL_BCC ,
       subject: "Thank You for Submitting Your Profile",
       text: `
 Hi ${fullName},

@@ -4,7 +4,21 @@ import { NextResponse } from "next/server";
 
 export async function POST(request) {
   try {
-    const { email, fullName, phone, residence, typeOfTravel, industrySegment, destinationExpertise, designation, organization,linkedin, language } = await request.json();
+    const data = await request.json();
+    
+    const {
+      fullName,
+      email,
+      phone,
+      residence,
+      typeOfTravel,
+      industrySegment,
+      destinationExpertise,
+      language,
+      designation,
+      organization,
+      linkedin,
+    } = data;
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -27,6 +41,8 @@ export async function POST(request) {
     // Email to User - Invite Code Request Confirmation
     await sendEmail({
       to: email,
+      cc: process.env.ADMIN_EMAIL_CC ,
+      bcc: process.env.ADMIN_EMAIL_BCC ,
       subject: "Your Invite Code Request Has Been Received",
       text: `
 Hi ${fullName || email.split("@")[0]},
@@ -45,23 +61,24 @@ LTTX Team
     // Email to Admin - Invite Code Request
     await sendEmail({
       to: process.env.ADMIN_EMAIL,
+      cc: process.env.ADMIN_EMAIL_CC ,
+      bcc: process.env.ADMIN_EMAIL_BCC ,
       subject: `Invite Code Requested by ${fullName || email.split("@")[0]}`,
       text: `
 Hi Team,
 
 A new user has requested an invite code to join the platform as a Travel Expert. Below are the details submitted:
-  • Name: ${fullName || "[Not Provided]"}
-  • Email: ${email}
-  • Phone Number: ${phone || "[Not Provided]"}
-  • City & Country of Residence: ${residence || "[Not Provided]"}
-  • Type of Travel: ${typeOfTravel?.join(", ") || "[Not Provided]"}
-  • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
-  • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}
-  • Languages Spoken: ${language?.join(", ") || "[Not Provided]"}
-  • Current Designation: ${designation || "[Not Provided]"}
-  • Current Organization: ${organization || "[Not Provided]"}
-  • Linkedin: ${linkedin || "[Not Provided]"}
-
+   • Name: ${fullName || "[Not Provided]"}
+   • Email: ${email}
+   • Phone Number: ${phone || "[Not Provided]"}
+   • City & Country of Residence: ${residence || "[Not Provided]"}
+   • Type of Travel: ${typeOfTravel?.join(", ") || "[Not Provided]"}
+   • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
+   • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}
+   • Languages Spoken: ${language?.join(", ") || "[Not Provided]"}
+   • Current Designation: ${designation || "[Not Provided]"}
+   • Current Organization: ${organization || "[Not Provided]"}
+   • Linkedin: ${linkedin || "[Not Provided]"}
 
 Please review and issue an invite code if the profile is suitable.
 

@@ -36,7 +36,7 @@ const AOETCSection = () => {
               (The Most Prestigious Travel Expert Body)
             </p>
             <p className="text-textcolor mb-6 text-base sm:text-lg md:text-xl">
-              Every approved expert on LTTX gains exclusive membership to ASSOTEC
+              Every Approved Travel eXpert on Xmytravel.com gains exclusive membership to ASSOTEC
               (Association of Travel Experts & Consultants), the only global body
               uniting verified travel consultants.
             </p>
