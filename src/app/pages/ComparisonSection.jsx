@@ -82,7 +82,7 @@ const ComparisonSection = () => {
               {/* Travel Expert Column */}
               <div className="flex-[2] bg-secondary rounded-3xl min-w-[300px] ">
                 <h3 className="text-2xl md:text-3xl font-semibold text-white mb-5 mt-5 text-center">
-                  Travel Expert (LTTX)
+                  Travel Expert (Xmytravel.com)
                 </h3>
                 <hr className="border-3" />
                 <div className="bg-primary  w-full" />

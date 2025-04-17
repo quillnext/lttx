@@ -43,18 +43,26 @@ export async function POST(request) {
       to: email,
       cc: process.env.ADMIN_EMAIL_CC ,
       bcc: process.env.ADMIN_EMAIL_BCC ,
-      subject: "Your Invite Code Request Has Been Received",
+      subject: "You're One Step Away from Joining Xmytravel – Invite Code Requested",
       text: `
 Hi ${fullName || email.split("@")[0]},
 
-Thank you for your interest in becoming a Travel Expert on our platform.
+Thank you for applying to become a Travel Expert on Xmytravel – the pioneering platform built exclusively for certified and credible Travel Experts & Consultants.
 
-We’ve received your request for an invite code. Our team will review your profile and, if it meets the eligibility criteria, you’ll receive your invite code shortly via email.
+We’ve received your request for an invite code. Our curation team is reviewing your profile through our expert verification module. If you fit the bill, you’ll soon receive a Congratulations email with your exclusive invite code.
 
-Once you have the code, you’ll be able to proceed with creating your profile.
+You're just one step away from unlocking:
+
+=> A verified Travel Expert badge
+=> Access to real travel consultation queries
+=> Credibility with a curated profile on a trusted platform
+=> Opportunities to monetize your expertise
+=> And be part of a first-of-its-kind expert travel community
+
+Get excited – the journey to becoming an Xmytravel Expert is just beginning. ✨
 
 Warm regards,
-LTTX Team 
+Xmytravel Team
       `.trim(),
     });
 
@@ -83,7 +91,8 @@ A new user has requested an invite code to join the platform as a Travel Expert.
 Please review and issue an invite code if the profile is suitable.
 
 Warm regards,
-LTTX Team 
+Xmytravel Team
+
       `.trim(),
     });
 

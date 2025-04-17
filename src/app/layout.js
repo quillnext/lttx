@@ -12,7 +12,7 @@ const ralewaySans = Raleway({
 
 
 export const metadata = {
-  title: "LTTX",
+  title: "Xmytravel.com",
   description: "We turn every trip into an unforgettable experience.",
 };
 

@@ -37,7 +37,7 @@ const WhyLTTXSection = () => {
   ];
 
   return (
-    <section id='why-lttx' className=" scroll-mt-[100px] bg-secondary p-2 py-10   rounded-[40px] ">
+    <section id='why-Xmytravel' className=" scroll-mt-[100px] bg-secondary p-2 py-10   rounded-[40px] ">
      <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
         {/* Illustration */}
         <div className="md:w-1/3 mb-8 md:mb-0">

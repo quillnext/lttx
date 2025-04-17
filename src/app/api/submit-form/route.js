@@ -99,8 +99,9 @@ A user has submitted their profile using a valid invite code. Here are the detai
 
 Please review the profile and send the profile creation link to the user if approved.
 
-Best,
-Your LTTX Team 
+Warm regards,
+Xmytravel Team
+
       `.trim(),
     });
 
@@ -109,18 +110,22 @@ Your LTTX Team
       to: email,
       cc: process.env.ADMIN_EMAIL_CC ,
       bcc: process.env.ADMIN_EMAIL_BCC ,
-      subject: "Thank You for Submitting Your Profile",
+      subject: "You're Almost There – Profile Submitted Successfully",
       text: `
 Hi ${fullName},
 
-We’ve received your profile submission along with your invite code.
+We’ve received your profile submission and invite code – thank you for taking the next step to becoming an official Travel Expert on Xmytravel.
 
-Our team will review your details and, if approved, you’ll soon receive a separate email with the link to complete your profile creation.
+Your profile is now being reviewed through our exclusive expert curation module. If approved, you’ll soon receive a Congratulations email along with a link to complete your verified profile.
 
-Thank you for your interest in joining us as a Travel Expert!
+You're this close to joining a select league of Travel Experts & Consultants who are shaping the future of trusted travel guidance.
+
+Stay tuned – your journey with Xmytravel is just about to take flight. 🚀
+
 
 Warm regards,
-LTTX Team 
+Xmytravel Team
+
       `.trim(),
     });
 

@@ -14,7 +14,7 @@ const ToolsSupportSection = () => {
     'Custom Q&A Moderation to prevent spam and ensure quality expert responses.',
     'Daily Question-of-the-Day with handpicked industry-relevant topics.',
     'Real-Time Analytics Dashboard to view expert rankings, engagement, and impact.',
-    'Performance-Based Levels & Rewards for progressing through LTTX tiers.',
+    'Performance-Based Levels & Rewards for progressing through Xmytravel.com tiers.',
     'Personal Branding & Marketing Tools to get promoted as a travel expert.',
   ];
   const bulletStyles = [

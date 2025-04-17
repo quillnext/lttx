@@ -29,7 +29,7 @@ const AOETCSection = () => {
          
           <div className="md:w-1/2">
             <h2 className=" text-2xl lg:text-5xl font-bold text-textcolor mb-2">
-              LTTX Experts Are Automatically Part of{' '}
+            Xmytravel.com Experts Are Automatically Part of{' '}
               <span className="text-2xl lg:text-4xl">ASSOTEC</span>
             </h2>
             <p className="text-textcolor font-semibold text-lg mb-4">
@@ -68,7 +68,7 @@ const AOETCSection = () => {
           </div>
         </div>
         <h3 className="text-lg lg:text-xl font-semibold text-secondary underline mb-4">
-              Apply to Join LTTX & Become an ASSOTEC Member
+              Apply to Join Xmytravel.com & Become an ASSOTEC Member
             </h3>
       </div>
     </section>
