@@ -144,7 +144,6 @@ Please review the profile and issue an invite code if suitable.
 
 Warm regards,
 Xmytravel Team
-support@xmytravel.com
       `.trim(),
     });
 
