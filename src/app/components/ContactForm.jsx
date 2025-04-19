@@ -394,7 +394,7 @@ const CustomOption = ({ innerProps, innerRef, data, isSelected, isDisabled }) =>
         type="checkbox"
         checked={isSelected}
         disabled={isSelected || isDisabled}
-        readOnly 
+        readOnly
         className="mr-2 h-4 w-4 text-primary"
       />
       <span>{data.label}</span>
@@ -402,6 +402,7 @@ const CustomOption = ({ innerProps, innerRef, data, isSelected, isDisabled }) =>
   );
 };
 
+// Custom styles for react-select
 const customStyles = {
   control: (provided) => ({
     ...provided,
@@ -469,9 +470,8 @@ const Step2 = ({ setStep, isLoading }) => {
                 classNamePrefix="custom-select"
                 components={{ Option: CustomOption }}
                 styles={customStyles}
-                isOptionDisabled={(option) =>
-                  field.value?.length >= 5 && !field.value?.includes(option.value)
-                }
+                isOptionDisabled={(option) => field.value?.length >= 5} 
+                hideSelectedOptions={false} 
               />
             )}
           />
@@ -511,9 +511,8 @@ const Step2 = ({ setStep, isLoading }) => {
                     classNamePrefix="custom-select"
                     components={{ Option: CustomOption }}
                     styles={customStyles}
-                    isOptionDisabled={(option) =>
-                      selectedValues.length >= 5 && !selectedValues.includes(option.value)
-                    }
+                    isOptionDisabled={(option) => selectedValues.length >= 5} 
+                    hideSelectedOptions={false} 
                     formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
                   />
                 );
