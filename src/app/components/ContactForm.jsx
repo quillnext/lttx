@@ -147,7 +147,7 @@ const Step1 = ({ setStep, isLoading }) => {
   );
 };
 
-// Options for Step2
+
 const typeOfTravelOptions = [
   { value: "Leisure", label: "Leisure" },
   { value: "Corporate / Business", label: "Corporate / Business" },
@@ -212,165 +212,341 @@ const languageOptions = [
   { value: "Swahili", label: "Swahili" },
 ];
 
+// const Step2 = ({ setStep, isLoading }) => {
+//   const { control, formState: { errors } } = useFormContext();
+//   return (
+//     <div className="space-y-4">
+//       <h3 className="text-lg font-semibold text-primary">Step 2: Travel Preferences</h3>
+//       {/* Type of Travel */}
+//       <div>
+//         <label className="block text-sm text-primary mb-1">Type of Travel (select up to 5)</label>
+//         <Controller
+//           name="typeOfTravel"
+//           control={control}
+//           render={({ field }) => (
+//             <Select
+//               isMulti
+//               options={typeOfTravelOptions}
+//               value={typeOfTravelOptions.filter((option) =>
+//                 field.value?.includes(option.value)
+//               )}
+//               onChange={(selectedOptions) => {
+//                 const selectedValues = selectedOptions
+//                   ? selectedOptions.map((option) => option.value)
+//                   : [];
+//                 field.onChange(selectedValues);
+//               }}
+//               placeholder="Select the kinds of travel you specialize in"
+//               className="w-full"
+//               classNamePrefix="custom-select"
+//               isOptionDisabled={() => field.value?.length >= 5}
+//             />
+//           )}
+//         />
+//         {errors.typeOfTravel && (
+//           <p className="text-red-500 text-sm mt-1">{errors.typeOfTravel.message}</p>
+//         )}
+//       </div>
+
+//       {/* Industry Segment */}
+//       <div>
+//         <label className="block text-sm text-primary mb-1">Industry Segment (select up to 5)</label>
+//         <Controller
+//           name="industrySegment"
+//           control={control}
+//           render={({ field }) => (
+//             <Select
+//               isMulti
+//               options={industrySegmentOptions}
+//               value={industrySegmentOptions.filter((option) =>
+//                 field.value?.includes(option.value)
+//               )}
+//               onChange={(selectedOptions) => {
+//                 const selectedValues = selectedOptions
+//                   ? selectedOptions.map((option) => option.value)
+//                   : [];
+//                 field.onChange(selectedValues);
+//               }}
+//               placeholder="What part of the travel industry are you from?"
+//               className="w-full"
+//               classNamePrefix="custom-select"
+//               isOptionDisabled={() => field.value?.length >= 5}
+//             />
+//           )}
+//         />
+//         {errors.industrySegment && (
+//           <p className="text-red-500 text-sm mt-1">{errors.industrySegment.message}</p>
+//         )}
+//       </div>
+
+//       {/* Destination Expertise */}
+//       <div>
+//         <label className="block text-sm text-primary mb-1">Destination Expertise (select up to 5)</label>
+//         <Controller
+//           name="destinationExpertise"
+//           control={control}
+//           render={({ field }) => (
+//             <CreatableSelect
+//               isMulti
+//               options={destinationExpertiseOptions}
+//               value={destinationExpertiseOptions.filter((option) =>
+//                 field.value?.includes(option.value)
+//               ).concat(
+//                 field.value
+//                   ?.filter((val) => !destinationExpertiseOptions.some((opt) => opt.value === val))
+//                   .map((val) => ({ value: val, label: val }))
+//               )}
+//               onChange={(selectedOptions) => {
+//                 const selectedValues = selectedOptions
+//                   ? selectedOptions.map((option) => option.value)
+//                   : [];
+//                 field.onChange(selectedValues);
+//               }}
+//               placeholder="Choose regions or type to add specific countries (e.g., Japan, Italy)"
+//               className="w-full"
+//               classNamePrefix="custom-select"
+//               isOptionDisabled={() => field.value?.length >= 5}
+//               formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+//             />
+//           )}
+//         />
+//         {errors.destinationExpertise && (
+//           <p className="text-red-500 text-sm mt-1">{errors.destinationExpertise.message}</p>
+//         )}
+//       </div>
+
+//       {/* Languages Spoken */}
+//       <div>
+//         <label className="block text-sm text-primary mb-1">Languages Spoken (select up to 5)</label>
+//         <Controller
+//           name="language"
+//           control={control}
+//           render={({ field }) => (
+//             <CreatableSelect
+//               isMulti
+//               options={languageOptions}
+//               value={languageOptions.filter((option) =>
+//                 field.value?.includes(option.value)
+//               ).concat(
+//                 field.value
+//                   ?.filter((val) => !languageOptions.some((opt) => opt.value === val))
+//                   .map((val) => ({ value: val, label: val }))
+//               )}
+//               onChange={(selectedOptions) => {
+//                 const selectedValues = selectedOptions
+//                   ? selectedOptions.map((option) => option.value)
+//                   : [];
+//                 field.onChange(selectedValues);
+//               }}
+//               placeholder="Select languages you are fluent or conversational in"
+//               className="w-full"
+//               classNamePrefix="custom-select"
+//               isOptionDisabled={() => field.value?.length >= 5}
+//               formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+//             />
+//           )}
+//         />
+//         {errors.language && (
+//           <p className="text-red-500 text-sm mt-1">{errors.language.message}</p>
+//         )}
+//       </div>
+
+//       <div className="pt-4 flex flex-col md:flex-row space-y-4 justify-between items-center">
+//         <button
+//           type="button"
+//           onClick={() => setStep(1)}
+//           className="bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
+//           disabled={isLoading} 
+//         >
+//          Previous
+//         </button>
+//         <button
+//           type="submit"
+//           className="bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
+//           disabled={isLoading} 
+//         >
+//          Next
+//         </button>
+//       </div>
+//     </div>
+//   );
+// };
+
+
+// Custom styles for react-select
+
+// Custom Option component to show checkbox
+
+// Custom Option component to show checkbox
+
+const CustomOption = ({ innerProps, innerRef, data, isSelected, isDisabled }) => {
+  return (
+    <div
+      ref={innerRef}
+      {...innerProps}
+      className={`flex items-center px-3 py-2 ${
+        isSelected || isDisabled
+          ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+          : "hover:bg-gray-50 cursor-pointer"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={isSelected}
+        disabled={isSelected || isDisabled}
+        readOnly 
+        className="mr-2 h-4 w-4 text-primary"
+      />
+      <span>{data.label}</span>
+    </div>
+  );
+};
+
+const customStyles = {
+  control: (provided) => ({
+    ...provided,
+    borderColor: "#e5e7eb",
+    "&:hover": { borderColor: "#d1d5db" },
+    boxShadow: "none",
+  }),
+  multiValue: (provided) => ({
+    ...provided,
+    backgroundColor: "#e0f2fe",
+  }),
+  multiValueLabel: (provided) => ({
+    ...provided,
+    color: "#0369a1",
+  }),
+  multiValueRemove: (provided) => ({
+    ...provided,
+    color: "#0369a1",
+    "&:hover": {
+      backgroundColor: "#bae6fd",
+      color: "#075985",
+    },
+  }),
+  option: (provided, state) => ({
+    ...provided,
+    backgroundColor: state.isSelected
+      ? "#f3f4f6"
+      : state.isDisabled
+      ? "#e5e7eb"
+      : state.isFocused
+      ? "#f9fafb"
+      : "white",
+    color: state.isSelected || state.isDisabled ? "#9ca3af" : "#111827",
+    cursor: state.isSelected || state.isDisabled ? "not-allowed" : "pointer",
+  }),
+};
+
 const Step2 = ({ setStep, isLoading }) => {
   const { control, formState: { errors } } = useFormContext();
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-primary">Step 2: Travel Preferences</h3>
-      {/* Type of Travel */}
-      <div>
-        <label className="block text-sm text-primary mb-1">Type of Travel (select up to 5)</label>
-        <Controller
-          name="typeOfTravel"
-          control={control}
-          render={({ field }) => (
-            <Select
-              isMulti
-              options={typeOfTravelOptions}
-              value={typeOfTravelOptions.filter((option) =>
-                field.value?.includes(option.value)
-              )}
-              onChange={(selectedOptions) => {
-                const selectedValues = selectedOptions
-                  ? selectedOptions.map((option) => option.value)
-                  : [];
-                field.onChange(selectedValues);
-              }}
-              placeholder="Select the kinds of travel you specialize in"
-              className="w-full"
-              classNamePrefix="custom-select"
-              isOptionDisabled={() => field.value?.length >= 5}
-            />
-          )}
-        />
-        {errors.typeOfTravel && (
-          <p className="text-red-500 text-sm mt-1">{errors.typeOfTravel.message}</p>
-        )}
-      </div>
 
-      {/* Industry Segment */}
-      <div>
-        <label className="block text-sm text-primary mb-1">Industry Segment (select up to 5)</label>
-        <Controller
-          name="industrySegment"
-          control={control}
-          render={({ field }) => (
-            <Select
-              isMulti
-              options={industrySegmentOptions}
-              value={industrySegmentOptions.filter((option) =>
-                field.value?.includes(option.value)
-              )}
-              onChange={(selectedOptions) => {
-                const selectedValues = selectedOptions
-                  ? selectedOptions.map((option) => option.value)
-                  : [];
-                field.onChange(selectedValues);
-              }}
-              placeholder="What part of the travel industry are you from?"
-              className="w-full"
-              classNamePrefix="custom-select"
-              isOptionDisabled={() => field.value?.length >= 5}
-            />
-          )}
-        />
-        {errors.industrySegment && (
-          <p className="text-red-500 text-sm mt-1">{errors.industrySegment.message}</p>
-        )}
-      </div>
+      {[
+        { name: "typeOfTravel", label: "Type of Travel", options: typeOfTravelOptions },
+        { name: "industrySegment", label: "Industry Segment", options: industrySegmentOptions },
+      ].map(({ name, label, options }) => (
+        <div key={name}>
+          <label className="block text-sm text-primary mb-1">{label} (select up to 5)</label>
+          <Controller
+            name={name}
+            control={control}
+            render={({ field }) => (
+              <Select
+                isMulti
+                options={options}
+                value={options.filter((option) => field.value?.includes(option.value))}
+                onChange={(selectedOptions) => {
+                  const selectedValues = selectedOptions ? selectedOptions.map((opt) => opt.value) : [];
+                  field.onChange(selectedValues);
+                }}
+                placeholder={`Select ${label.toLowerCase()}`}
+                className="w-full"
+                classNamePrefix="custom-select"
+                components={{ Option: CustomOption }}
+                styles={customStyles}
+                isOptionDisabled={(option) =>
+                  field.value?.length >= 5 && !field.value?.includes(option.value)
+                }
+              />
+            )}
+          />
+          {errors[name] && <p className="text-red-500 text-sm mt-1">{errors[name].message}</p>}
+        </div>
+      ))}
 
-      {/* Destination Expertise */}
-      <div>
-        <label className="block text-sm text-primary mb-1">Destination Expertise (select up to 5)</label>
-        <Controller
-          name="destinationExpertise"
-          control={control}
-          render={({ field }) => (
-            <CreatableSelect
-              isMulti
-              options={destinationExpertiseOptions}
-              value={destinationExpertiseOptions.filter((option) =>
-                field.value?.includes(option.value)
-              ).concat(
-                field.value
-                  ?.filter((val) => !destinationExpertiseOptions.some((opt) => opt.value === val))
-                  .map((val) => ({ value: val, label: val }))
-              )}
-              onChange={(selectedOptions) => {
-                const selectedValues = selectedOptions
-                  ? selectedOptions.map((option) => option.value)
-                  : [];
-                field.onChange(selectedValues);
-              }}
-              placeholder="Choose regions or type to add specific countries (e.g., Japan, Italy)"
-              className="w-full"
-              classNamePrefix="custom-select"
-              isOptionDisabled={() => field.value?.length >= 5}
-              formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-            />
-          )}
-        />
-        {errors.destinationExpertise && (
-          <p className="text-red-500 text-sm mt-1">{errors.destinationExpertise.message}</p>
-        )}
-      </div>
+      {["destinationExpertise", "language"].map((name) => {
+        const options = name === "destinationExpertise" ? destinationExpertiseOptions : languageOptions;
+        const label = name === "destinationExpertise" ? "Destination Expertise" : "Languages Spoken";
 
-      {/* Languages Spoken */}
-      <div>
-        <label className="block text-sm text-primary mb-1">Languages Spoken (select up to 5)</label>
-        <Controller
-          name="language"
-          control={control}
-          render={({ field }) => (
-            <CreatableSelect
-              isMulti
-              options={languageOptions}
-              value={languageOptions.filter((option) =>
-                field.value?.includes(option.value)
-              ).concat(
-                field.value
-                  ?.filter((val) => !languageOptions.some((opt) => opt.value === val))
-                  .map((val) => ({ value: val, label: val }))
-              )}
-              onChange={(selectedOptions) => {
-                const selectedValues = selectedOptions
-                  ? selectedOptions.map((option) => option.value)
-                  : [];
-                field.onChange(selectedValues);
+        return (
+          <div key={name}>
+            <label className="block text-sm text-primary mb-1">{label} (select up to 5)</label>
+            <Controller
+              name={name}
+              control={control}
+              render={({ field }) => {
+                const selectedValues = field.value || [];
+                return (
+                  <CreatableSelect
+                    isMulti
+                    options={options}
+                    value={options
+                      .filter((option) => selectedValues.includes(option.value))
+                      .concat(
+                        selectedValues
+                          .filter((val) => !options.some((opt) => opt.value === val))
+                          .map((val) => ({ value: val, label: val }))
+                      )}
+                    onChange={(selectedOptions) => {
+                      const newValues = selectedOptions ? selectedOptions.map((opt) => opt.value) : [];
+                      field.onChange(newValues);
+                    }}
+                    placeholder={`Select ${label.toLowerCase()}`}
+                    className="w-full"
+                    classNamePrefix="custom-select"
+                    components={{ Option: CustomOption }}
+                    styles={customStyles}
+                    isOptionDisabled={(option) =>
+                      selectedValues.length >= 5 && !selectedValues.includes(option.value)
+                    }
+                    formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+                  />
+                );
               }}
-              placeholder="Select languages you are fluent or conversational in"
-              className="w-full"
-              classNamePrefix="custom-select"
-              isOptionDisabled={() => field.value?.length >= 5}
-              formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
             />
-          )}
-        />
-        {errors.language && (
-          <p className="text-red-500 text-sm mt-1">{errors.language.message}</p>
-        )}
-      </div>
+            {errors[name] && <p className="text-red-500 text-sm mt-1">{errors[name].message}</p>}
+          </div>
+        );
+      })}
 
       <div className="pt-4 flex flex-col md:flex-row space-y-4 justify-between items-center">
         <button
           type="button"
           onClick={() => setStep(1)}
           className="bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-          disabled={isLoading} 
+          disabled={isLoading}
         >
-         Previous
+          Previous
         </button>
         <button
           type="submit"
           className="bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-          disabled={isLoading} 
+          disabled={isLoading}
         >
-         Next
+          Next
         </button>
       </div>
     </div>
   );
 };
+
+
+
 
 const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData }) => { 
   const { register, formState: { errors }, watch, reset,getValues } = useFormContext();
@@ -589,7 +765,7 @@ const ContactForm = () => {
   };
 
   return (
-    <section className="py-12 bg-secondary rounded-[40px]">
+    <section className="py-12 bg-secondary rounded-[40px]" id="apply">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">

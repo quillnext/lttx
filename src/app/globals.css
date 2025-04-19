@@ -125,3 +125,15 @@ html {
 .custom-select__indicator:hover {
   color: #6b7280 !important;
 }
+
+.custom-select__option--is-selected,
+.custom-select__option--is-disabled {
+  background-color: #e5e7eb !important;
+  color: #9ca3af !important;
+  cursor: not-allowed !important;
+}
+
+.custom-select__option--is-selected:hover,
+.custom-select__option--is-disabled:hover {
+  background-color: #e5e7eb !important;
+}
