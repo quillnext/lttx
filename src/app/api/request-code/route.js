@@ -90,7 +90,7 @@ support@xmytravel.com
 </head>
 <body>
     <div class="header">
-        <img src="https://github.com/quillnext/lttx/blob/main/public/emailbanner.jpeg?raw=true" width="100%" alt="Xmytravel Logo" />
+        <img src="https://lttx.vercel.app/emailbanner.jpeg" width="100%" alt="Xmytravel Logo" />
         <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
     </div>
     <div class="content">
