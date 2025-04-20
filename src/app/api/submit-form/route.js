@@ -101,7 +101,7 @@ Please review the profile and send the profile creation link to the user if appr
 
 Warm regards,
 Xmytravel Team
-support@xmytravel.com
+info@xmytravel.com
       `.trim(),
     });
 
@@ -177,7 +177,7 @@ Stay tuned – your journey with Xmytravel is just about to take flight. 🚀
 
 Warm regards,
 Xmytravel Team
-support@xmytravel.com
+info@xmytravel.com
       `.trim(),
       html: userHtmlTemplate,
     });

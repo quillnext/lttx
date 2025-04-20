@@ -64,7 +64,7 @@ Get excited â€“ the journey to becoming an Xmytravel Expert is just beginning! â
 
 Warm regards,
 Xmytravel Team
-support@xmytravel.com
+info@xmytravel.com
       `.trim(),
       html: `
 <!DOCTYPE html>
@@ -80,7 +80,7 @@ support@xmytravel.com
         .content {  margin: 20px auto; padding: 20px;  border-radius: 8px; text-align: left;}
         .content h1 { font-size: 24px; color: #333; margin: 0 0 20px; }
         .content p { font-size: 16px; color: #555; line-height: 1.6; }
-        .content ul { list-style: none; padding: 0; margin: 20px 0; }
+        .content ul {padding: 0; margin: 20px 0; }
         .content ul li { font-size: 16px; color: #555; margin: 10px 0; }
         .footer { margin: 20px auto; padding: 20px; }
         .footer .intro { font-size: 14px; color: #777; text-align: left; margin-bottom: 20px; }
