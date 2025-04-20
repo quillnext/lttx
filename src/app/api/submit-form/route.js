@@ -129,7 +129,7 @@ support@xmytravel.com
 <body>
     <div class="header">
         <img src="https://via.placeholder.com/150" alt="Xmytravel Logo" />
-        <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
+        // <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
     </div>
     <div class="content">
         <h1>You're Almost There! 🚀</h1>

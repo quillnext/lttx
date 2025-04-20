@@ -76,7 +76,7 @@ support@xmytravel.com
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
         .header { text-align: center; padding: 20px; background-color: #ffffff; border-bottom: 1px solid #e0e0e0; }
-        .header img { max-width: 150px; }
+       
         .content { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #ffffff; border-radius: 8px; text-align: center; }
         .content h1 { font-size: 24px; color: #333; margin: 0 0 20px; }
         .content p { font-size: 16px; color: #555; line-height: 1.6; }
@@ -90,8 +90,8 @@ support@xmytravel.com
 </head>
 <body>
     <div class="header">
-        <img src="/emailbanner.jpeg" alt="Xmytravel Logo" />
-        <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
+        <img src="https://plus.unsplash.com/premium_photo-1670934158407-d2009128cb02?q=80&w=2060&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Xmytravel Logo" />
+   
     </div>
     <div class="content">
         <h1>You're One Step Away from Joining Xmytravel! ✨</h1>
@@ -109,7 +109,7 @@ support@xmytravel.com
         <p>Get excited – the journey to becoming an Xmytravel Expert is just beginning! ✨</p>
     </div>
     <div class="signature">
-        <img src="/emailbanner.jpeg" alt="Xmytravel Team Photo" />
+        <img src="https://plus.unsplash.com/premium_photo-1689977968861-9c91dbb16049?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Xmytravel Team Photo" />
         <p>Xmytravel Team</p>
         <p><a href="mailto:support@xmytravel.com">support@xmytravel.com</a></p>
     </div>
