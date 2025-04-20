@@ -23,6 +23,7 @@ export async function POST(request) {
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
     }
+    
 
     // Save request to database
     const requestDoc = await databases.createDocument(

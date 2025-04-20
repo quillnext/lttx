@@ -4,7 +4,9 @@ export async function sendEmail({ to, cc, bcc, subject, text, html }) {
   try {
     // Create a transporter using Gmail
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: 'smtp.zoho.in', // Use smtp.zoho.com if you're using a global domain
+      port: 465,
+      secure: true, // true for port 465, false for port 587
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
