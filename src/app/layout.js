@@ -12,16 +12,16 @@ const ralewaySans = Raleway({
 
 
 export const metadata = {
-  title: "Xmytravel.com",
-  description: "We turn every trip into an unforgettable experience.",
+  title: "Join the Invite-Only Network of Verified Travel Experts | Xmytravel.com",
+  description: "Become part of an elite community dedicated to transforming travel consultancy.",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
        <head>
-        <link rel="icon" href="/LTTX.svg" sizes="any" />
-        <link rel="icon" href="/LTTX.svg" type="image/svg+xml" />
+        <link rel="icon" href="/favicon.svg" sizes="any" />
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body
         className={`${ralewaySans.variable}  antialiased  `}
