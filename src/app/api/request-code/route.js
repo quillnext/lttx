@@ -95,7 +95,6 @@ info@xmytravel.com
         <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
     </div>
     <div class="content">
-        <h1>You're One Step Away from Joining Xmytravel! ✨</h1>
         <p>Hi ${fullName || email.split("@")[0]},</p>
         <p>Thank you for applying to become a Travel Expert on <strong>Xmytravel</strong> – the pioneering platform built exclusively for certified and credible Travel Experts & Consultants.</p>
         <p>We’ve received your request for an invite code. Our curation team is reviewing your profile through our expert verification module. If you fit the bill, you’ll soon receive a <strong>Congratulations</strong> email with your exclusive invite code.</p>
