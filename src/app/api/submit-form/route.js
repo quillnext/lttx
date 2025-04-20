@@ -115,34 +115,43 @@ support@xmytravel.com
     <title>Profile Submission Received</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-        .header { text-align: center; padding: 20px; background-color: #ffffff; border-bottom: 1px solid #e0e0e0; }
-        .header img { max-width: 150px; }
-        .content { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #ffffff; border-radius: 8px; text-align: center; }
+        .header { width: 100%; text-align: center; }
+        .header img { width: 100%; height: auto; object-fit: cover; }
+        .content {  margin:  20px auto 0 auto; padding: 20px; border-radius: 8px; text-align: left; }
         .content h1 { font-size: 24px; color: #333; margin: 0 0 20px; }
         .content p { font-size: 16px; color: #555; line-height: 1.6; }
-        .signature { margin-top: 30px; text-align: center; }
-        .signature img { border-radius: 50%; width: 60px; height: 60px; }
-        .signature p { font-size: 14px; color: #888; margin: 5px 0; }
-        .signature a { color: #007bff; text-decoration: none; }
+        .footer {  margin: 0 auto; padding:  20px; }
+        .footer .intro { font-size: 16px; color: #777; text-align: left; margin-bottom: 20px; }
+        .footer .signature { display: flex; align-items: center; }
+        .footer .signature img { border-radius: 50%; width: 60px; height: 60px; margin-right: 20px; }
+        .footer .signature .text { font-size: 14px; color: #777; }
+        .footer .signature p { margin: 5px 0; }
     </style>
 </head>
 <body>
     <div class="header">
-        <img src="https://via.placeholder.com/150" alt="Xmytravel Logo" />
-        // <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
+        <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
     </div>
     <div class="content">
-        <h1>You're Almost There! 🚀</h1>
+        <h1>You're Almost There – Profile Submitted Successfully 💫</h1>
         <p>Hi ${fullName || email.split("@")[0]},</p>
         <p>We’ve received your profile submission and invite code – thank you for taking the next step to becoming an official Travel Expert on <strong>Xmytravel</strong>.</p>
         <p>Your profile is now being reviewed through our exclusive expert curation module. If approved, you’ll soon receive a <strong>Congratulations</strong> email along with a link to complete your verified profile.</p>
         <p>You're this close to joining a select league of Travel Experts & Consultants who are shaping the future of trusted travel guidance.</p>
         <p>Stay tuned – your journey with Xmytravel is just about to take flight! 🚀</p>
+          <p>Best Regards,<br>Xmytravel Team,</p>
     </div>
-    <div class="signature">
-        <img src="https://via.placeholder.com/60" alt="Xmytravel Team Photo" />
-        <p>Xmytravel Team</p>
-        <p><a href="mailto:support@xmytravel.com">support@xmytravel.com</a></p>
+    <div class="footer">
+        <div class="intro">
+          
+            <p>At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity. If you’re reading this, it means you’re already on your way to joining an exclusive league of curated Travel Experts. Let’s build the future of travel, together.</p>
+        </div>
+        <div class="signature">
+            <img src="https://img.freepik.com/free-vector/user-circles-set_78370-4704.jpg?t=st=1745137316~exp=1745140916~hmac=df9e2b52d912d264fe14be1febc1e1e4376538323816bc0cff5ec61a1a7614e2&w=826" alt="User Photo" />
+            <div class="text">
+                <p>— Rishabh Vyas,<br> Founder Xmytravel</p>
+            </div>
+        </div>
     </div>
 </body>
 </html>

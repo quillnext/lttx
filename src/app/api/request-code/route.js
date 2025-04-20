@@ -72,31 +72,27 @@ support@xmytravel.com
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invite Code Request Received</title>
+    <title>You're One Step Away from Joining Xmytravel</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-        .header { text-align: center; padding: 20px; background-color: #ffffff; border-bottom: 1px solid #e0e0e0; }
-       
-        .content { max-width: 600px; margin: 20px auto; padding: 20px; background-color: #ffffff; border-radius: 8px; text-align: center; }
+        .header { width: 100%; text-align: center; }
+        .header img { width: 100%; height: auto; object-fit: cover; }
+        .content {  margin: 20px auto; padding: 20px;  border-radius: 8px; text-align: left;}
         .content h1 { font-size: 24px; color: #333; margin: 0 0 20px; }
         .content p { font-size: 16px; color: #555; line-height: 1.6; }
         .content ul { list-style: none; padding: 0; margin: 20px 0; }
         .content ul li { font-size: 16px; color: #555; margin: 10px 0; }
-        .signature { margin-top: 30px; text-align: center; }
-        .signature img { border-radius: 50%; width: 60px; height: 60px; }
-        .signature p { font-size: 14px; color: #888; margin: 5px 0; }
-        .signature a { color: #007bff; text-decoration: none; }
+        .footer { margin: 20px auto; padding: 20px; }
+        .footer .intro { font-size: 14px; color: #777; text-align: left; margin-bottom: 20px; }
+        .footer .signature { display: flex; align-items: center; }
+        .footer .signature img { border-radius: 50%; width: 60px; height: 60px; margin-right: 20px; }
+        .footer .signature .text { font-size: 14px; color: #777; }
+        .footer .signature p { margin: 5px 0; }
     </style>
 </head>
 <body>
     <div class="header">
-<<<<<<< HEAD
-        <img src="https://plus.unsplash.com/premium_photo-1670934158407-d2009128cb02?q=80&w=2060&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Xmytravel Logo" />
-   
-=======
-        <img src="https://lttx.vercel.app/emailbanner.jpeg" width="100%" alt="Xmytravel Logo" />
-        <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
->>>>>>> 746e485c940073ad6984ed698b4c909129bd13e2
+        <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
     </div>
     <div class="content">
         <h1>You're One Step Away from Joining Xmytravel! ✨</h1>
@@ -112,11 +108,18 @@ support@xmytravel.com
             <li>Be part of a first-of-its-kind expert travel community</li>
         </ul>
         <p>Get excited – the journey to becoming an Xmytravel Expert is just beginning! ✨</p>
+        <p>Best Regards,<br>Xmytravel Team</p>
     </div>
-    <div class="signature">
-        <img src="https://plus.unsplash.com/premium_photo-1689977968861-9c91dbb16049?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Xmytravel Team Photo" />
-        <p>Xmytravel Team</p>
-        <p><a href="mailto:support@xmytravel.com">support@xmytravel.com</a></p>
+    <div class="footer">
+        <div class="intro">
+            <p>At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity. If you’re reading this, it means you’re already on your way to joining an exclusive league of curated Travel Experts. Let’s build the future of travel, together.</p>
+        </div>
+        <div class="signature">
+            <img src="https://img.freepik.com/free-vector/user-circles-set_78370-4704.jpg?t=st=1745137316~exp=1745140916~hmac=df9e2b52d912d264fe14be1febc1e1e4376538323816bc0cff5ec61a1a7614e2&w=826" alt="User Photo" />
+            <div class="text">
+                <p>— Rishabh Vyas,<br> Founder Xmytravel</p>
+            </div>
+        </div>
     </div>
 </body>
 </html>
