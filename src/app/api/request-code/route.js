@@ -90,8 +90,13 @@ support@xmytravel.com
 </head>
 <body>
     <div class="header">
+<<<<<<< HEAD
         <img src="https://plus.unsplash.com/premium_photo-1670934158407-d2009128cb02?q=80&w=2060&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Xmytravel Logo" />
    
+=======
+        <img src="https://lttx.vercel.app/emailbanner.jpeg" width="100%" alt="Xmytravel Logo" />
+        <p style="color: #888; font-size: 12px;">Xmytravel – Expert Travel Community</p>
+>>>>>>> 746e485c940073ad6984ed698b4c909129bd13e2
     </div>
     <div class="content">
         <h1>You're One Step Away from Joining Xmytravel! ✨</h1>
@@ -144,7 +149,6 @@ Please review the profile and issue an invite code if suitable.
 
 Warm regards,
 Xmytravel Team
-support@xmytravel.com
       `.trim(),
     });
 
