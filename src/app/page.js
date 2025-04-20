@@ -3,7 +3,6 @@ import WhyLTTXSection from "./pages/WhyLTTXSection";
 import TravelExpertSection from "./pages/TravelExpertSection";
 import OnboardingSection from "./pages/OnboardingSection";
 import ComparisonSection from "./pages/ComparisonSection";
-import AOETCSection from "./pages/AOETCSection";
 import EngagementSection from "./pages/EngagementSection";
 import ContactForm from "./components/ContactForm";
 import Button from "./components/Button";
@@ -27,7 +26,6 @@ export default function Home() {
   <ComparisonSection/>
  </div>
 
-  <AOETCSection/>
   <VideoBlogPage/>
   <EngagementSection/>
   <ToolsSupportSection/>

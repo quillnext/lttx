@@ -116,7 +116,7 @@ info@xmytravel.com
         <div class="signature">
             <img src="https://img.freepik.com/free-vector/user-circles-set_78370-4704.jpg?t=st=1745137316~exp=1745140916~hmac=df9e2b52d912d264fe14be1febc1e1e4376538323816bc0cff5ec61a1a7614e2&w=826" alt="User Photo" />
             <div class="text">
-                <p>— Rishabh Vyas,<br> Founder Xmytravel</p>
+                <p>— Rishabh Vyas,<br> Founder, Xmytravel</p>
             </div>
         </div>
     </div>
