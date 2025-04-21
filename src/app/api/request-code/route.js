@@ -43,7 +43,7 @@ export async function POST(request) {
     await sendEmail({
       to: email,
       // cc: process.env.ADMIN_EMAIL_CC,
-      bcc: process.env.ADMIN_EMAIL_BCC,
+      // bcc: process.env.ADMIN_EMAIL_BCC,
       subject: "You're One Step Away from Joining Xmytravel – Invite Code Requested",
       text: `
 You're One Step Away from Joining Xmytravel! ✨
@@ -130,7 +130,7 @@ info@xmytravel.com
     await sendEmail({
       to: process.env.ADMIN_EMAIL,
       // cc: process.env.ADMIN_EMAIL_CC,
-      bcc: process.env.ADMIN_EMAIL_BCC,
+      // bcc: process.env.ADMIN_EMAIL_BCC,
       subject: `Invite Code Requested by ${fullName || email.split("@")[0]}`,
       text: `
 Hi Team,
