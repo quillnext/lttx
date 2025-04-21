@@ -10,8 +10,8 @@ const Footer = () => {
         backgroundImage: "url('/footer.png')",
       }}
     >
-      <div className="container mx-auto px-16 lg:px-32 py-8">
-        <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+      <div className="container mx-auto px-12 lg:px-14 py-12">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-8">
           {/* Left Section */}
           <div className="text-center">
            
@@ -24,7 +24,7 @@ const Footer = () => {
                                     
                                   />
           
-            <div className="flex justify-center  gap-4 mt-5">
+            {/* <div className="flex justify-center  gap-4 mt-5">
               <a href="/" target="_blank" rel="noopener noreferrer">
                 <FaFacebookF className="text-white hover:text-green-500" size={20} />
               </a>
@@ -37,7 +37,7 @@ const Footer = () => {
               <a href="/" target="_blank" rel="noopener noreferrer">
                 <FaLinkedinIn className="text-white hover:text-green-500" size={20} />
               </a>
-            </div>
+            </div> */}
           </div>
 
           {/* Center Section */}
@@ -57,7 +57,7 @@ const Footer = () => {
           </div>
 
           {/* Right Section */}
-          <div className="text-start flex flex-col items-start">
+          {/* <div className="text-start flex flex-col items-start">
 
             <Image src='/plant.svg' width={32} height={32} alt='paant' className='w-40 h-20 ' />
             <p className="mb-4">
@@ -86,7 +86,7 @@ const Footer = () => {
               </p>
             </div>
           
-          </div>
+          </div> */}
         </div>
 
         {/*  Copyright */}
