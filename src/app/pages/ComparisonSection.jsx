@@ -81,7 +81,7 @@ const ComparisonSection = () => {
 
               {/* Travel Expert Column */}
               <div className="flex-[2] bg-secondary rounded-3xl min-w-[300px] ">
-                <h3 className="text-2xl md:text-3xl font-semibold text-white mb-5 mt-5 text-center">
+                <h3 className="text-2xl md:text-3xl font-semibold text-primary mb-5 mt-5 text-center">
                   Travel Expert (Xmytravel.com)
                 </h3>
                 <hr className="border-3" />
@@ -90,7 +90,7 @@ const ComparisonSection = () => {
                   {travelExpertData.map((item, index) => (
                     <li
                       key={index}
-                      className="text-white text-lg lg:text-xl py-2 px-4"
+                      className="text-primary text-lg lg:text-xl py-2 px-4"
                     >
                       {item}
                     </li>
@@ -102,7 +102,7 @@ const ComparisonSection = () => {
         </div>
 
         {/* Footer Note */}
-        <p className="text-white text-center mt-6">
+        <p className="text-secondary text-center mt-6">
         The Travel eXperts at Xmytravel.com do not solicit bookings. We provide unbiased, expert travel guidance.
         </p>
 
