@@ -8,6 +8,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast, ToastContainer } from "react-toastify"; 
 import "react-toastify/dist/ReactToastify.css";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
+
 const step1Schema = z.object({
   fullName: z.string().min(1, "Full Name is required"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
@@ -78,7 +81,7 @@ const ProgressBar = ({ step }) => {
 
 // Step Components
 const Step1 = ({ setStep, isLoading }) => {
-  const { register, formState: { errors } } = useFormContext();
+  const { register, formState: { errors },watch, setValue } = useFormContext();
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-primary">Step 1: Personal Information</h3>
@@ -108,19 +111,25 @@ const Step1 = ({ setStep, isLoading }) => {
           <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
         )}
       </div>
+     
       <div>
-        <label htmlFor="phone" className="block text-sm text-primary mb-1">Phone Number</label>
-        <input
-          type="tel"
-          placeholder="Phone Number"
-          id="phone"
-          {...register("phone")}
-          className="w-full p-3 border border-gray-300 rounded-2xl bg-white"
+  <label htmlFor="phone" className="block text-sm text-primary mb-1">Phone Number</label>
+  <PhoneInput
+          country={"in"}
+          value={watch("phone")}
+          onChange={(value) => setValue("phone", value)}
+          placeholder="Enter phone number"
+          inputProps={{
+            id: "phone",
+            className: "w-full p-3 border px-12 border-gray-300 rounded-2xl bg-white",
+            required: true,
+          }}
+          
         />
-        {errors.phone && (
-          <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-        )}
-      </div>
+  {errors.phone && (
+    <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+  )}
+</div>
       <div>
         <label htmlFor="residence" className="block text-sm text-primary mb-1">City & Country of Residence</label>
         <input

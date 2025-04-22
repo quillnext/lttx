@@ -137,3 +137,37 @@ html {
 .custom-select__option--is-disabled:hover {
   background-color: #e5e7eb !important;
 }
+
+
+/* imput phone */
+.react-tel-input .country-list {
+  border-radius: 1rem;
+  border: 1px solid #d1d5db;
+  padding: 1rem;
+}
+.react-tel-input .flag-dropdown {
+  border: 1px solid #d1d5db !important;
+  border-radius: 1rem 0 0 1rem !important;
+  background: white !important;
+  display: flex;
+  flex-direction: column;
+
+  justify-content: start;
+  padding: 0 0.5rem;
+  width: 40px;
+ 
+}
+.react-tel-input .selected-flag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0 !important;
+}
+.react-tel-input .selected-flag .flag {
+  margin-bottom: 4px;
+}
+.react-tel-input .selected-flag .arrow {
+  display: none;
+}
