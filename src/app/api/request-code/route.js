@@ -75,19 +75,18 @@ info@xmytravel.com
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>You're One Step Away from Joining Xmytravel</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
+        body { font-family: Arial, sans-serif; margin: 1% 12%; border:1px solid #36013F; padding: 0%; background-color: #f5f5f5; }
         .header { width: 100%; text-align: center; }
         .header img { width: 100%; height: auto; object-fit: cover; }
-        .content {  margin: 20px auto; padding: 20px;  border-radius: 8px; text-align: left;}
-        .content h1 { font-size: 24px; color: #333; margin: 0 0 20px; }
-        .content p { font-size: 16px; color: #555; line-height: 1.6; }
-        .content ul {padding: 0; margin: 20px 0; }
-        .content ul li { font-size: 14px; color: #555; margin: 10px 0; }
-        .footer { margin: 20px auto; padding: 20px; }
-        .footer .intro { font-size: 14px; color: #777; text-align: left; margin-bottom: 20px; }
+        .content {   padding: 20px; text-align: left;}
+        .gray{color: #777;}
+        .content p {  color: #00000; }
+      
+        .footer {  margin: 0 auto; padding:  20px; }
+        .footer .intro { color: #777; text-align: left;  }
         .footer .signature { display: flex; align-items: center; }
         .footer .signature img { border-radius: 50%; width: 60px; height: 60px; margin-right: 20px; }
-        .footer .signature .text { font-size: 14px; color: #777; }
+        .footer .signature .text { font-size: 14px; color: #00000; }
         .footer .signature p { margin: 5px 0; }
     </style>
 </head>
@@ -97,8 +96,8 @@ info@xmytravel.com
     </div>
     <div class="content">
         <p>Hi ${fullName || email.split("@")[0]},</p>
-        <p>Thank you for applying to become a Travel Expert on <strong>Xmytravel</strong> – the pioneering platform built exclusively for certified and credible Travel Experts & Consultants.</p>
-        <p>We’ve received your request for an invite code. Our curation team is reviewing your profile through our expert verification module. If you fit the bill, you’ll soon receive a <strong>Congratulations</strong> email with your exclusive invite code.</p>
+        <p>Thank you for applying to become a Travel Expert on Xmytravel – the pioneering platform built exclusively for certified and credible Travel Experts & Consultants.</p>
+        <p>We’ve received your request for an invite code. Our curation team is reviewing your profile through our expert verification module. If you fit the bill, you’ll soon receive a Congratulations email with your exclusive invite code.</p>
         <p>You're just one step away from unlocking:</p>
         <ul>
             <li>A verified Travel Expert badge</li>
@@ -107,17 +106,19 @@ info@xmytravel.com
             <li>Opportunities to monetize your expertise</li>
             <li>Be part of a first-of-its-kind expert travel community</li>
         </ul>
-        <p>Get excited – the journey to becoming an Xmytravel Expert is just beginning! ✨</p>
-        <p>Best Regards,<br>Xmytravel Team</p>
+        <p>Get excited – the journey to becoming an Xmytravel Expert is just beginning! </p>
+        <p class="gray">Best Regards,<br>Xmytravel Team</p>
     </div>
-    <div class="footer">
+     <hr>
+      <div class="footer">
         <div class="intro">
-            <p>At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity. If you’re reading this, it means you’re already on your way to joining an exclusive league of curated Travel Experts. Let’s build the future of travel, together.</p>
+          
+            <p><i>"At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity. If you’re reading this, it means you’re already on your way to joining an exclusive league of curated Travel Experts. Let’s build the future of travel, together."</i></p>
         </div>
         <div class="signature">
-           
+            
             <div class="text">
-                <p>— Rishabh Vyas,<br> Founder, Xmytravel</p>
+                <p>Rishabh Vyas<br> Founder, Xmytravel</p>
             </div>
         </div>
     </div>
@@ -139,7 +140,7 @@ A new user has requested an invite code to join Xmytravel as a Travel Expert. Be
 • Name: ${fullName || "[Not Provided]"}
 • Email: ${email}
 • Phone Number: ${phone || "[Not Provided]"}
-• City & Country of Residence: ${residence || "[Not Provided]"}
+• City: ${residence || "[Not Provided]"}
 • Type of Travel: ${typeOfTravel?.join(", ") || "[Not Provided]"}
 • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
 • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}

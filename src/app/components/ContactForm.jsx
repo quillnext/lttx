@@ -15,7 +15,7 @@ const step1Schema = z.object({
   fullName: z.string().min(1, "Full Name is required"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   phone: z.string().min(1, "Phone Number is required"),
-  residence: z.string().min(1, "City & Country of Residence is required"),
+  residence: z.string().min(1, "City is required"),
 });
 
 const step2Schema = z.object({
@@ -131,10 +131,10 @@ const Step1 = ({ setStep, isLoading }) => {
   )}
 </div>
       <div>
-        <label htmlFor="residence" className="block text-sm text-primary mb-1">City & Country of Residence</label>
+        <label htmlFor="residence" className="block text-sm text-primary mb-1">City</label>
         <input
           type="text"
-          placeholder="City & Country of Residence"
+          placeholder="City"
           id="residence"
           {...register("residence")}
           className="w-full p-3 border border-gray-300 rounded-2xl bg-white"
