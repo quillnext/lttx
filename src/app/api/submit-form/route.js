@@ -78,7 +78,7 @@ export async function POST(request) {
     await sendEmail({
       to: process.env.ADMIN_EMAIL,
       // cc: process.env.ADMIN_EMAIL_CC,
-      bcc: process.env.ADMIN_EMAIL_BCC,
+      // bcc: process.env.ADMIN_EMAIL_BCC,
       subject: `New Travel Expert Profile Submitted – ${fullName || email.split("@")[0]}`,
       text: `
 Hi Team,
@@ -160,7 +160,7 @@ info@xmytravel.com
     await sendEmail({
       to: email,
       // cc: process.env.ADMIN_EMAIL_CC,
-      bcc: process.env.ADMIN_EMAIL_BCC,
+      // bcc: process.env.ADMIN_EMAIL_BCC,
       subject: "You're Almost There – Profile Submitted Successfully",
       text: `
 You're Almost There! 🚀
