@@ -22,7 +22,7 @@ const Modal = ({ isOpen, onClose, type, message }) => {
           type === "success" ? "bg-green-500" : "bg-red-500"
         }`}
       >
-        {type === "success" ? "Continue" : "Try again"}
+        {type === "success" ? "Done" : "Try again"}
       </button>
     </div>
   </div>
