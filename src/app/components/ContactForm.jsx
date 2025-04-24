@@ -6,10 +6,12 @@ import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { toast, ToastContainer } from "react-toastify"; 
-import "react-toastify/dist/ReactToastify.css";
+
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import Modal from "./Modal"; // Assuming you have a Modal component
+
+
 
 const step1Schema = z.object({
   fullName: z.string().min(1, "Full Name is required"),
@@ -556,14 +558,18 @@ const Step2 = ({ setStep, isLoading }) => {
 
 
 
-const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData }) => { 
+const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModalState }) => { 
   const { register, formState: { errors }, watch, reset,getValues } = useFormContext();
   const inviteCode = watch("inviteCode");
 
   const handleRequestCode = async () => {
     const email = watch("email");
     if (!email) {
-      toast.error("Email is required to request a code. Please go back to Step 1.");
+      setModalState({
+        isOpen: true,
+        type: "error",
+        message: "Email is required to request a code. Please go back to Step 1.",
+      });
       return;
     }
     try {
@@ -594,15 +600,27 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData }) => {
       const result = await response.json();
       // console.log("Request Code Result:", result);
       if (response.ok) {
-        toast.success("Code request submitted! Check your email.");
+        setModalState({
+          isOpen: true,
+          type: "success",
+          message: "Code request submitted! Check your email.",
+        });
         reset(); 
         setStep(1); 
         setFormData({});
       } else {
-        toast.error(`Error: ${result.error}`);
+        setModalState({
+          isOpen: true,
+          type: "error",
+          message: 'Something went wrong. Please try again.',
+        });
       }
     } catch (error) {
-      toast.error(`Request failed: ${error.message}`);
+      setModalState({
+        isOpen: true,
+        type: "error",
+        message: `Request failed: ${error.message}`,
+      });
     } finally {
       setIsLoading(false); 
     }
@@ -705,7 +723,11 @@ const ContactForm = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({});
   const [isLoading, setIsLoading] = useState(false); 
-
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    type: "", // 'success' or 'error'
+    message: "",
+  });
   const methods = useForm({
     resolver: zodResolver(step === 1 ? step1Schema : step === 2 ? step2Schema : step3Schema),
     mode: "onChange",
@@ -757,21 +779,35 @@ const ContactForm = () => {
         });
         const result = await response.json();
         if (response.ok) {
-          toast.success("Form submitted successfully!");
+          setModalState({
+            isOpen: true,
+            type: "success",
+            message: "Form submitted successfully!",
+          });
           reset(); 
           setStep(1);
           setFormData({});
         } else {
-          toast.error(`Submission failed: ${result.error}`);
+          setModalState({
+            isOpen: true,
+            type: "error",
+            message: `Submission failed: ${result.error}`,
+          });
         }
       } catch (error) {
-        toast.error(`Submission failed: ${error.message}`);
+        setModalState({
+          isOpen: true,
+          type: "error",
+          message: `Submission failed: ${error.message}`,
+        });
       } finally {
         setIsLoading(false); 
       }
     }
   };
-
+  const closeModal = () => {
+    setModalState({ isOpen: false, type: "", message: "" });
+  };
   return (
     <section className="py-12 bg-secondary rounded-[40px]" id="apply">
       <div className="container mx-auto px-4">
@@ -790,10 +826,16 @@ const ContactForm = () => {
           <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl mx-auto bg-secondary space-y-6">
             {step === 1 && <Step1 setStep={setStep} isLoading={isLoading} />}
             {step === 2 && <Step2 setStep={setStep} isLoading={isLoading} />}
-            {step === 3 && <Step3 setStep={setStep} setFormData={setFormData} isLoading={isLoading} setIsLoading={setIsLoading} formData={formData} />}
+            {step === 3 && <Step3 setStep={setStep} setFormData={setFormData} isLoading={isLoading} setIsLoading={setIsLoading} formData={formData} setModalState={setModalState} />}
           </form>
         </FormProvider>
-        <ToastContainer /> 
+       <Modal
+          isOpen={modalState.isOpen}
+          onClose={closeModal}
+          type={modalState.type}
+          message={modalState.message}
+        />
+
       </div>
     </section>
   );
