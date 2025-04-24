@@ -1,4 +1,4 @@
-"use client"; // Ensures this component runs on the client
+"use client";
 
 import React, { useState } from "react";
 import { useForm, FormProvider, useFormContext, Controller } from "react-hook-form";
@@ -6,12 +6,10 @@ import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import Modal from "./Modal"; // Assuming you have a Modal component
-
-
+import Modal from "./Modal";
+import { ClipLoader } from "react-spinners";
 
 const step1Schema = z.object({
   fullName: z.string().min(1, "Full Name is required"),
@@ -46,7 +44,6 @@ const step3Schema = z.object({
   inviteCode: z.string().min(1, "Invite Code is required"),
 });
 
-// Progress Bar
 const ProgressBar = ({ step }) => {
   return (
     <div className="flex items-center justify-center mb-8">
@@ -81,9 +78,8 @@ const ProgressBar = ({ step }) => {
   );
 };
 
-// Step Components
-const Step1 = ({ setStep, isLoading }) => {
-  const { register, formState: { errors },watch, setValue } = useFormContext();
+const Step1 = ({ setStep }) => {
+  const { register, formState: { errors }, watch, setValue } = useFormContext();
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-primary">Step 1: Personal Information</h3>
@@ -113,10 +109,9 @@ const Step1 = ({ setStep, isLoading }) => {
           <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
         )}
       </div>
-     
       <div>
-  <label htmlFor="phone" className="block text-sm text-primary mb-1">Phone Number</label>
-  <PhoneInput
+        <label htmlFor="phone" className="block text-sm text-primary mb-1">Phone Number</label>
+        <PhoneInput
           country={"in"}
           value={watch("phone")}
           onChange={(value) => setValue("phone", value)}
@@ -126,12 +121,11 @@ const Step1 = ({ setStep, isLoading }) => {
             className: "w-full p-3 border px-12 border-gray-300 rounded-2xl bg-white",
             required: true,
           }}
-          
         />
-  {errors.phone && (
-    <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
-  )}
-</div>
+        {errors.phone && (
+          <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>
+        )}
+      </div>
       <div>
         <label htmlFor="residence" className="block text-sm text-primary mb-1">City</label>
         <input
@@ -149,15 +143,13 @@ const Step1 = ({ setStep, isLoading }) => {
         <button
           type="submit"
           className="bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-          disabled={isLoading} 
         >
-          {isLoading ? "Loading..." : "Next"}
+          Next
         </button>
       </div>
     </div>
   );
 };
-
 
 const typeOfTravelOptions = [
   { value: "Leisure", label: "Leisure" },
@@ -223,173 +215,6 @@ const languageOptions = [
   { value: "Swahili", label: "Swahili" },
 ];
 
-// const Step2 = ({ setStep, isLoading }) => {
-//   const { control, formState: { errors } } = useFormContext();
-//   return (
-//     <div className="space-y-4">
-//       <h3 className="text-lg font-semibold text-primary">Step 2: Travel Preferences</h3>
-//       {/* Type of Travel */}
-//       <div>
-//         <label className="block text-sm text-primary mb-1">Type of Travel (select up to 5)</label>
-//         <Controller
-//           name="typeOfTravel"
-//           control={control}
-//           render={({ field }) => (
-//             <Select
-//               isMulti
-//               options={typeOfTravelOptions}
-//               value={typeOfTravelOptions.filter((option) =>
-//                 field.value?.includes(option.value)
-//               )}
-//               onChange={(selectedOptions) => {
-//                 const selectedValues = selectedOptions
-//                   ? selectedOptions.map((option) => option.value)
-//                   : [];
-//                 field.onChange(selectedValues);
-//               }}
-//               placeholder="Select the kinds of travel you specialize in"
-//               className="w-full"
-//               classNamePrefix="custom-select"
-//               isOptionDisabled={() => field.value?.length >= 5}
-//             />
-//           )}
-//         />
-//         {errors.typeOfTravel && (
-//           <p className="text-red-500 text-sm mt-1">{errors.typeOfTravel.message}</p>
-//         )}
-//       </div>
-
-//       {/* Industry Segment */}
-//       <div>
-//         <label className="block text-sm text-primary mb-1">Industry Segment (select up to 5)</label>
-//         <Controller
-//           name="industrySegment"
-//           control={control}
-//           render={({ field }) => (
-//             <Select
-//               isMulti
-//               options={industrySegmentOptions}
-//               value={industrySegmentOptions.filter((option) =>
-//                 field.value?.includes(option.value)
-//               )}
-//               onChange={(selectedOptions) => {
-//                 const selectedValues = selectedOptions
-//                   ? selectedOptions.map((option) => option.value)
-//                   : [];
-//                 field.onChange(selectedValues);
-//               }}
-//               placeholder="What part of the travel industry are you from?"
-//               className="w-full"
-//               classNamePrefix="custom-select"
-//               isOptionDisabled={() => field.value?.length >= 5}
-//             />
-//           )}
-//         />
-//         {errors.industrySegment && (
-//           <p className="text-red-500 text-sm mt-1">{errors.industrySegment.message}</p>
-//         )}
-//       </div>
-
-//       {/* Destination Expertise */}
-//       <div>
-//         <label className="block text-sm text-primary mb-1">Destination Expertise (select up to 5)</label>
-//         <Controller
-//           name="destinationExpertise"
-//           control={control}
-//           render={({ field }) => (
-//             <CreatableSelect
-//               isMulti
-//               options={destinationExpertiseOptions}
-//               value={destinationExpertiseOptions.filter((option) =>
-//                 field.value?.includes(option.value)
-//               ).concat(
-//                 field.value
-//                   ?.filter((val) => !destinationExpertiseOptions.some((opt) => opt.value === val))
-//                   .map((val) => ({ value: val, label: val }))
-//               )}
-//               onChange={(selectedOptions) => {
-//                 const selectedValues = selectedOptions
-//                   ? selectedOptions.map((option) => option.value)
-//                   : [];
-//                 field.onChange(selectedValues);
-//               }}
-//               placeholder="Choose regions or type to add specific countries (e.g., Japan, Italy)"
-//               className="w-full"
-//               classNamePrefix="custom-select"
-//               isOptionDisabled={() => field.value?.length >= 5}
-//               formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-//             />
-//           )}
-//         />
-//         {errors.destinationExpertise && (
-//           <p className="text-red-500 text-sm mt-1">{errors.destinationExpertise.message}</p>
-//         )}
-//       </div>
-
-//       {/* Languages Spoken */}
-//       <div>
-//         <label className="block text-sm text-primary mb-1">Languages Spoken (select up to 5)</label>
-//         <Controller
-//           name="language"
-//           control={control}
-//           render={({ field }) => (
-//             <CreatableSelect
-//               isMulti
-//               options={languageOptions}
-//               value={languageOptions.filter((option) =>
-//                 field.value?.includes(option.value)
-//               ).concat(
-//                 field.value
-//                   ?.filter((val) => !languageOptions.some((opt) => opt.value === val))
-//                   .map((val) => ({ value: val, label: val }))
-//               )}
-//               onChange={(selectedOptions) => {
-//                 const selectedValues = selectedOptions
-//                   ? selectedOptions.map((option) => option.value)
-//                   : [];
-//                 field.onChange(selectedValues);
-//               }}
-//               placeholder="Select languages you are fluent or conversational in"
-//               className="w-full"
-//               classNamePrefix="custom-select"
-//               isOptionDisabled={() => field.value?.length >= 5}
-//               formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-//             />
-//           )}
-//         />
-//         {errors.language && (
-//           <p className="text-red-500 text-sm mt-1">{errors.language.message}</p>
-//         )}
-//       </div>
-
-//       <div className="pt-4 flex flex-col md:flex-row space-y-4 justify-between items-center">
-//         <button
-//           type="button"
-//           onClick={() => setStep(1)}
-//           className="bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-//           disabled={isLoading} 
-//         >
-//          Previous
-//         </button>
-//         <button
-//           type="submit"
-//           className="bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-//           disabled={isLoading} 
-//         >
-//          Next
-//         </button>
-//       </div>
-//     </div>
-//   );
-// };
-
-
-// Custom styles for react-select
-
-// Custom Option component to show checkbox
-
-// Custom Option component to show checkbox
-
 const CustomOption = ({ innerProps, innerRef, data, isSelected, isDisabled }) => {
   return (
     <div
@@ -413,7 +238,6 @@ const CustomOption = ({ innerProps, innerRef, data, isSelected, isDisabled }) =>
   );
 };
 
-// Custom styles for react-select
 const customStyles = {
   control: (provided) => ({
     ...provided,
@@ -451,7 +275,7 @@ const customStyles = {
   }),
 };
 
-const Step2 = ({ setStep, isLoading }) => {
+const Step2 = ({ setStep }) => {
   const { control, formState: { errors } } = useFormContext();
 
   return (
@@ -481,8 +305,8 @@ const Step2 = ({ setStep, isLoading }) => {
                 classNamePrefix="custom-select"
                 components={{ Option: CustomOption }}
                 styles={customStyles}
-                isOptionDisabled={(option) => field.value?.length >= 5} 
-                hideSelectedOptions={false} 
+                isOptionDisabled={(option) => field.value?.length >= 5}
+                hideSelectedOptions={false}
               />
             )}
           />
@@ -522,8 +346,8 @@ const Step2 = ({ setStep, isLoading }) => {
                     classNamePrefix="custom-select"
                     components={{ Option: CustomOption }}
                     styles={customStyles}
-                    isOptionDisabled={(option) => selectedValues.length >= 5} 
-                    hideSelectedOptions={false} 
+                    isOptionDisabled={(option) => selectedValues.length >= 5}
+                    hideSelectedOptions={false}
                     formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
                   />
                 );
@@ -539,14 +363,12 @@ const Step2 = ({ setStep, isLoading }) => {
           type="button"
           onClick={() => setStep(1)}
           className="bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-          disabled={isLoading}
         >
           Previous
         </button>
         <button
           type="submit"
           className="bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer"
-          disabled={isLoading}
         >
           Next
         </button>
@@ -555,11 +377,8 @@ const Step2 = ({ setStep, isLoading }) => {
   );
 };
 
-
-
-
-const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModalState }) => { 
-  const { register, formState: { errors }, watch, reset,getValues } = useFormContext();
+const Step3 = ({ setStep, setFormData, formData, setModalState, isLoadingRequest, setIsLoadingRequest, isLoadingSubmit }) => {
+  const { register, formState: { errors }, watch, reset, getValues } = useFormContext();
   const inviteCode = watch("inviteCode");
 
   const handleRequestCode = async () => {
@@ -573,7 +392,7 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModa
       return;
     }
     try {
-      setIsLoading(true); 
+      setIsLoadingRequest(true);
       const currentFormData = getValues();
       const fullData = {
         ...formData,
@@ -596,23 +415,21 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModa
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(fullData),
       });
-      // console.log("Request Code fullData:", fullData);
       const result = await response.json();
-      // console.log("Request Code Result:", result);
       if (response.ok) {
         setModalState({
           isOpen: true,
           type: "success",
           message: "Code request submitted! Check your email.",
         });
-        reset(); 
-        setStep(1); 
+        reset();
+        setStep(1);
         setFormData({});
       } else {
         setModalState({
           isOpen: true,
           type: "error",
-          message: 'Something went wrong. Please try again.',
+          message: "Something went wrong. Please try again.",
         });
       }
     } catch (error) {
@@ -622,10 +439,9 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModa
         message: `Request failed: ${error.message}`,
       });
     } finally {
-      setIsLoading(false); 
+      setIsLoadingRequest(false);
     }
   };
-
 
   return (
     <div className="space-y-4">
@@ -682,39 +498,100 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModa
           <p className="text-red-500 text-sm mt-1">{errors.inviteCode.message}</p>
         )}
       </div>
-      <div className="pt-20 flex justify-center items-center space-y-4">
-        <button
-          type="button"
-          onClick={handleRequestCode}
-          className={`bg-[#00FFFF] text-primary px-16 py-3 rounded-full w-5/6 md:w-full cursor-pointer ${
-            isLoading || inviteCode ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          disabled={isLoading }
-        >
-          Request for Code
-        </button>
-      </div>
-      <div className="pt-1 flex justify-between items-center flex-col md:flex-row space-y-4">
-        <button
-          type="button"
-          onClick={() => setStep(2)}
-          className={`bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer ${
-            isLoading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          disabled={isLoading} 
-        >
-          Previous
-        </button>
-        <button
-          type="submit"
-          disabled={isLoading || !inviteCode}
-          className={`bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer ${
-            isLoading || !inviteCode ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-        Proceed
-        </button>
-      </div>
+      {/* <div className="pt-20 flex justify-center items-center space-y-4">
+  <button
+    type="button"
+    onClick={handleRequestCode}
+    className={`bg-[#00FFFF] text-primary px-16 py-3 rounded-full w-5/6 md:w-full cursor-pointer ${
+      isLoadingRequest || inviteCode ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={isLoadingRequest || inviteCode}
+  >
+    {isLoadingRequest ? (
+      <span className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-6 w-6 border-4 border-gray-600 border-t-4 border-t-primary mr-2"></div>
+        Requesting...
+      </span>
+    ) : (
+      "Request for Code"
+    )}
+  </button>
+</div>
+<div className="pt-1 flex justify-between items-center flex-col md:flex-row space-y-4">
+  <button
+    type="button"
+    onClick={() => setStep(2)}
+    className={`bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer ${
+      isLoadingRequest || isLoadingSubmit ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={isLoadingRequest || isLoadingSubmit}
+  >
+    Previous
+  </button>
+  <button
+    type="submit"
+    className={`bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer ${
+      isLoadingSubmit || !inviteCode ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={isLoadingSubmit || !inviteCode}
+  >
+    {isLoadingSubmit ? (
+      <span className="flex items-center justify-center">
+        <div className="animate-spin rounded-full h-6 w-6 border-4 border-gray-600 border-t-4 border-t-white mr-2"></div>
+        Submitting...
+      </span>
+    ) : (
+      "Proceed"
+    )}
+  </button>
+</div> */}
+<div className="pt-20 flex justify-center items-center space-y-4">
+  <button
+    type="button"
+    onClick={handleRequestCode}
+    className={`bg-[#00FFFF] text-primary px-16 py-3 rounded-full w-5/6 md:w-full cursor-pointer ${
+      isLoadingRequest || inviteCode ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={isLoadingRequest || inviteCode}
+  >
+  {isLoadingRequest ? (
+  <span className="flex items-center justify-center">
+    <ClipLoader size={24} color="#36013F" className="mr-2" />
+    Requesting...
+  </span>
+) : (
+  "Request for Code"
+)}
+  </button>
+</div>
+<div className="pt-1 flex justify-between items-center flex-col md:flex-row space-y-4">
+  <button
+    type="button"
+    onClick={() => setStep(2)}
+    className={`bg-gray-200 text-primary px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer ${
+      isLoadingRequest || isLoadingSubmit ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={isLoadingRequest || isLoadingSubmit}
+  >
+    Previous
+  </button>
+  <button
+    type="submit"
+    className={`bg-primary text-white px-16 py-3 rounded-full w-5/6 md:w-1/4 cursor-pointer ${
+      isLoadingSubmit || !inviteCode ? "opacity-50 cursor-not-allowed" : ""
+    }`}
+    disabled={isLoadingSubmit || !inviteCode}
+  >
+{isLoadingSubmit ? (
+  <span className="flex items-center justify-center">
+    <ClipLoader size={24} color="#ffffff" className="mr-2" />
+    Submitting...
+  </span>
+) : (
+  "Proceed"
+)}
+  </button>
+</div>
     </div>
   );
 };
@@ -722,10 +599,11 @@ const Step3 = ({ setStep, setFormData, isLoading, setIsLoading, formData,setModa
 const ContactForm = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({});
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoadingRequest, setIsLoadingRequest] = useState(false);
+  const [isLoadingSubmit, setIsLoadingSubmit] = useState(false);
   const [modalState, setModalState] = useState({
     isOpen: false,
-    type: "", // 'success' or 'error'
+    type: "",
     message: "",
   });
   const methods = useForm({
@@ -761,10 +639,9 @@ const ContactForm = () => {
         setStep(3);
       }
     } else {
-      // Final submission
-      setIsLoading(true); 
+      setIsLoadingSubmit(true);
       const fullData = {
-        ...formData, 
+        ...formData,
         ...currentData,
         destinationExpertise: currentData.destinationExpertise,
         language: currentData.language,
@@ -784,7 +661,7 @@ const ContactForm = () => {
             type: "success",
             message: "Form submitted successfully!",
           });
-          reset(); 
+          reset();
           setStep(1);
           setFormData({});
         } else {
@@ -801,19 +678,21 @@ const ContactForm = () => {
           message: `Submission failed: ${error.message}`,
         });
       } finally {
-        setIsLoading(false); 
+        setIsLoadingSubmit(false);
       }
     }
   };
+
   const closeModal = () => {
     setModalState({ isOpen: false, type: "", message: "" });
   };
+
   return (
     <section className="py-12 bg-secondary rounded-[40px]" id="apply">
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 max-w-3xl mx-auto">
           <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">
-          Shape the Future of Travel Consultancy with Xmytravel.com
+            Shape the Future of Travel Consultancy with Xmytravel.com
           </h2>
           <p className="text-primary">
             Step beyond the ordinary and join an elite, invite-only community where your expertise gets the recognition it deserves...
@@ -824,18 +703,27 @@ const ContactForm = () => {
 
         <FormProvider {...methods}>
           <form onSubmit={handleSubmit(onSubmit)} className="max-w-4xl mx-auto bg-secondary space-y-6">
-            {step === 1 && <Step1 setStep={setStep} isLoading={isLoading} />}
-            {step === 2 && <Step2 setStep={setStep} isLoading={isLoading} />}
-            {step === 3 && <Step3 setStep={setStep} setFormData={setFormData} isLoading={isLoading} setIsLoading={setIsLoading} formData={formData} setModalState={setModalState} />}
+            {step === 1 && <Step1 setStep={setStep} />}
+            {step === 2 && <Step2 setStep={setStep} />}
+            {step === 3 && (
+              <Step3
+                setStep={setStep}
+                setFormData={setFormData}
+                formData={formData}
+                setModalState={setModalState}
+                isLoadingRequest={isLoadingRequest}
+                setIsLoadingRequest={setIsLoadingRequest}
+                isLoadingSubmit={isLoadingSubmit}
+              />
+            )}
           </form>
         </FormProvider>
-       <Modal
+        <Modal
           isOpen={modalState.isOpen}
           onClose={closeModal}
           type={modalState.type}
           message={modalState.message}
         />
-
       </div>
     </section>
   );

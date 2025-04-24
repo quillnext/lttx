@@ -172,3 +172,6 @@ html {
   display: none;
 }
 
+.submit-spinner {
+  border-radius: 9999px !important;
+}
