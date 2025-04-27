@@ -416,6 +416,7 @@ const Step3 = ({ setStep, setFormData, formData, setModalState, isLoadingRequest
         body: JSON.stringify(fullData),
       });
       const result = await response.json();
+      console.log("Request Code Response:", result);
       if (response.ok) {
         setModalState({
           isOpen: true,
@@ -429,7 +430,7 @@ const Step3 = ({ setStep, setFormData, formData, setModalState, isLoadingRequest
         setModalState({
           isOpen: true,
           type: "error",
-          message: "Something went wrong. Please try again.",
+          message: result.error || "An unexpected error occurred. Please try again.",
         });
       }
     } catch (error) {
@@ -584,9 +585,11 @@ const Step3 = ({ setStep, setFormData, formData, setModalState, isLoadingRequest
   >
 {isLoadingSubmit ? (
   <span className="flex items-center justify-center">
-    <ClipLoader size={24} color="#ffffff" className="mr-2" />
-    Submitting...
-  </span>
+  <div className="inline-block">
+    <div className="submit-spinner animate-spin !important rounded-full !important h-6 w-6 border-4 border-[#4B5563] border-t-4 border-t-white mr-2"></div>
+  </div>
+  Submitting...
+</span>
 ) : (
   "Proceed"
 )}
