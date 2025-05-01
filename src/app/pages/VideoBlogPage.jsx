@@ -7,11 +7,10 @@ const VideoBlogPage = () => {
   const scrollContainerRef = useRef(null);
 
   const videoIds = [
-    '4obhi0uV4cs',
-    'nCBCYQZNcEI',
-    '3TWPCXOmVKI',
-    '6xC7BE1bwm0',
-    'e48dojEIrY8',
+    'dl3c5E-ISdU',
+    'N6S0zV2siY8',
+    'H77SkxanHrk',
+    'uyr5d7Tgh-o',
   ];
 
   // Scroll to index
@@ -105,7 +104,7 @@ const VideoBlogPage = () => {
       {/* Desktop View */}
       <div className="hidden md:flex md:flex-wrap gap-3 w-full justify-center mt-6">
         {videoIds.map((id, index) => (
-          <div key={index} className="rounded-2xl w-full md:w-[18%] flex items-center justify-center p-4">
+          <div key={index} className="rounded-2xl w-full md:w-[22%] flex items-center justify-center p-4">
             <iframe
               width="100%"
               height="300"
