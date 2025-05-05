@@ -29,7 +29,7 @@ export default function Home() {
   <ComparisonSection/>
  </div>
 
-  {/* <VideoBlogPage/> */}
+  <VideoBlogPage/>
   <EngagementSection/>
   <ToolsSupportSection/>
   
