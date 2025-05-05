@@ -28,11 +28,11 @@ export default function RootLayout({ children }) {
       > 
      
 <div className="px-2">
-<Navbar/>
+{/* <Navbar/> */}
     
     {children}
 </div>
-        <Footer/>
+        {/* <Footer/> */}
       </body>
 
     </html>

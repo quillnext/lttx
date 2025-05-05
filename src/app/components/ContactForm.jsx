@@ -15,7 +15,7 @@ const step1Schema = z.object({
   fullName: z.string().min(1, "Full Name is required"),
   email: z.string().email("Invalid email address").min(1, "Email is required"),
   phone: z.string().min(1, "Phone Number is required"),
-  residence: z.string().min(1, "City is required"),
+  city: z.string().min(1, "City is required"),
 });
 
 const step2Schema = z.object({
@@ -127,16 +127,16 @@ const Step1 = ({ setStep }) => {
         )}
       </div>
       <div>
-        <label htmlFor="residence" className="block text-sm text-primary mb-1">City</label>
+        <label htmlFor="city" className="block text-sm text-primary mb-1">City</label>
         <input
           type="text"
           placeholder="City"
-          id="residence"
-          {...register("residence")}
+          id="city"
+          {...register("city")}
           className="w-full p-3 border border-gray-300 rounded-2xl bg-white"
         />
-        {errors.residence && (
-          <p className="text-red-500 text-sm mt-1">{errors.residence.message}</p>
+        {errors.city && (
+          <p className="text-red-500 text-sm mt-1">{errors.city.message}</p>
         )}
       </div>
       <div className="pt-4 flex justify-center">
@@ -400,7 +400,7 @@ const Step3 = ({ setStep, setFormData, formData, setModalState, isLoadingRequest
         fullName: formData.fullName || currentFormData.fullName || "",
         email: email,
         phone: formData.phone || currentFormData.phone || "",
-        residence: formData.residence || currentFormData.residence || "",
+        city: formData.city || currentFormData.city || "",
         destinationExpertise: formData.destinationExpertise || currentFormData.destinationExpertise || [],
         language: formData.language || currentFormData.language || [],
         typeOfTravel: formData.typeOfTravel || currentFormData.typeOfTravel || [],

@@ -1,5 +1,5 @@
 import { databases, ID, Query } from "@/lib/appwrite";
-import { sendEmail } from "@/lib/utils";
+import { sendEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
 
 
@@ -19,7 +19,7 @@ export async function POST(request) {
       fullName,
       email,
       phone,
-      residence,
+      city,
       typeOfTravel,
       industrySegment,
       destinationExpertise,
@@ -82,7 +82,7 @@ export async function POST(request) {
         fullName,
         email,
         phone,
-        residence,
+        city,
         typeOfTravel,
         industrySegment,
         destinationExpertise,
@@ -120,7 +120,7 @@ A new user has submitted their profile using a valid invite code to join Xmytrav
 • Name: ${fullName || "[Not Provided]"}
 • Email: ${email}
 • Phone Number: ${phone || "[Not Provided]"}
-• City: ${residence || "[Not Provided]"}
+• City: ${city || "[Not Provided]"}
 • Type of Travel: ${typeOfTravel?.join(", ") || "[Not Provided]"}
 • Industry Segment: ${industrySegment?.join(", ") || "[Not Provided]"}
 • Destination Expertise: ${destinationExpertise?.join(", ") || "[Not Provided]"}
