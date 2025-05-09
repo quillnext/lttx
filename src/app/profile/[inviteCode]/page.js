@@ -84,7 +84,7 @@ export default function ExpertProfile({ params }) {
     <span>{user.designation}</span>
     <span>{user.organization}</span>
   </span>
-  <span className="text-gray-400">|</span>
+  <span className="text-black-400">|</span>
   <span className="flex flex-col text-center lg:text-left">
     <span>{user.city}</span>
     <span>{user.country}</span>
@@ -149,7 +149,7 @@ export default function ExpertProfile({ params }) {
         {/* About Me Section */}
         <div className="mt-8">
           <h2 className="text-lg sm:text-xl font-semibold text-primary">About me</h2>
-          <p className="text-sm sm:text-base text-primary mt-2">{user.about}</p>
+          <p className="text-sm sm:text-base text-black mt-2">{user.about}</p>
         </div>
 
         {/* Gallery Section with Swiper */}
@@ -209,8 +209,8 @@ export default function ExpertProfile({ params }) {
             >
               {user.testimonials.map((testimonial, index) => (
                 <SwiperSlide key={index}>
-                  <div className=" p-4 rounded-xl mb-10 shadow-lg px-2">
-                    <p className="text-sm sm:text-base text-primary">{testimonial}</p>
+                  <div className=" p-6 rounded-xl mb-10 shadow-lg ">
+                    <p className="text-sm sm:text-base text-black">{testimonial}</p>
                   </div>
                 </SwiperSlide>
               ))}
