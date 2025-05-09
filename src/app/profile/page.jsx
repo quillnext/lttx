@@ -3192,8 +3192,9 @@ const Step1 = ({ setStep, setUserData, userData }) => {
   };
 
   return (
-    <div className="space-y-4 p-6 lg:px-32 bg-secondary rounded-[40px]">
+    <div className="space-y-4 p-6 lg:px-32 bg-white rounded-[40px]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+       
         <div className="lg:col-span-1">
           <label htmlFor="inviteCode" className="block text-sm text-formtext mb-1">Invite Code</label>
           <input
