@@ -268,12 +268,12 @@ const [agreed, setAgreed] = useState(false);
     onChange={() => setAgreed(!agreed)}
   />
   <span>
-    I confirm that the information provided is accurate and complies with{" "}
-    <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
-    <Link href="/privacy-policy" className="text-blue-600 underline hover:text-blue-800" target="_blank">
-      Privacy Policy
-    </Link>.
-  </span>
+      I confirm that the information provided is accurate and complies with{" "}
+      <strong>Xmytravel Experts&apos;</strong> professional and ethical standards. I also agree to the{" "}
+      <Link href="/privacy-policy" className="text-blue-600 underline hover:text-blue-800" target="_blank">
+        Privacy Policy
+      </Link>.
+    </span>
 </label>
 
 </div>

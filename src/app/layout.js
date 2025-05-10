@@ -21,6 +21,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
        <head>
         <link rel="icon" href="/favicon.svg" sizes="any" />
+        <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       </head>
       <body

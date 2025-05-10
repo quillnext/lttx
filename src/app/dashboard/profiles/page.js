@@ -62,7 +62,7 @@ list.sort((a, b) => b.rawTimestamp - a.rawTimestamp); // works because both are 
   };
 
   fetchProfiles();
-}, []);
+}, [db]);
 
 
   const handleDelete = async (id) => {
