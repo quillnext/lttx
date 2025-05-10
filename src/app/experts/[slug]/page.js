@@ -2,6 +2,7 @@ import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import Image from "next/image";
 import Head from "next/head";
+export const dynamic = "force-dynamic"; // Force SSR to always reflect latest Firestore data
 
 export async function generateStaticParams() {
   const db = getFirestore(app);
