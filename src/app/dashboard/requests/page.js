@@ -48,11 +48,21 @@ const handleApprove = async (profile) => {
   fetchRequests();
 };
 
-  const handleDelete = async (profile) => {
-    await setDoc(doc(db, "DeletedProfiles", profile.id), profile);
-    await deleteDoc(doc(db, "ProfileRequests", profile.id));
-    fetchRequests();
-  };
+ const handleDelete = async (id) => {
+  const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
+  if (!confirm) return;
+
+  try {
+    await deleteDoc(doc(db, "Profiles", id));
+    setProfiles((prev) => prev.filter((p) => p.id !== id));
+    setToast("Profile permanently deleted.");
+    setTimeout(() => setToast(""), 3000);
+  } catch (error) {
+    console.error("Failed to delete:", error);
+    alert("Error deleting profile.");
+  }
+};
+
 
   return (
     <div className="p-4">

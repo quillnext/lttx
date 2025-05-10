@@ -65,24 +65,21 @@ list.sort((a, b) => b.rawTimestamp - a.rawTimestamp); // works because both are 
 }, [db]);
 
 
-  const handleDelete = async (id) => {
-    const confirm = window.confirm("Are you sure you want to delete this profile?");
-    if (!confirm) return;
+const handleDelete = async (id) => {
+  const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
+  if (!confirm) return;
 
-    const profileRef = doc(db, "Profiles", id);
-    const profileSnap = await getDoc(profileRef);
+  try {
+    await deleteDoc(doc(db, "Profiles", id));
+    setProfiles((prev) => prev.filter((p) => p.id !== id));
+    setToast("Profile permanently deleted.");
+    setTimeout(() => setToast(""), 3000);
+  } catch (error) {
+    console.error("Failed to delete:", error);
+    alert("Error deleting profile.");
+  }
+};
 
-    if (profileSnap.exists()) {
-      const data = profileSnap.data();
-      await setDoc(doc(db, "DeletedProfiles", id), data);
-      await deleteDoc(profileRef);
-      setProfiles((prev) => prev.filter((p) => p.id !== id));
-      setToast("Profile moved to Rejected Profile.");
-      setTimeout(() => setToast(""), 3000);
-    } else {
-      alert("Profile not found.");
-    }
-  };
 
   const filteredProfiles = profiles.filter((p) =>
     p.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -132,7 +129,7 @@ list.sort((a, b) => b.rawTimestamp - a.rawTimestamp); // works because both are 
                 <td className="p-3 border">{p.location}</td>
                 <td className="p-3 border flex gap-2 items-center">
                   <a
-                    href={`/experts/${p.fullName?.toLowerCase().replace(/\s+/g, "-")}`}
+                    href={`/experts/${p.fullName?.toLowerCase().replace(/\s+/g, "-")}-${p.id.slice(0, 6)}`}
                     className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
                   >
                     Preview

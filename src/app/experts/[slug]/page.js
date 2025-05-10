@@ -11,7 +11,8 @@ export async function generateStaticParams() {
   querySnapshot.forEach((doc) => {
     const data = doc.data();
     if (data.fullName) {
-      slugs.push({ slug: data.fullName.toLowerCase().replace(/\s+/g, '-') });
+      const slug = `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${doc.id.slice(0, 6)}`;
+      slugs.push({ slug });
     }
   });
 
@@ -19,8 +20,9 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }) {
+  const namePart = params.slug.replace(/-[a-z0-9]{6}$/, '').replace(/-/g, ' ');
   return {
-    title: `${params.slug.replace(/-/g, ' ')} | Travel Expert`,
+    title: `${namePart} | Travel Expert`,
   };
 }
 
@@ -31,15 +33,16 @@ export default async function ProfilePage({ params }) {
   let profile = null;
   querySnapshot.forEach((doc) => {
     const data = doc.data();
-    const slug = data.fullName?.toLowerCase().replace(/\s+/g, '-');
-    if (slug === params.slug) {
-      profile = data;
+    const expectedSlug = `${data.fullName?.toLowerCase().replace(/\s+/g, '-')}-${doc.id.slice(0, 6)}`;
+    if (expectedSlug === params.slug) {
+      profile = { ...data, id: doc.id };
     }
   });
 
   if (!profile) {
     return <div className="p-10 text-center text-xl">Profile not found.</div>;
   }
+
 
   return (
 
