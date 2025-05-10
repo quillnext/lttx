@@ -120,7 +120,7 @@ const [agreed, setAgreed] = useState(false);
   const progress = Math.round(((currentStep + 1) / 3) * 100);
 
   return (
-    <div className="bg-[#F4D35E] w-screen min-h-screen flex items-center justify-center p-3">
+    <div className="bg-[#F4D35E] min-h-screen flex items-center justify-center p-3">
       <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden">
         <div className="relative">
           <div className="bg-[#D8E7EC] h-2 w-full">

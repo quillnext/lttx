@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
         className={`${ralewaySans.variable}  antialiased  `}
       > 
      
-<div className="px-2">
+<div >
 {/* <Navbar/> */}
     
     {children}
