@@ -11,6 +11,7 @@ import Hero from "./pages/Hero";
 import VideoBlogPage from "./pages/VideoBlogPage";
 import Navbar from "./components/Navbar";
 import Footer from "./pages/Footer";
+import JoinOrQueryForm from "./components/JoinOrQueryForm";
 
 
 export default function Home() {
@@ -34,7 +35,8 @@ export default function Home() {
   <ToolsSupportSection/>
   
   <div className="px-4 md:px-8 lg:px-12 ">
-  <ContactForm/>
+  {/* <ContactForm/> */}
+  <JoinOrQueryForm/>
   <Footer/>
  </div>
   
