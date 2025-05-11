@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function sendApprovalNotificationEmail({ fullName, email, slug }) {
-  const profileUrl = `https://xmytravel.com/expert/${slug}`;
+  const profileUrl = `https://xmytravel.com/experts/${slug}`;
   const year = new Date().getFullYear();
 
   const html = `
