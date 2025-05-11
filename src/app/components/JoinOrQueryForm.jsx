@@ -88,7 +88,7 @@ await fetch("/api/send-expert-form", {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2 items-start px-0 md:px-10">
+      <form onSubmit={handleSubmit} className="grid space-y-4 md:gap-x-4 md:grid-cols-2  grid-cols-1 items-start px-0 md:px-10">
         <input
           name="name"
           type="text"
