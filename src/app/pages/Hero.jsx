@@ -8,16 +8,18 @@ const Hero = () => {
       {/* Content Section */}
       <div className="w-full text-left">
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-textcolor leading-tight">
-          Join the Invite-Only
+          Travel better. Travel wiser. 
         </h1>
         <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-textcolor leading-tight">
-          Network of Verified Travel Experts
+          Travel with experts.
         </h1>
         <p className="text-textcolor mt-4 text-base sm:text-lg md:text-xl max-w-xl">
-          Become part of an elite community dedicated to transforming travel consultancy. Get recognized for your expertise, connect with travelers worldwide, and contribute to an organized, misinformation-free travel industry.
+         Xmytravel connects travelers with verified travel experts — not hobbyists, not bots, not
+crowd-sourced confusion.
+This is where insight meets integrity.
         </p>
         <div className="mt-6 md:mt-8">
-          <Button btn="Apply Now" />
+          <Button btn="Join Xmytravel" />
         </div>
       </div>
 

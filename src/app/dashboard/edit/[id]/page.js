@@ -27,22 +27,50 @@ export default function EditProfile({ params }) {
     fetchProfile();
   }, [params.id]);
 
-  const handleSave = async (updatedData) => {
-    let photoURL = updatedData.photo;
+ const handleSave = async (updatedData) => {
+  let newPhotoURL = profileData.photo;
 
-    if (typeof updatedData.photo === "object") {
-      const storageRef = ref(storage, `Profiles/${updatedData.photo.name}`);
-      await uploadBytes(storageRef, updatedData.photo);
-      photoURL = await getDownloadURL(storageRef);
+  // Check if a new file is selected
+  const isNewFile = typeof updatedData.photo === "object";
+
+  if (isNewFile && updatedData.photo) {
+    // Step 1: Delete the existing image from Firebase Storage
+    if (profileData.photo) {
+      try {
+        const existingUrl = profileData.photo;
+        const pathStart = existingUrl.indexOf("/o/") + 3;
+        const pathEnd = existingUrl.indexOf("?alt=");
+        const decodedPath = decodeURIComponent(existingUrl.substring(pathStart, pathEnd));
+        const oldImageRef = ref(storage, decodedPath);
+        await oldImageRef.delete();
+      } catch (error) {
+        console.warn("Old image deletion failed:", error.message);
+      }
     }
 
-    await updateDoc(doc(db, "Profiles", params.id), {
-      ...updatedData,
-      photo: photoURL,
-    });
+    // Step 2: Upload the new image
+    try {
+      const sanitizedName = updatedData.fullName?.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || "Unknown";
+      const timestamp = Date.now();
+      const ext = updatedData.photo.name.split(".").pop();
+      const fileName = `profile_${timestamp}.${ext}`;
+      const storageRef = ref(storage, `Profiles/${sanitizedName}/${fileName}`);
+      await uploadBytes(storageRef, updatedData.photo);
+      newPhotoURL = await getDownloadURL(storageRef);
+    } catch (uploadErr) {
+      console.error("Upload failed:", uploadErr.message);
+    }
+  }
 
-    router.push("/dashboard/profiles");
-  };
+  // Step 3: Update Firestore with the new URL
+  await updateDoc(doc(db, "Profiles", params.id), {
+    ...updatedData,
+    photo: newPhotoURL, // this ensures the updated URL is saved
+  });
+
+  router.push("/dashboard/profiles");
+};
+
 
   if (loading) return <div className="p-10 text-center">Loading profile...</div>;
   if (!profileData) return <div className="p-10 text-center">Profile not found.</div>;

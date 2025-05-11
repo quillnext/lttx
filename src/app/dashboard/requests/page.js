@@ -1,68 +1,119 @@
-// app/dashboard/requests/page.js
 "use client";
 
 import { useEffect, useState } from "react";
-import { getFirestore, collection, getDocs, doc, deleteDoc, setDoc, getDoc } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  getDocs,
+  doc,
+  deleteDoc,
+  setDoc,
+  getDoc,
+} from "firebase/firestore";
+import {
+  getStorage,
+  ref,
+  listAll,
+  deleteObject,
+} from "firebase/storage";
 import { app } from "@/lib/firebase";
 import EditProfileForm from "@/app/components/EditProfileForm";
 
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 export default function ManageRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewProfile, setPreviewProfile] = useState(null);
 
-const fetchRequests = async () => {
-  const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
-  const profiles = querySnapshot.docs.map((docSnap) => {
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      ...data,
-      timestamp: data.timestamp?.toDate
-  ? data.timestamp.toDate().toLocaleDateString("en-GB") // gives DD/MM/YYYY
-  : "N/A"
-// fallback if invalid or missing
-    };
-  });
-  setRequests(profiles);
-  setLoading(false);
-};
-
-
+  const fetchRequests = async () => {
+    const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
+    const profiles = querySnapshot.docs.map((docSnap) => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        ...data,
+        timestamp: data.timestamp?.toDate
+          ? data.timestamp.toDate().toLocaleDateString("en-GB")
+          : "N/A",
+      };
+    });
+    setRequests(profiles);
+    setLoading(false);
+  };
 
   useEffect(() => {
     fetchRequests();
   }, []);
 
-const handleApprove = async (profile) => {
-  const docRef = doc(db, "ProfileRequests", profile.id);
-  const docSnap = await getDoc(docRef);
+  const deleteImageFolder = async (photoURL) => {
+    try {
+      const pathStart = photoURL.indexOf("/o/") + 3;
+      const pathEnd = photoURL.indexOf("?alt=");
+      const decodedPath = decodeURIComponent(photoURL.substring(pathStart, pathEnd));
+      const folderPath = decodedPath.substring(0, decodedPath.lastIndexOf("/"));
 
-  if (!docSnap.exists()) return;
+      const folderRef = ref(storage, folderPath);
+      const result = await listAll(folderRef);
+      const deletionTasks = result.items.map((item) => deleteObject(item));
+      await Promise.all(deletionTasks);
+    } catch (err) {
+      console.warn("Error deleting image folder:", err.message);
+    }
+  };
 
-  const data = docSnap.data(); // ✅ Firestore timestamp preserved
-  await setDoc(doc(db, "Profiles", profile.id), data);
-  await deleteDoc(docRef);
-  fetchRequests();
-};
+  const handleApprove = async (profile) => {
+    const docRef = doc(db, "ProfileRequests", profile.id);
+    const docSnap = await getDoc(docRef);
 
- const handleDelete = async (id) => {
-  const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
-  if (!confirm) return;
+    if (!docSnap.exists()) return;
 
+    const data = docSnap.data();
+    await setDoc(doc(db, "Profiles", profile.id), data);
+    await deleteDoc(docRef);
+
+      // 🔔 Send approval email notification
+  const slug = `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
   try {
-    await deleteDoc(doc(db, "Profiles", id));
-    setProfiles((prev) => prev.filter((p) => p.id !== id));
-    setToast("Profile permanently deleted.");
-    setTimeout(() => setToast(""), 3000);
+    await fetch("/api/send-profile-approved", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName: data.fullName,
+        email: data.email,
+        slug,
+      }),
+    });
   } catch (error) {
-    console.error("Failed to delete:", error);
-    alert("Error deleting profile.");
+    console.error("Failed to send approval email:", error);
   }
-};
 
+    fetchRequests();
+  };
+
+  const handleDelete = async (profile) => {
+    const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
+    if (!confirm) return;
+
+    try {
+      const docRef = doc(db, "ProfileRequests", profile.id);
+      const snapshot = await getDoc(docRef);
+
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.photo) {
+          await deleteImageFolder(data.photo);
+        }
+      }
+
+      await deleteDoc(docRef);
+      setRequests((prev) => prev.filter((r) => r.id !== profile.id));
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      alert("Error deleting profile.");
+    }
+  };
 
   return (
     <div className="p-4">

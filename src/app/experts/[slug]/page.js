@@ -1,13 +1,14 @@
+// React component with collapsible layout using TailwindCSS
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import Image from "next/image";
 import Head from "next/head";
-export const dynamic = "force-dynamic"; // Force SSR to always reflect latest Firestore data
+
+export const dynamic = "force-dynamic";
 
 export async function generateStaticParams() {
   const db = getFirestore(app);
   const querySnapshot = await getDocs(collection(db, "Profiles"));
-
   const slugs = [];
   querySnapshot.forEach((doc) => {
     const data = doc.data();
@@ -16,15 +17,12 @@ export async function generateStaticParams() {
       slugs.push({ slug });
     }
   });
-
   return slugs;
 }
 
 export async function generateMetadata({ params }) {
   const namePart = params.slug.replace(/-[a-z0-9]{6}$/, '').replace(/-/g, ' ');
-  return {
-    title: `${namePart} | Travel Expert`,
-  };
+  return { title: `${namePart} | Travel Expert` };
 }
 
 export default async function ProfilePage({ params }) {
@@ -44,10 +42,9 @@ export default async function ProfilePage({ params }) {
     return <div className="p-10 text-center text-xl">Profile not found.</div>;
   }
 
-
   return (
 
-    <div className="bg-gray-100 text-gray-800 ">
+    <div className=" text-gray-800 ">
      <Head>
         <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
       </Head>
@@ -99,78 +96,79 @@ export default async function ProfilePage({ params }) {
           </div>
         </aside>
 
-        <section className="lg:col-span-2 space-y-6">
+         <section className="lg:col-span-2 space-y-4">
           {profile.about && (
-            <div className="bg-white rounded-3xl shadow-lg border border-[#F4D35E30] p-6">
-              <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-xl font-semibold text-[#36013F] flex items-center gap-2">
-                <svg className="w-5 h-5 text-[#F4D35E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A4.992 4.992 0 015 16V9a7 7 0 1114 0v7a4.992 4.992 0 01-.121 1.804M15 21v-2a3 3 0 00-6 0v2" />
+            <details open className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none transition-colors duration-200 hover:bg-gray-50">
+                <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-lg font-semibold text-[#36013F]">About Me</h2>
+                <svg className="w-5 h-5 text-[#36013F] transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
-                About Me
-              </h2>
-              <p className="text-sm mt-2 text-gray-700 leading-relaxed">{profile.about}</p>
-            </div>
+              </summary>
+              <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">{profile.about}</div>
+            </details>
           )}
 
           {profile.services?.length > 0 && (
-            <div className="bg-white rounded-3xl shadow-lg border border-[#F4D35E30] p-6">
-              <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-xl font-semibold text-[#36013F] flex items-center gap-2">
-                <svg className="w-5 h-5 text-[#F4D35E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <details className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none transition-colors duration-200 hover:bg-gray-50">
+                <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-lg font-semibold text-[#36013F]">What I Can Help You With</h2>
+                <svg className="w-5 h-5 text-[#36013F] transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
-                What I Can Help You With
-              </h2>
-              <ul className="list-disc list-inside text-sm mt-2 text-gray-700 leading-relaxed">
-                {profile.services.map((s, i) => <li key={i}>{s}</li>)}
-              </ul>
-            </div>
+              </summary>
+              <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
+                <ul className="list-disc list-inside space-y-1">
+                  {profile.services.map((s, i) => <li key={i}>{s}</li>)}
+                </ul>
+              </div>
+            </details>
           )}
 
           {(profile.experience?.length > 0 || profile.companies || profile.certifications) && (
-            <div className="bg-white rounded-3xl shadow-lg border border-[#F4D35E30] p-6">
-              <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-xl font-semibold text-[#36013F] flex items-center gap-2">
-                <svg className="w-5 h-5 text-[#F4D35E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m2 8H7a2 2 0 01-2-2V8a2 2 0 012-2h2V4a1 1 0 011-1h4a1 1 0 011 1v2h2a2 2 0 012 2v10a2 2 0 01-2 2z" />
+            <details className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none transition-colors duration-200 hover:bg-gray-50">
+                <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-lg font-semibold text-[#36013F]">Experience & Credentials</h2>
+                <svg className="w-5 h-5 text-[#36013F] transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
-                Experience & Credentials
-              </h2>
-              <ul className="list-disc list-inside text-sm mt-2 text-gray-700 leading-relaxed">
-                {profile.experience?.map((e, i) => <li key={i}>{e}</li>)}
-                {profile.companies && <li>Companies: {profile.companies}</li>}
-                {profile.certifications && <li>Certifications: {profile.certifications}</li>}
-              </ul>
-            </div>
+              </summary>
+              <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
+                <ul className="list-disc list-inside space-y-1">
+                  {profile.experience?.map((e, i) => <li key={i}>{e}</li>)}
+                  {profile.companies && <li>Companies: {profile.companies}</li>}
+                  {profile.certifications && <li>Certifications: {profile.certifications}</li>}
+                </ul>
+              </div>
+            </details>
           )}
 
           {profile.regions?.length > 0 && (
-            <div className="bg-white rounded-3xl shadow-lg border border-[#F4D35E30] p-6">
-              <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-xl font-semibold text-[#36013F] flex items-center gap-2">
-                <svg className="w-5 h-5 text-[#F4D35E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A2 2 0 013 15.382V5.618a2 2 0 011.553-1.894L9 2m0 0l6 2.724M9 2v18m6-15.276l5.447 2.724A2 2 0 0121 8.618v9.764a2 2 0 01-1.553 1.894L15 22m0 0V4.724" />
+            <details className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden">
+              <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none transition-colors duration-200 hover:bg-gray-50">
+                <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-lg font-semibold text-[#36013F]">Regions I Specialize In</h2>
+                <svg className="w-5 h-5 text-[#36013F] transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                 </svg>
-                Regions I Specialize In
-              </h2>
-              <p className="text-sm mt-2 text-gray-700 leading-relaxed">
+              </summary>
+              <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
                 {profile.regions.join(', ')}
-              </p>
-            </div>
+              </div>
+            </details>
           )}
 
-          {profile.regions?.length > 0 && (
-            
-      <div className="bg-[#FFF9E0] border-l-4 border-[#F4D35E] rounded-3xl shadow p-6 transition-all duration-200">
-        <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-xl font-semibold text-[#36013F] flex items-center gap-2">
-          <svg className="w-5 h-5 text-[#F4D35E]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M4 6v12m0 0a4 4 0 004-4H4a4 4 0 000 8z" />
-          </svg>
-          Ask Me a Free Question
-        </h2>
-        <p className="text-sm mt-2 text-gray-700 leading-relaxed">
-          One quick doubt before booking?<br/>
-          <a href="#" className="underline text-[#36013F] hover:text-black transition-all">Ask your first question here →</a>
-        </p>
-      </div>
-          )}
+          <details className="group bg-[#FFF9E0] border-l-4 border-[#F4D35E] rounded-2xl shadow overflow-hidden">
+            <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none transition-colors duration-200">
+              <h2 style={{ fontFamily: `'DM Serif Display', serif` }} className="text-lg font-semibold text-[#36013F]">Ask Me a Free Question</h2>
+              <svg className="w-5 h-5 text-[#36013F] transition-transform duration-300 group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </summary>
+            <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
+              One quick doubt before booking?<br />
+              <a href="#" className="underline text-[#36013F] hover:text-black transition-all">Ask your first question here →</a>
+            </div>
+          </details>
         </section>
       </div>
     </div>

@@ -7,9 +7,14 @@ import {
   getDocs,
   deleteDoc,
   doc,
-  setDoc,
   getDoc,
 } from "firebase/firestore";
+import {
+  getStorage,
+  ref,
+  listAll,
+  deleteObject,
+} from "firebase/storage";
 import { app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -20,66 +25,91 @@ export default function ProfilesTablePage() {
   const [itemsPerPage] = useState(15);
   const [toast, setToast] = useState("");
   const db = getFirestore(app);
+  const storage = getStorage(app);
   const router = useRouter();
 
- useEffect(() => {
-  const fetchProfiles = async () => {
-    const snapshot = await getDocs(collection(db, "Profiles"));
-    const list = [];
+  useEffect(() => {
+    const fetchProfiles = async () => {
+      const snapshot = await getDocs(collection(db, "Profiles"));
+      const list = [];
 
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-     let rawDate;
-if (data.timestamp && typeof data.timestamp.toDate === "function") {
-  rawDate = data.timestamp.toDate();
-} else if (data.timestamp && data.timestamp.seconds) {
-  // Firestore Timestamp object (not parsed yet)
-  rawDate = new Date(data.timestamp.seconds * 1000);
-} else {
-  rawDate = new Date(); // fallback
-}
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        let rawDate;
+        if (data.timestamp && typeof data.timestamp.toDate === "function") {
+          rawDate = data.timestamp.toDate();
+        } else if (data.timestamp && data.timestamp.seconds) {
+          rawDate = new Date(data.timestamp.seconds * 1000);
+        } else {
+          rawDate = new Date();
+        }
 
+        list.push({
+          id: docSnap.id,
+          fullName: data.fullName,
+          email: data.email,
+          location: data.location,
+          phone: data.phone,
+          rawTimestamp: rawDate,
+          timestamp:
+            rawDate.toLocaleDateString("en-GB") +
+            " " +
+            rawDate.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+        });
+      });
 
-  list.push({
-  id: docSnap.id,
-  fullName: data.fullName,
-  email: data.email,
-  location: data.location,
-  phone: data.phone,
-  rawTimestamp: rawDate,
-  timestamp: rawDate.toLocaleDateString("en-GB") + " " + rawDate.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit"
-  }),
-});
+      list.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+      setProfiles(list);
+    };
 
-    });
+    fetchProfiles();
+  }, [db]);
 
-list.sort((a, b) => b.rawTimestamp - a.rawTimestamp); // works because both are valid Date objects
+  const deleteImageFolder = async (photoURL) => {
+    try {
+      const pathStart = photoURL.indexOf("/o/") + 3;
+      const pathEnd = photoURL.indexOf("?alt=");
+      const decodedPath = decodeURIComponent(photoURL.substring(pathStart, pathEnd));
+      const folderPath = decodedPath.substring(0, decodedPath.lastIndexOf("/"));
 
-
-    setProfiles(list);
+      const folderRef = ref(storage, folderPath);
+      const result = await listAll(folderRef);
+      const deletionTasks = result.items.map((item) => deleteObject(item));
+      await Promise.all(deletionTasks);
+    } catch (err) {
+      console.warn("Error deleting image folder:", err.message);
+    }
   };
 
-  fetchProfiles();
-}, [db]);
+  const handleDelete = async (id) => {
+    const confirm = window.confirm(
+      "Are you sure you want to permanently delete this profile?"
+    );
+    if (!confirm) return;
 
+    try {
+      const docRef = doc(db, "Profiles", id);
+      const snapshot = await getDoc(docRef);
 
-const handleDelete = async (id) => {
-  const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
-  if (!confirm) return;
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.photo) {
+          await deleteImageFolder(data.photo);
+        }
+      }
 
-  try {
-    await deleteDoc(doc(db, "Profiles", id));
-    setProfiles((prev) => prev.filter((p) => p.id !== id));
-    setToast("Profile permanently deleted.");
-    setTimeout(() => setToast(""), 3000);
-  } catch (error) {
-    console.error("Failed to delete:", error);
-    alert("Error deleting profile.");
-  }
-};
-
+      await deleteDoc(docRef);
+      setProfiles((prev) => prev.filter((p) => p.id !== id));
+      setToast("Profile deleted.");
+      setTimeout(() => setToast(""), 3000);
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      alert("Error deleting profile.");
+    }
+  };
 
   const filteredProfiles = profiles.filter((p) =>
     p.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -128,11 +158,13 @@ const handleDelete = async (id) => {
                 <td className="p-3 border">{p.email}</td>
                 <td className="p-3 border">{p.location}</td>
                 <td className="p-3 border flex gap-2 items-center">
-                  <a
-                    href={`/experts/${p.fullName?.toLowerCase().replace(/\s+/g, "-")}-${p.id.slice(0, 6)}`}
+                  <a target="_blank"
+                    href={`/experts/${p.fullName
+                      ?.toLowerCase()
+                      .replace(/\s+/g, "-")}-${p.id.slice(0, 6)}`}
                     className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
                   >
-                    Preview
+                    View
                   </a>
                   <button
                     onClick={() => router.push(`/dashboard/edit/${p.id}`)}

@@ -7,24 +7,17 @@ import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
 
-export default function AdminLayout({ children }) {
+export default function SidebarLayout({ children }) {
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // const handleLogout = () => {
-  //   Cookies.remove("adminAuth");
-  //   window.location.href = "/admin-login";
-  // };
-
-  const handleLogout = async () => {
-  await fetch("/api/logout", { method: "POST" });
-  window.location.href = "/admin-login";
-};
-
+  const handleLogout = () => {
+    Cookies.remove("adminAuth");
+    window.location.href = "/admin-login";
+  };
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <aside
         className={`fixed md:relative z-50 bg-[#36013F] text-white w-64 p-5 md:flex flex-col justify-between transform ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-64"
@@ -74,7 +67,6 @@ export default function AdminLayout({ children }) {
           </nav>
         </div>
 
-        {/* Logout Button */}
         <button
           onClick={handleLogout}
           className="mt-6 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-full text-sm w-full"
@@ -83,7 +75,6 @@ export default function AdminLayout({ children }) {
         </button>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 p-6 bg-white overflow-auto">
         <button className="md:hidden text-2xl mb-4" onClick={() => setIsSidebarOpen(true)}>
           <FaBars />

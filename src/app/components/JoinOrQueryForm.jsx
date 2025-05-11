@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css"; // or 'bootstrap.css' / 'material.css'
+
+
 
 const db = getFirestore(app);
 
@@ -31,6 +35,14 @@ export default function JoinLTTXForm() {
         ...formData,
         timestamp: Timestamp.now(),
       });
+      // 👇 Call the server-side email route
+await fetch("/api/send-expert-form", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(formData)
+});
 
       setShowSuccess(true);
       setFormData({
@@ -86,7 +98,7 @@ export default function JoinLTTXForm() {
           onChange={handleChange}
           className="w-full px-4 py-3 rounded-xl border bg-white col-span-2 md:col-span-1"
         />
-        <input
+        {/* <input
           name="phone"
           type="tel"
           required
@@ -94,7 +106,33 @@ export default function JoinLTTXForm() {
           value={formData.phone}
           onChange={handleChange}
           className="w-full px-4 py-3 rounded-xl border bg-white col-span-2 md:col-span-1"
+        /> */}
+
+        {/* <PhoneInput
+  country={"in"}
+  value={formData.phone}
+  onChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
+  inputProps={{
+    name: "phone",
+    required: true,
+    autoFocus: false,
+  }}
+  containerClass="w-full px-4 py-3 rounded-xl border bg-white col-span-2 md:col-span-1"
+  inputClass="w-full px-4 py-3 rounded-xl border bg-white col-span-2 md:col-span-1"
+/> */}
+ <PhoneInput
+          country={"in"}
+          value={formData.phone}
+         onChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
+          placeholder="Enter phone number"
+          inputProps={{
+            id: "phone",
+            className: "w-[100%]  p-3 border px-12 border-gray-300 rounded-xl bg-white",
+            required: true,
+            autoFocus: false,
+          }}
         />
+        
         <input
           name="email"
           type="email"
