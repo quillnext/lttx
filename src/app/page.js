@@ -7,11 +7,12 @@ import EngagementSection from "./pages/EngagementSection";
 import ContactForm from "./components/ContactForm";
 import Button from "./components/Button";
 import ToolsSupportSection from "./pages/ToolsSupportSection";
-import Hero from "./pages/Hero";
+// import Hero from "./pages/Hero";
 import VideoBlogPage from "./pages/VideoBlogPage";
 import Navbar from "./components/Navbar";
 import Footer from "./pages/Footer";
 import JoinOrQueryForm from "./components/JoinOrQueryForm";
+import BannerSection from "./pages/Banner-section";
 
 
 export default function Home() {
@@ -19,7 +20,8 @@ export default function Home() {
     <>
     <Navbar/>
 
-      <Hero/>
+      {/* <Hero/> */}
+      <BannerSection/>
  <div className="px-4 md:px-8 lg:px-12 ">
  <WhyLTTXSection/>
  </div>
