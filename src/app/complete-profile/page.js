@@ -34,6 +34,8 @@ export default function CompleteProfile() {
   });
   const [errors, setErrors] = useState({});
   const [agreed, setAgreed] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -136,9 +138,12 @@ export default function CompleteProfile() {
     setAgreed(false);
   };
 
-  const handleSubmit = async () => {
-    if (!validateStep()) return;
+ const handleSubmit = async () => {
+  if (!validateStep()) return;
 
+  setIsSubmitting(true); // Start loading
+
+  try {
     let photoURL = '';
     if (formData.photo && formData.fullName) {
       const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
@@ -157,21 +162,23 @@ export default function CompleteProfile() {
       timestamp: serverTimestamp(),
     });
 
-    // 👇 Call the server-side email route
     await fetch("/api/send-profile-form", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(formData),
-});
-
-
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
 
     setShowSuccessModal(true);
     setTimeout(() => {
       setShowSuccessModal(false);
       resetForm();
     }, 3000);
-  };
+  } catch (error) {
+    console.error("Submission failed", error);
+  } finally {
+    setIsSubmitting(false); // Stop loading
+  }
+};
 
   const progress = Math.round(((currentStep + 1) / 3) * 100);
 
@@ -486,7 +493,17 @@ export default function CompleteProfile() {
             {currentStep > 0 && <button type="button" onClick={handleBack} className="px-4 py-2 text-sm font-medium text-[var(--primary)]">Back</button>}
             {currentStep < 2
               ? <button type="button" onClick={handleNext} className="px-6 py-2 text-sm font-semibold bg-[var(--primary)] text-white rounded-xl">Next</button>
-              : <button type="button" onClick={handleSubmit} className="px-6 py-2 text-sm font-semibold bg-green-600 text-white rounded-xl">Submit</button>}
+              : <button
+  type="button"
+  onClick={handleSubmit}
+  disabled={isSubmitting}
+  className={`px-6 py-2 text-sm font-semibold text-white rounded-xl ${
+    isSubmitting ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+  }`}
+>
+  {isSubmitting ? 'Submitting...' : 'Submit'}
+</button>
+}
           </div>
         </form>
       </div>
