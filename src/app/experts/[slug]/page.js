@@ -2,7 +2,6 @@
 import { getFirestore, collection, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import Image from "next/image";
-import Head from "next/head";
 
 export const dynamic = "force-dynamic";
 
@@ -45,9 +44,7 @@ export default async function ProfilePage({ params }) {
   return (
 
     <div className=" text-gray-800 ">
-     <Head>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
-      </Head>
+    
       <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <aside className="lg:col-span-1 space-y-4">
           <div className="bg-[#36013F] rounded-3xl shadow-lg p-6 text-center sticky top-8 ">
