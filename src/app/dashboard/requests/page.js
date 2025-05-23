@@ -26,6 +26,7 @@ export default function ManageRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewProfile, setPreviewProfile] = useState(null);
+  const [loadingStates, setLoadingStates] = useState({}); // Track loading state for each action
 
   const fetchRequests = async () => {
     const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
@@ -64,38 +65,47 @@ export default function ManageRequestsPage() {
   };
 
   const handleApprove = async (profile) => {
-    const docRef = doc(db, "ProfileRequests", profile.id);
-    const docSnap = await getDoc(docRef);
+    setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
+    try {
+      const docRef = doc(db, "ProfileRequests", profile.id);
+      const docSnap = await getDoc(docRef);
 
-    if (!docSnap.exists()) return;
+      if (!docSnap.exists()) return;
 
-    const data = docSnap.data();
-    await setDoc(doc(db, "Profiles", profile.id), data);
-    await deleteDoc(docRef);
+      const data = docSnap.data();
+      await setDoc(doc(db, "Profiles", profile.id), data);
+      await deleteDoc(docRef);
 
       // 🔔 Send approval email notification
-  const slug = `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
-  try {
-    await fetch("/api/send-profile-approved", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullName: data.fullName,
-        email: data.email,
-        slug,
-      }),
-    });
-  } catch (error) {
-    console.error("Failed to send approval email:", error);
-  }
+      const slug = data.username || `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
+      try {
+        await fetch("/api/send-profile-approved", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fullName: data.fullName,
+            email: data.email,
+            slug,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to send approval email:", error);
+      }
 
-    fetchRequests();
+      fetchRequests();
+    } catch (error) {
+      console.error("Failed to approve:", error);
+      alert("Error approving profile.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: false }));
+    }
   };
 
   const handleDelete = async (profile) => {
     const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
     if (!confirm) return;
 
+    setLoadingStates((prev) => ({ ...prev, [`delete-${profile.id}`]: true }));
     try {
       const docRef = doc(db, "ProfileRequests", profile.id);
       const snapshot = await getDoc(docRef);
@@ -112,7 +122,15 @@ export default function ManageRequestsPage() {
     } catch (error) {
       console.error("Failed to delete:", error);
       alert("Error deleting profile.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [`delete-${profile.id}`]: false }));
     }
+  };
+
+  const handlePreview = (profile) => {
+    setLoadingStates((prev) => ({ ...prev, [`preview-${profile.id}`]: true }));
+    setPreviewProfile(profile);
+    setLoadingStates((prev) => ({ ...prev, [`preview-${profile.id}`]: false }));
   };
 
   return (
@@ -141,24 +159,96 @@ export default function ManageRequestsPage() {
                   <td className="p-3 border font-medium">{profile.fullName}</td>
                   <td className="p-3 border">{profile.email}</td>
                   <td className="p-3 border">{profile.location}</td>
-                  <td className="p-3 border space-x-2">
+                  <td className="p-3 border space-x-2 flex">
                     <button
-                      className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
-                      onClick={() => setPreviewProfile(profile)}
+                      className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 relative flex items-center justify-center"
+                      onClick={() => handlePreview(profile)}
+                      disabled={loadingStates[`preview-${profile.id}`]}
                     >
-                      Preview
+                      {loadingStates[`preview-${profile.id}`] ? (
+                        <svg
+                          className="animate-spin h-4 w-4 text-blue-800"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                          ></path>
+                        </svg>
+                      ) : (
+                        "Preview"
+                      )}
                     </button>
                     <button
-                      className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
+                      className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 relative flex items-center justify-center"
                       onClick={() => handleApprove(profile)}
+                      disabled={loadingStates[`approve-${profile.id}`]}
                     >
-                      Approve
+                      {loadingStates[`approve-${profile.id}`] ? (
+                        <svg
+                          className="animate-spin h-4 w-4 text-green-800"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                          ></path>
+                        </svg>
+                      ) : (
+                        "Approve"
+                      )}
                     </button>
                     <button
-                      className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200"
+                      className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 relative flex items-center justify-center"
                       onClick={() => handleDelete(profile)}
+                      disabled={loadingStates[`delete-${profile.id}`]}
                     >
-                      Delete
+                      {loadingStates[`delete-${profile.id}`] ? (
+                        <svg
+                          className="animate-spin h-4 w-4 text-red-800"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                          ></path>
+                        </svg>
+                      ) : (
+                        "Delete"
+                      )}
                     </button>
                   </td>
                 </tr>
@@ -173,9 +263,17 @@ export default function ManageRequestsPage() {
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full p-6 overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold text-[#36013F]">🔍 Preview Profile</h2>
-              <button onClick={() => setPreviewProfile(null)} className="text-red-500 text-lg">✕</button>
+              <button
+                onClick={() => setPreviewProfile(null)}
+                className="text-red-500 text-lg"
+              >
+                ✕
+              </button>
             </div>
-            <EditProfileForm initialData={previewProfile} onSave={() => setPreviewProfile(null)} />
+            <EditProfileForm
+              initialData={previewProfile}
+              onSave={() => setPreviewProfile(null)}
+            />
           </div>
         </div>
       )}
