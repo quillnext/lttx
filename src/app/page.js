@@ -52,9 +52,9 @@ export default function Home() {
   
   <div className="px-4 md:px-8 lg:px-12 ">
   {/* <ContactForm/> */}
-  <JoinUsSection/>
+  {/* <JoinUsSection/> */}
 
-  {/* <JoinOrQueryForm/> */}
+  <JoinOrQueryForm/>
   <Footer/>
  </div>
   

@@ -82,12 +82,14 @@ export default async function ProfilePage({ params }) {
                 className="w-28 h-28 rounded-full border-4 border-[#F4D35E] object-cover mx-auto shadow-md"
               />
             </div>
+             <p className="text-sm mt-1 text-white">@{profile.username}</p>
             <h1
               className="text-xl font-semibold text-white"
               style={{ fontFamily: "'DM Serif Display', serif" }}
             >
-              {profile.fullName} (@{profile.username})
+              {profile.fullName} 
             </h1>
+           
             {profile.tagline && (
               <p className="text-sm mt-1 text-white">{profile.tagline}</p>
             )}
