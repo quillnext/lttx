@@ -56,11 +56,11 @@ const YoureInvitedSection = () => {
         {/* Image Section */}
         <div className="md:w-1/2 mb-8 md:mb-0 w-full">
           <Image
-            src="/lttxexpert.svg"
-            width={400}
+            src="/home/fourth.png"
+         width={600}
             height={300}
             alt="Invited Expert"
-            className="w-[85%] h-auto object-cover rounded-lg"
+            className="w-full rounded-lg"
           />
         </div>
       </div>

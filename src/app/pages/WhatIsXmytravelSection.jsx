@@ -25,11 +25,11 @@ const WhatIsXmytravelSection = () => {
         {/* Illustration */}
         <div className="md:w-1/3 mb-8 md:mb-0">
           <Image
-            src='/lttxexpert.svg'
-            width={300}
+            src='/home/second.png'
+           width={600}
             height={300}
             alt='Xmytravel Illustration'
-            className="w-[85%] h-auto object-cover"
+            className="w-full  rounded-lg"
           />
         </div>
       </div>

@@ -83,7 +83,7 @@ const PlatformComparisonSection = () => {
                 </h3>
                 <hr className="border-3" />
                 <div className="bg-primary w-full" />
-                <ul className="p-3">
+                <ul className="p-3 text-center">
                   {googleData.map((item, index) => (
                     <li
                       key={index}
@@ -102,7 +102,7 @@ const PlatformComparisonSection = () => {
                 </h3>
                 <hr className="border-3" />
                 <div className="bg-primary w-full" />
-                <ul className="p-3">
+                <ul className="p-3 text-center">
                   {redditData.map((item, index) => (
                     <li
                       key={index}
@@ -121,7 +121,7 @@ const PlatformComparisonSection = () => {
                 </h3>
                 <hr className="border-3" />
                 <div className="bg-primary w-full" />
-                <ul className="p-3">
+                <ul className="p-3 text-center">
                   {chatGPTData.map((item, index) => (
                     <li
                       key={index}
@@ -140,7 +140,7 @@ const PlatformComparisonSection = () => {
                 </h3>
                 <hr className="border-3" />
                 <div className="bg-primary w-full" />
-                <ul className="p-3">
+                <ul className="p-3 text-center">
                   {xmytravelData.map((item, index) => (
                     <li
                       key={index}

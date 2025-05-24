@@ -7,13 +7,13 @@ const WordsThatDefineUsSection = () => {
     <section id="words-that-define-us" className="py-12 px-4 md:px-8 lg:px-12">
       <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
         {/* Image Section */}
-        <div className="md:w-1/2 mb-8 md:mb-0 w-full">
+        <div className="md:w-1/2 mb-8 md:mb-0 w-full text-center items-center justify-center">
           <Image
-            src="/lttxexpert.svg"
-            width={400}
+            src="/home/fifth.png"
+            width={600}
             height={300}
             alt="Words That Define Us"
-            className="w-[85%] h-auto object-cover rounded-lg"
+            className="w-full rounded-lg text-center items-center justify-center"
           />
         </div>
         {/* Text Section */}
