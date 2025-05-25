@@ -9,6 +9,8 @@ import {
   deleteDoc,
   setDoc,
   getDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -26,22 +28,27 @@ export default function ManageRequestsPage() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewProfile, setPreviewProfile] = useState(null);
-  const [loadingStates, setLoadingStates] = useState({}); // Track loading state for each action
+  const [loadingStates, setLoadingStates] = useState({});
 
   const fetchRequests = async () => {
-    const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
-    const profiles = querySnapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        ...data,
-        timestamp: data.timestamp?.toDate
-          ? data.timestamp.toDate().toLocaleDateString("en-GB")
-          : "N/A",
-      };
-    });
-    setRequests(profiles);
-    setLoading(false);
+    try {
+      const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
+      const profiles = querySnapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          timestamp: data.timestamp?.toDate
+            ? data.timestamp.toDate().toLocaleDateString("en-GB")
+            : "N/A",
+        };
+      });
+      setRequests(profiles);
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -64,38 +71,141 @@ export default function ManageRequestsPage() {
     }
   };
 
+  // Function to generate a unique referral code
+const generateUniqueReferralCode = async (profileId) => {
+    const prefix = "REF";
+    const numberLength = 3;
+    const maxAttempts = 30; // Increased for reliability
+
+    console.log(`Generating referral code for profile ${profileId}...`);
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // Generate a random 3-digit number (100–999)
+      const randomNumber = Math.floor(100 + Math.random() * 900);
+      const code = `${prefix}${randomNumber}`;
+
+      console.log(`Attempt ${attempt + 1}: Generated code ${code}`);
+
+      try {
+        const codeQuery = query(collection(db, "Profiles"), where("generatedReferralCode", "==", code));
+        const querySnapshot = await getDocs(codeQuery);
+        if (querySnapshot.empty) {
+          console.log(`Code ${code} is unique`);
+          return code;
+        }
+        console.log(`Code ${code} already exists, retrying...`);
+      } catch (error) {
+        console.error(`Error checking code uniqueness (attempt ${attempt + 1}):`, error);
+        if (attempt === maxAttempts - 1) {
+          console.warn("Max attempts reached, using fallback code");
+          // Fallback: REF + first 2 chars of profileId + 3-digit timestamp-based number
+          const timestampNum = Date.now().toString().slice(-3);
+          return `REF${profileId.slice(0, 2).toUpperCase()}${timestampNum}`;
+        }
+      }
+    }
+
+    // Ultimate fallback
+    console.warn("Using ultimate fallback code");
+    const timestampNum = Date.now().toString().slice(-3);
+    return `REF${profileId.slice(0, 2).toUpperCase()}${timestampNum}`;
+};
+
   const handleApprove = async (profile) => {
     setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
     try {
+      console.log(`Approving profile ${profile.id} for ${profile.fullName}`);
       const docRef = doc(db, "ProfileRequests", profile.id);
       const docSnap = await getDoc(docRef);
 
-      if (!docSnap.exists()) return;
+      if (!docSnap.exists()) {
+        console.warn(`Profile ${profile.id} does not exist in ProfileRequests`);
+        alert("Profile no longer exists.");
+        return;
+      }
 
       const data = docSnap.data();
-      await setDoc(doc(db, "Profiles", profile.id), data);
-      await deleteDoc(docRef);
+      console.log("Profile data:", data);
 
-      // 🔔 Send approval email notification
+      // Generate a unique referral code
+      let generatedReferralCode;
+      try {
+        generatedReferralCode = await generateUniqueReferralCode(profile.id);
+        console.log(`Generated referral code: ${generatedReferralCode}`);
+      } catch (error) {
+        console.error("Failed to generate referral code:", error);
+        generatedReferralCode = `FB-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+        console.warn(`Using fallback referral code: ${generatedReferralCode}`);
+      }
+
+      // Ensure generatedReferralCode is valid
+      if (!generatedReferralCode || generatedReferralCode.length < 6) {
+        console.error("Invalid referral code, using emergency fallback");
+        generatedReferralCode = `EM-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+      }
+
+      // Include the generated referral code in the profile data
+      const updatedData = {
+        ...data,
+        generatedReferralCode,
+        approvalTimestamp: new Date().toISOString(),
+      };
+
+      // Save to Profiles collection
+      console.log("Saving to Profiles with data:", updatedData);
+      try {
+        await setDoc(doc(db, "Profiles", profile.id), updatedData);
+        console.log(`Profile ${profile.id} saved to Profiles`);
+      } catch (error) {
+        console.error("Failed to save to Profiles:", error);
+        throw new Error(`Failed to save profile: ${error.message}`);
+      }
+
+      // Delete from ProfileRequests
+      try {
+        await deleteDoc(docRef);
+        console.log(`Profile ${profile.id} deleted from ProfileRequests`);
+      } catch (error) {
+        console.error("Failed to delete from ProfileRequests:", error);
+        throw new Error(`Failed to delete profile: ${error.message}`);
+      }
+
+      // Send approval email
       const slug = data.username || `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
       try {
-        await fetch("/api/send-profile-approved", {
+        console.log("Sending approval email with payload:", {
+          fullName: data.fullName,
+          email: data.email,
+          slug,
+          referred: data.referred,
+          referralCode: data.referralCode,
+          generatedReferralCode,
+        });
+        const response = await fetch("/api/send-profile-approved", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fullName: data.fullName,
             email: data.email,
             slug,
+            referred: data.referred,
+            referralCode: data.referralCode,
+            generatedReferralCode,
           }),
         });
+        if (!response.ok) {
+          console.error("Approval email API failed:", response.status);
+        } else {
+          console.log("Approval email sent successfully");
+        }
       } catch (error) {
         console.error("Failed to send approval email:", error);
       }
 
       fetchRequests();
     } catch (error) {
-      console.error("Failed to approve:", error);
-      alert("Error approving profile.");
+      console.error("Failed to approve profile:", error);
+      alert(`Error approving profile: ${error.message}`);
     } finally {
       setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: false }));
     }
@@ -129,7 +239,11 @@ export default function ManageRequestsPage() {
 
   const handlePreview = (profile) => {
     setLoadingStates((prev) => ({ ...prev, [`preview-${profile.id}`]: true }));
-    setPreviewProfile(profile);
+    setPreviewProfile({
+      ...profile,
+      referred: profile.referred || '',
+      referralCode: profile.referralCode || '',
+    });
     setLoadingStates((prev) => ({ ...prev, [`preview-${profile.id}`]: false }));
   };
 
@@ -149,6 +263,8 @@ export default function ManageRequestsPage() {
                 <th className="p-3 border">Name</th>
                 <th className="p-3 border">Email</th>
                 <th className="p-3 border">Location</th>
+                <th className="p-3 border">Referred</th>
+                <th className="p-3 border">Referral Code</th>
                 <th className="p-3 border">Actions</th>
               </tr>
             </thead>
@@ -159,6 +275,8 @@ export default function ManageRequestsPage() {
                   <td className="p-3 border font-medium">{profile.fullName}</td>
                   <td className="p-3 border">{profile.email}</td>
                   <td className="p-3 border">{profile.location}</td>
+                  <td className="p-3 border">{profile.referred || 'N/A'}</td>
+                  <td className="p-3 border">{profile.referralCode || 'N/A'}</td>
                   <td className="p-3 border space-x-2 flex">
                     <button
                       className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 relative flex items-center justify-center"
@@ -272,7 +390,10 @@ export default function ManageRequestsPage() {
             </div>
             <EditProfileForm
               initialData={previewProfile}
-              onSave={() => setPreviewProfile(null)}
+              onSave={() => {
+                setPreviewProfile(null);
+                fetchRequests();
+              }}
             />
           </div>
         </div>

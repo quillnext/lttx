@@ -38,12 +38,15 @@ export default function CompleteProfile() {
     experience: [''],
     companies: '',
     certifications: '',
+    referred: '',
+    referralCode: '',
   });
   const [originalProfile, setOriginalProfile] = useState(null);
   const [errors, setErrors] = useState({});
   const [agreed, setAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState('');
+  const [referralCodeStatus, setReferralCodeStatus] = useState('');
 
   useEffect(() => {
     if (profileId) {
@@ -71,6 +74,8 @@ export default function CompleteProfile() {
               experience: data.experience?.length ? data.experience : [''],
               companies: data.companies || '',
               certifications: data.certifications || '',
+              referred: data.referred || '',
+              referralCode: data.referralCode || '',
             });
             setAgreed(true);
           }
@@ -99,8 +104,31 @@ export default function CompleteProfile() {
         setErrors((prev) => ({ ...prev, username: '' }));
       }
     } catch (error) {
-      console.error('Error checking username:', error);
+      console.error('Error checking usernames:', error);
       setUsernameStatus('Error checking username');
+    }
+  };
+
+  const checkReferralCode = async (code) => {
+    if (!code || formData.referred !== 'Yes') {
+      setReferralCodeStatus('');
+      setErrors((prev) => ({ ...prev, referralCode: '' }));
+      return;
+    }
+    try {
+      const codeQuery = query(collection(db, 'Profiles'), where('generatedReferralCode', '==', code));
+      const querySnapshot = await getDocs(codeQuery);
+      if (querySnapshot.empty) {
+        setReferralCodeStatus('Invalid referral code');
+        setErrors((prev) => ({ ...prev, referralCode: 'Invalid referral code' }));
+      } else {
+        setReferralCodeStatus('Referral code is valid');
+        setErrors((prev) => ({ ...prev, referralCode: '' }));
+      }
+    } catch (error) {
+      console.error('Error checking referral code:', error);
+      setReferralCodeStatus('Error checking referral code');
+      setErrors((prev) => ({ ...prev, referralCode: 'Error checking referral code' }));
     }
   };
 
@@ -113,6 +141,14 @@ export default function CompleteProfile() {
       if (value.trim()) {
         checkUsernameAvailability(value);
       }
+    }
+    if (name === 'referralCode') {
+      checkReferralCode(value);
+    }
+    if (name === 'referred' && value === 'No') {
+      setFormData((prev) => ({ ...prev, referralCode: '' }));
+      setErrors((prev) => ({ ...prev, referralCode: '' }));
+      setReferralCodeStatus('');
     }
   };
 
@@ -145,45 +181,50 @@ export default function CompleteProfile() {
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^\+?[0-9]{7,15}$/.test(phone);
- const validateUsername = (username) => {
-  return /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
-};
+  const validateUsername = (username) => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
 
-const validateStep = () => {
-  const newErrors = {};
+  const validateStep = () => {
+    const newErrors = {};
 
-  if (currentStep === 0) {
-    ['username', 'fullName', 'email', 'phone', 'tagline', 'location', 'languages', 'responseTime', 'pricing', 'about'].forEach(field => {
-      if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
-    });
-    if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
-    if (formData.email && !validateEmail(formData.email)) newErrors.email = "Invalid email address";
-    if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = "Invalid phone number";
-    if (formData.username && !validateUsername(formData.username)) {
-      newErrors.username = "Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores";
+    if (currentStep === 0) {
+      ['username', 'fullName', 'email', 'phone', 'tagline', 'location', 'languages', 'responseTime', 'pricing', 'about'].forEach(field => {
+        if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
+      });
+      if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
+      if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
+      if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
+      if (formData.username && !validateUsername(formData.username)) {
+        newErrors.username = 'Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores';
+      }
+      if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
     }
-    if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
-  }
 
-  if (currentStep === 1) {
-    if (!formData.services.length || formData.services.some((s) => !s.trim())) {
-      newErrors.services = 'At least one service is required';
+    if (currentStep === 1) {
+      if (!formData.services.length || formData.services.some((s) => !s.trim())) {
+        newErrors.services = 'At least one service is required';
+      }
+      if (!formData.regions.length) newErrors.regions = 'At least one region is required';
     }
-    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
-  }
 
-  if (currentStep === 2) {
-    if (!formData.experience.length || formData.experience.some((e) => !e.trim())) {
-      newErrors.experience = 'At least one experience entry is required';
+    if (currentStep === 2) {
+      if (!formData.experience.length || formData.experience.some((e) => !e.trim())) {
+        newErrors.experience = 'At least one experience entry is required';
+      }
+      if (!formData.companies.trim()) newErrors.companies = 'This field is required';
+      if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
+      if (!agreed) newErrors.agreed = 'You must agree to the terms';
+      if (!formData.referred) newErrors.referred = 'Please select whether you were referred';
+      if (formData.referred === 'Yes' && !formData.referralCode.trim()) {
+        newErrors.referralCode = 'Referral code is required';
+      }
+      if (formData.referred === 'Yes' && referralCodeStatus === 'Invalid referral code') {
+        newErrors.referralCode = 'Invalid referral code';
+      }
     }
-    if (!formData.companies.trim()) newErrors.companies = 'This field is required';
-    if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
-    if (!agreed) newErrors.agreed = 'You must agree to the terms';
-  }
 
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleNext = () => {
     if (!validateStep()) return;
@@ -212,6 +253,8 @@ const validateStep = () => {
       experience: [''],
       companies: '',
       certifications: '',
+      referred: '',
+      referralCode: '',
     });
     setCurrentStep(0);
     setErrors({});
@@ -219,6 +262,7 @@ const validateStep = () => {
     setOriginalProfile(null);
     setSavedProfileId(null);
     setUsernameStatus('');
+    setReferralCodeStatus('');
   };
 
   const handleSubmit = async () => {
@@ -247,7 +291,6 @@ const validateStep = () => {
 
       let localProfileId = profileId;
       if (profileId) {
-        // Exclude username from updates
         delete profileData.username;
         await updateDoc(doc(db, 'Profiles', profileId), profileData);
       } else {
@@ -262,7 +305,7 @@ const validateStep = () => {
 
       setSavedProfileId(localProfileId);
 
-      const slug = `${formData.fullName.toLowerCase().replace(/\s+/g, '-')}`;
+      const slug = `${formData.username}`;
 
       setShowSuccessModal(true);
       setTimeout(() => {
@@ -311,7 +354,7 @@ const validateStep = () => {
                 onClick={() => {
                   setShowSuccessModal(false);
                   resetForm();
-                  const slug = `${formData.fullName.toLowerCase().replace(/\s+/g, '-')}-${savedProfileId || profileId || 'new'}`;
+                  const slug = `${formData.username}`;
                   router.push(`/profile/${slug}`);
                 }}
                 className="px-6 py-2 rounded-full text-white bg-green-600 hover:bg-green-700 transition"
@@ -345,18 +388,17 @@ const validateStep = () => {
                   {errors.username && errors.username !== 'Username is already taken' && (
                     <p className="text-sm text-red-600 mt-1">{errors.username}</p>
                   )}
-                 {/* <p className="text-sm text-gray-500 mt-1">e.g. travelguru123</p> */}
                 </div>
                 <div>
                   <input
-                  type="text"
-                  name="fullName"
-                  placeholder="Full Name"
-                  className={`px-4 py-3 border rounded-xl w-full ${errors.fullName ? 'border-red-500' : ''}`}
-                  value={formData.fullName}
-                  onChange={handleChange}
-                />
-                <p className="text-sm text-gray-500 mt-1">e.g. Rishabh</p>
+                    type="text"
+                    name="fullName"
+                    placeholder="Full Name"
+                    className={`px-4 py-3 border rounded-xl w-full ${errors.fullName ? 'border-red-500' : ''}`}
+                    value={formData.fullName}
+                    onChange={handleChange}
+                  />
+                  <p className="text-sm text-gray-500 mt-1">e.g. Rishabh</p>
                 </div>
                 <div>
                   <input
@@ -367,8 +409,8 @@ const validateStep = () => {
                     value={formData.email}
                     onChange={handleChange}
                   />
-                  {errors.email === "Invalid email address" && (
-                    <p className="text-sm text-red-600 mt-1">Invalid email address</p>
+                  {errors.email && (
+                    <p className="text-sm text-red-600 mt-1">{errors.email}</p>
                   )}
                 </div>
                 <div>
@@ -384,8 +426,8 @@ const validateStep = () => {
                       autoFocus: false,
                     }}
                   />
-                  {errors.phone === "Invalid phone number" && (
-                    <p className="text-sm text-red-600 mt-1">Invalid phone number</p>
+                  {errors.phone && (
+                    <p className="text-sm text-red-600 mt-1">{errors.phone}</p>
                   )}
                 </div>
                 <div>
@@ -452,6 +494,9 @@ const validateStep = () => {
                   className={`w-full border rounded-xl px-4 py-2 ${errors.photo ? 'border-red-500' : ''}`}
                   onChange={handleFile}
                 />
+                {errors.photo && (
+                  <p className="text-sm text-red-600 mt-1">{errors.photo}</p>
+                )}
               </div>
 
               <textarea
@@ -606,6 +651,70 @@ const validateStep = () => {
               </div>
 
               <div className="pt-4 border-t">
+                <label className="block mb-2 font-medium text-gray-700">Referral Information</label>
+                <div className="space-y-2">
+                  <label className="block font-medium text-gray-700">Were you referred by someone?</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="referred"
+                        value="Yes"
+                        checked={formData.referred === 'Yes'}
+                        onChange={handleChange}
+                        className={`${errors.referred ? 'ring-2 ring-red-500' : ''}`}
+                      />
+                      Yes
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="referred"
+                        value="No"
+                        checked={formData.referred === 'No'}
+                        onChange={handleChange}
+                        className={`${errors.referred ? 'ring-2 ring-red-500' : ''}`}
+                      />
+                      No
+                    </label>
+                  </div>
+                  {errors.referred && (
+                    <p className="text-sm text-red-600 mt-1">{errors.referred}</p>
+                  )}
+                </div>
+
+                {formData.referred === 'Yes' && (
+                  <div className="mt-4">
+                    <input
+                      type="text"
+                      name="referralCode"
+                      placeholder="Enter referral code"
+                      className={`w-full px-4 py-2 border rounded-xl ${errors.referralCode ? 'border-red-500' : ''}`}
+                      value={formData.referralCode}
+                      onChange={handleChange}
+                    />
+                    {referralCodeStatus && (
+                      <p className={`text-sm mt-1 ${referralCodeStatus.includes('valid') ? 'text-green-600' : 'text-red-600'}`}>
+                        {referralCodeStatus}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500 mt-1">
+                      A verification call might be made to your referrer to confirm your recommendation.
+                    </p>
+                    {errors.referralCode && errors.referralCode !== 'Invalid referral code' && (
+                      <p className="text-sm text-red-600 mt-1">{errors.referralCode}</p>
+                    )}
+                  </div>
+                )}
+
+                {formData.referred === 'No' && (
+                  <p className="text-sm text-gray-700 mt-2">
+                    Your profile approval may take a little longer. A short interview might be scheduled before activation.
+                  </p>
+                )}
+              </div>
+
+              <div className="pt-4 border-t">
                 <label className="block mb-2 font-medium text-gray-700">Final Declaration</label>
                 <label className="flex items-start gap-2 text-sm">
                   <input
@@ -616,7 +725,7 @@ const validateStep = () => {
                   />
                   <label>
                     I confirm that the information provided is accurate and complies with{" "}
-                    <strong>Xmytravel Experts&#39;</strong> professional and ethical standards. I also agree to the{" "}
+                    <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
                     <Link
                       href="/privacy-policy"
                       className="text-blue-600 underline hover:text-blue-800"
