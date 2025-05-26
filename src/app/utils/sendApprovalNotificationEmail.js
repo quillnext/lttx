@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendApprovalNotificationEmail({ fullName, email, slug }) {
+export async function sendApprovalNotificationEmail({ fullName, email, slug,generatedReferralCode }) {
   const profileUrl = `https://xmytravel.com/experts/${slug}`;
   const year = new Date().getFullYear();
 
@@ -80,6 +80,12 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug }) {
               <a href="${profileUrl}">${profileUrl}</a>
             </p>
             <p style="margin-top: 24px; font-size: 15px;">
+             
+If you know someone with proven expertise in the travel domain, you can refer them to join XmyTravel.
+Here’s your referral code:${generatedReferralCode}
+            </p>
+            <p style="margin-top: 24px; font-size: 15px;">Know an Experienced Travel Expert?</p>
+            <p style="margin-top: 12px; font-size: 14px;">
               Thank you for joining the XmyTravel community. We’re excited to have your expertise featured on our platform.
             </p>
           </div>

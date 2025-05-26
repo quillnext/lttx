@@ -5,19 +5,19 @@ const OnboardingSection = () => {
   const steps = [
     {
       number: 1,
-      description: 'Submit your basic details and select your expertise areas.',
+      description: ' Apply or receive an invite to join.',
     },
     {
       number: 2,
-      description: 'Showcase your experience, certifications, and industry achievements.',
+      description: ' Set your consultation offerings',
     },
     {
       number: 3,
-      description: 'Upload documents, photos, and recognitions that prove your credibility.',
+      description: 'Build your profile and credibility.',
     },
     {
       number: null, 
-      description: 'Get vetted & approved, then start answering queries and earning!',
+      description: ' Get paid to share what you know.',
     },
   ];
 

@@ -4,6 +4,7 @@ import { sendApprovalNotificationEmail } from '@/app/utils//sendApprovalNotifica
 export async function POST(req) {
   try {
     const body = await req.json();
+    console.log("Received body:", body);
 
     if (!body.email || !body.fullName || !body.slug) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -14,5 +15,5 @@ export async function POST(req) {
   } catch (error) {
     console.error("Email send error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  }    
 }

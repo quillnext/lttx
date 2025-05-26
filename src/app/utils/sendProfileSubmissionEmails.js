@@ -14,7 +14,7 @@ const emailTemplate = ({ data, year, isAdmin }) => {
   const {
     fullName, email, phone, tagline, location, languages,
     responseTime, pricing, about, services, regions,
-    experience, companies, certifications
+    experience, companies, certifications, generatedReferralCode
   } = data;
 
   return `
@@ -34,15 +34,6 @@ const emailTemplate = ({ data, year, isAdmin }) => {
           box-shadow: 0 8px 24px rgba(0,0,0,0.08);
         }
         .content { padding: 32px; }
-        .cta-button {
-          background: #36013F;
-          color: white;
-          padding: 12px 24px;
-          border-radius: 30px;
-          text-decoration: none;
-          display: inline-block;
-          margin-top: 20px;
-        }
         .footer {
           font-size: 13px;
           color: #888;
@@ -60,7 +51,6 @@ const emailTemplate = ({ data, year, isAdmin }) => {
       <div class="container">
         <img src="https://www.xmytravel.com/emailbanner.jpeg" style="width:100%; display:block; border-radius:16px 16px 0 0;" alt="Banner" />
         <div class="content">
-
           ${isAdmin ? `
             <h2>📥 New Profile Submission</h2>
             <p>You’ve received a new profile form submission:</p>
@@ -79,16 +69,15 @@ const emailTemplate = ({ data, year, isAdmin }) => {
               <tr><td><strong>Experience</strong></td><td>${experience.join(", ")}</td></tr>
               <tr><td><strong>Companies</strong></td><td>${companies}</td></tr>
               <tr><td><strong>Certifications</strong></td><td>${certifications}</td></tr>
+              <tr><td><strong>Referral Code</strong></td><td>${generatedReferralCode}</td></tr>
             </table>
           ` : `
             <h2>Hello ${fullName},</h2>
             <p>Thank you for submitting your profile request on <strong>XmyTravel</strong>.</p>
             <p>Our team will review your information and notify you once it's approved.</p>
           `}
-
-          ${!isAdmin ? `<p class="footer">This is an automated confirmation. No reply needed.</p>` : ''}
           <p class="footer">
-            &copy; ${year} XmyTravel • <a href="https://xmytravel.com">xmytravel.com</a><br/>
+            © ${year} XmyTravel • <a href="https://xmytravel.com">xmytravel.com</a><br/>
             For support: <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
           </p>
         </div>
@@ -101,23 +90,28 @@ const emailTemplate = ({ data, year, isAdmin }) => {
 export async function sendProfileSubmissionEmails(formData) {
   const year = new Date().getFullYear();
 
-  // ✅ Send to User
-  const userHTML = emailTemplate({ data: formData, year, isAdmin: false });
-  await transporter.sendMail({
-     from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
-    to: formData.email,
-    subject: "Profile Submission Received – XmyTravel",
-    html: userHTML,
-  });
+  try {
+    // Send to User
+    const userHTML = emailTemplate({ data: formData, year, isAdmin: false });
+    await transporter.sendMail({
+      from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
+      to: formData.email,
+      subject: "Profile Submission Received – XmyTravel",
+      html: userHTML,
+    });
 
-  // ✅ Send to Admin
-  const adminHTML = emailTemplate({ data: formData, year, isAdmin: true });
-  await transporter.sendMail({
-     from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
-    to: process.env.ADMIN_EMAIL,
-    cc: process.env.ADMIN_EMAIL_CC,
-    bcc: process.env.ADMIN_EMAIL_BCC,
-    subject: `🔎 New Profile Request: ${formData.fullName}`,
-    html: adminHTML,
-  });
+    // Send to Admin
+    const adminHTML = emailTemplate({ data: formData, year, isAdmin: true });
+    await transporter.sendMail({
+      from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
+      to: process.env.ADMIN_EMAIL,
+      cc: process.env.ADMIN_EMAIL_CC,
+      bcc: process.env.ADMIN_EMAIL_BCC,
+      subject: `🔎 New Profile Request: ${formData.fullName}`,
+      html: adminHTML,
+    });
+  } catch (error) {
+    console.error("Error sending emails:", error);
+    throw new Error("Failed to send notification emails");
+  }
 }

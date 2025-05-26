@@ -64,10 +64,11 @@ await fetch("/api/send-expert-form", {
     <div className="bg-[#F4D35E] w-full rounded-3xl shadow-lg md:p-10 text-[#36013F] p-6" id="apply">
       <div className="text-center mb-8 max-w-3xl mx-auto">
         <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">
-          Shape the Future of Travel Consultancy with Xmytravel.com
+          Join Us
         </h2>
         <p className="text-primary">
-          Step beyond the ordinary and join an elite, invite-only community where your expertise gets the recognition it deserves...
+         Whether you’re a traveler seeking truth or a professional ready to share it — Xmytravel 
+is your platform
         </p>
         
         

@@ -22,8 +22,9 @@ export default function ProfilesTablePage() {
   const [profiles, setProfiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(15);
+  const [itemsPerPage] = useState(10); // Updated to 10
   const [toast, setToast] = useState("");
+  const [loadingStates, setLoadingStates] = useState({});
   const db = getFirestore(app);
   const storage = getStorage(app);
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function ProfilesTablePage() {
         list.push({
           id: docSnap.id,
           fullName: data.fullName,
+          username: data.username,
           email: data.email,
           location: data.location,
           phone: data.phone,
@@ -90,6 +92,8 @@ export default function ProfilesTablePage() {
     );
     if (!confirm) return;
 
+    setLoadingStates((prev) => ({ ...prev, [`delete-${id}`]: true }));
+
     try {
       const docRef = doc(db, "Profiles", id);
       const snapshot = await getDoc(docRef);
@@ -108,7 +112,19 @@ export default function ProfilesTablePage() {
     } catch (error) {
       console.error("Failed to delete:", error);
       alert("Error deleting profile.");
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [`delete-${id}`]: false }));
     }
+  };
+
+  const handleView = (username) => {
+    setLoadingStates((prev) => ({ ...prev, [`view-${username}`]: true }));
+    router.push(`/experts/${username}`);
+  };
+
+  const handleEdit = (id) => {
+    setLoadingStates((prev) => ({ ...prev, [`edit-${id}`]: true }));
+    router.push(`/dashboard/edit/${id}`);
   };
 
   const filteredProfiles = profiles.filter((p) =>
@@ -158,25 +174,95 @@ export default function ProfilesTablePage() {
                 <td className="p-3 border">{p.email}</td>
                 <td className="p-3 border">{p.location}</td>
                 <td className="p-3 border flex gap-2 items-center">
-                  <a target="_blank"
-                    href={`/experts/${p.fullName
-                      ?.toLowerCase()
-                      .replace(/\s+/g, "-")}-${p.id.slice(0, 6)}`}
-                    className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200"
-                  >
-                    View
-                  </a>
                   <button
-                    onClick={() => router.push(`/dashboard/edit/${p.id}`)}
-                    className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                    onClick={() => handleView(p.username)}
+                    className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 relative flex items-center justify-center"
+                    disabled={loadingStates[`view-${p.username}`]}
                   >
-                    Edit
+                    {loadingStates[`view-${p.username}`] ? (
+                      <svg
+                        className="animate-spin h-4 w-4 text-green-800"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      "View"
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleEdit(p.id)}
+                    className="px-3 py-1 rounded-lg text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 relative flex items-center justify-center"
+                    disabled={loadingStates[`edit-${p.id}`]}
+                  >
+                    {loadingStates[`edit-${p.id}`] ? (
+                      <svg
+                        className="animate-spin h-4 w-4 text-blue-800"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      "Edit"
+                    )}
                   </button>
                   <button
                     onClick={() => handleDelete(p.id)}
-                    className="px-3 py-1 rounded-lg text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200"
+                    className="px-3 py-1 rounded-lg text-xs font-medium text-red-700 bg-red-100 hover:bg-red-200 relative flex items-center justify-center"
+                    disabled={loadingStates[`delete-${p.id}`]}
                   >
-                    Delete
+                    {loadingStates[`delete-${p.id}`] ? (
+                      <svg
+                        className="animate-spin h-4 w-4 text-red-700"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      "Delete"
+                    )}
                   </button>
                 </td>
               </tr>

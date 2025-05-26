@@ -13,6 +13,12 @@ import Navbar from "./components/Navbar";
 import Footer from "./pages/Footer";
 import JoinOrQueryForm from "./components/JoinOrQueryForm";
 import BannerSection from "./pages/Banner-section";
+import WhatIsXmytravelSection from "./pages/WhatIsXmytravelSection";
+import WhyPlatformMattersSection from "./pages/WhyPlatformMattersSection";
+import PlatformComparisonSection from "./pages/PlatformComparisonSection";
+import YoureInvitedSection from "./pages/YoureInvitedSection";
+import WordsThatDefineUsSection from "./pages/WordsThatDefineUsSection";
+import JoinUsSection from "./pages/JoinUsSection";
 
 
 export default function Home() {
@@ -22,22 +28,32 @@ export default function Home() {
 
       {/* <Hero/> */}
       <BannerSection/>
- <div className="px-4 md:px-8 lg:px-12 ">
- <WhyLTTXSection/>
+ <div className="px-4 md:px-8 lg:px-12 gap-4 ">
+ {/* <WhyLTTXSection/> */}
+ <WhatIsXmytravelSection/>
+ 
  </div>
-
-  <TravelExpertSection/>
-  <OnboardingSection/>
+ 
+<WhyPlatformMattersSection/>
+<YoureInvitedSection/>
+  {/* <TravelExpertSection/> */}
   <div className="px-4 md:px-8 lg:px-12 ">
-  <ComparisonSection/>
+  {/* <ComparisonSection/> */}
+  <PlatformComparisonSection/>
  </div>
+   <OnboardingSection/>
+  <WordsThatDefineUsSection/>
+
+  
 
   <VideoBlogPage/>
-  <EngagementSection/>
-  <ToolsSupportSection/>
+  {/* <EngagementSection/> */}
+  {/* <ToolsSupportSection/> */}
   
   <div className="px-4 md:px-8 lg:px-12 ">
   {/* <ContactForm/> */}
+  {/* <JoinUsSection/> */}
+
   <JoinOrQueryForm/>
   <Footer/>
  </div>
