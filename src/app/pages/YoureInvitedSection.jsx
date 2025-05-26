@@ -25,7 +25,7 @@ const YoureInvitedSection = () => {
 
   return (
     <section id="youre-invited" className="py-12 px-4 md:px-8 lg:px-12">
-      <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
+      <div className="container mx-auto px-4 flex md:flex-row items-center gap-2 md:gap-10 flex-col-reverse">
         {/* Text and List Section */}
         <div className="md:w-1/2">
           <h2 className="text-2xl lg:text-5xl font-bold text-textcolor mb-4">
