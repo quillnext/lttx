@@ -47,6 +47,7 @@ export default function CompleteProfile() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState('');
   const [referralCodeStatus, setReferralCodeStatus] = useState('');
+  const [referrerUsername, setReferrerUsername] = useState('');
 
   useEffect(() => {
     if (profileId) {
@@ -81,6 +82,7 @@ export default function CompleteProfile() {
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
+          setErrors((prev) => ({ ...prev, fetch: 'Failed to load profile data.' }));
         }
       };
       fetchProfile();
@@ -112,6 +114,7 @@ export default function CompleteProfile() {
   const checkReferralCode = async (code) => {
     if (!code || formData.referred !== 'Yes') {
       setReferralCodeStatus('');
+      setReferrerUsername('');
       setErrors((prev) => ({ ...prev, referralCode: '' }));
       return;
     }
@@ -120,14 +123,19 @@ export default function CompleteProfile() {
       const querySnapshot = await getDocs(codeQuery);
       if (querySnapshot.empty) {
         setReferralCodeStatus('Invalid referral code');
+        setReferrerUsername('');
         setErrors((prev) => ({ ...prev, referralCode: 'Invalid referral code' }));
       } else {
-        setReferralCodeStatus('Referral code is valid');
+        const referrerData = querySnapshot.docs[0].data();
+        const username = referrerData.username || 'Unknown';
+        setReferralCodeStatus(`Referred by ${username}`);
+        setReferrerUsername(username);
         setErrors((prev) => ({ ...prev, referralCode: '' }));
       }
     } catch (error) {
       console.error('Error checking referral code:', error);
       setReferralCodeStatus('Error checking referral code');
+      setReferrerUsername('');
       setErrors((prev) => ({ ...prev, referralCode: 'Error checking referral code' }));
     }
   };
@@ -149,6 +157,7 @@ export default function CompleteProfile() {
       setFormData((prev) => ({ ...prev, referralCode: '' }));
       setErrors((prev) => ({ ...prev, referralCode: '' }));
       setReferralCodeStatus('');
+      setReferrerUsername('');
     }
   };
 
@@ -263,6 +272,7 @@ export default function CompleteProfile() {
     setSavedProfileId(null);
     setUsernameStatus('');
     setReferralCodeStatus('');
+    setReferrerUsername('');
   };
 
   const handleSubmit = async () => {
@@ -290,22 +300,21 @@ export default function CompleteProfile() {
       };
 
       let localProfileId = profileId;
-      if (profileId) {
-        delete profileData.username;
-        await updateDoc(doc(db, 'Profiles', profileId), profileData);
-      } else {
-        const docRef = await addDoc(collection(db, 'ProfileRequests'), profileData);
-        localProfileId = docRef.id;
-        await fetch("/api/send-profile-form", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...formData, profileId: localProfileId }),
-        });
+      const response = await fetch("/api/send-profile-form", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...formData, profileId: localProfileId, photo: photoURL }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to submit profile');
       }
 
-      setSavedProfileId(localProfileId);
+      setSavedProfileId(result.profileId);
 
-      const slug = `${formData.username}`;
+      const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
 
       setShowSuccessModal(true);
       setTimeout(() => {
@@ -314,8 +323,9 @@ export default function CompleteProfile() {
         router.push(`/experts/${slug}`);
       }, 3000);
     } catch (error) {
-      console.error("Submission failed", error);
-      setErrors((prev) => ({ ...prev, submit: 'Failed to submit profile. Please try again.' }));
+      // console.error("Submission failed", error);
+      alert(error.message || 'Failed to submit profile. Please try again.');
+      setErrors((prev) => ({ ...prev, submit: error.message || 'Failed to submit profile. Please try again.' }));
     } finally {
       setIsSubmitting(false);
     }
@@ -354,8 +364,8 @@ export default function CompleteProfile() {
                 onClick={() => {
                   setShowSuccessModal(false);
                   resetForm();
-                  const slug = `${formData.username}`;
-                  router.push(`/profile/${slug}`);
+                  const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
+                  router.push(`/experts/${slug}`);
                 }}
                 className="px-6 py-2 rounded-full text-white bg-green-600 hover:bg-green-700 transition"
               >
@@ -694,7 +704,7 @@ export default function CompleteProfile() {
                       onChange={handleChange}
                     />
                     {referralCodeStatus && (
-                      <p className={`text-sm mt-1 ${referralCodeStatus.includes('valid') ? 'text-green-600' : 'text-red-600'}`}>
+                      <p className={`text-sm mt-1 ${referralCodeStatus.includes('Referred by') ? 'text-green-600' : 'text-red-600'}`}>
                         {referralCodeStatus}
                       </p>
                     )}
@@ -725,7 +735,7 @@ export default function CompleteProfile() {
                   />
                   <label>
                     I confirm that the information provided is accurate and complies with{" "}
-                    <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
+                    <strong>Xmytravel Experts&#39;</strong> professional and ethical standards. I also agree to the{" "}
                     <Link
                       href="/privacy-policy"
                       className="text-blue-600 underline hover:text-blue-800"

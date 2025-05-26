@@ -22,9 +22,9 @@ export default function ProfilesTablePage() {
   const [profiles, setProfiles] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(15);
+  const [itemsPerPage] = useState(10); // Updated to 10
   const [toast, setToast] = useState("");
-  const [loadingStates, setLoadingStates] = useState({}); // Track loading state for each action
+  const [loadingStates, setLoadingStates] = useState({});
   const db = getFirestore(app);
   const storage = getStorage(app);
   const router = useRouter();
@@ -48,7 +48,7 @@ export default function ProfilesTablePage() {
         list.push({
           id: docSnap.id,
           fullName: data.fullName,
-          username: data.username, // Add username field
+          username: data.username,
           email: data.email,
           location: data.location,
           phone: data.phone,

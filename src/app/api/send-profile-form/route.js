@@ -1,8 +1,8 @@
+
 import { NextResponse } from "next/server";
-import { databases, ID, Query } from "@/lib/appwrite";
-import { sendProfileSubmissionEmails } from "@/app/utils/sendProfileSubmissionEmails";
 import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import { sendProfileSubmissionEmails } from "@/app/utils/sendProfileSubmissionEmails";
 
 const db = getFirestore(app);
 
@@ -34,8 +34,9 @@ export async function POST(req) {
       experience,
       companies,
       certifications,
-      inviteCode,
+      referralCode,
       profileId,
+      photo,
     } = body;
 
     if (!email || !fullName || !phone || (!profileId && !username)) {
@@ -55,42 +56,35 @@ export async function POST(req) {
       }
 
       // Validate username format
-      if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-        return NextResponse.json({ error: "Username must be 3-20 characters, alphanumeric or underscore" }, { status: 400 });
+      if (!/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username)) {
+        return NextResponse.json({ error: "Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores" }, { status: 400 });
       }
 
-      const existingUser = await databases.listDocuments(
-        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-        process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
-        [Query.equal("email", email)]
-      );
-
-      if (existingUser.documents.length > 0) {
-        return NextResponse.json({ error: "User already exists. No duplicate profile allowed." }, { status: 400 });
+      // Check for duplicate email in Profiles
+      const emailQuery = query(collection(db, 'Profiles'), where('email', '==', email));
+      const emailSnap = await getDocs(emailQuery);
+      if (!emailSnap.empty) {
+        return NextResponse.json({ error: "This email is already registered. Please use a different email to sign up." }, { status: 400 });
       }
 
-      const invite = await databases.listDocuments(
-        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-        process.env.NEXT_PUBLIC_APPWRITE_INVITES_COLLECTION_ID,
-        [Query.equal("code", inviteCode), Query.equal("status", "pending")]
-      );
-
-      if (!invite.documents.length) {
-        return NextResponse.json({ error: "Invalid or already used invite code" }, { status: 400 });
+      // Validate referral code if provided
+      if (referralCode) {
+        const codeQuery = query(collection(db, 'Profiles'), where('generatedReferralCode', '==', referralCode));
+        const codeSnap = await getDocs(codeQuery);
+        if (codeSnap.empty) {
+          return NextResponse.json({ error: "Invalid referral code" }, { status: 400 });
+        }
       }
     }
 
-    let referralCode = null;
+    // Generate unique referral code for new profiles
+    let generatedReferralCode = null;
     if (!profileId) {
       let isUnique = false;
       while (!isUnique) {
-        referralCode = `REFX${generateRandomChars()}`;
-        const duplicateReferral = await databases.listDocuments(
-          process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-          process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
-          [Query.equal("referralCode", referralCode)]
-        );
-        isUnique = duplicateReferral.documents.length === 0;
+        generatedReferralCode = `REFX${generateRandomChars()}`;
+        const duplicateReferral = await getDocs(query(collection(db, 'Profiles'), where('generatedReferralCode', '==', generatedReferralCode)));
+        isUnique = duplicateReferral.empty;
       }
     }
 
@@ -110,67 +104,34 @@ export async function POST(req) {
       experience,
       companies,
       certifications,
+      photo,
       timestamp: serverTimestamp(),
-      referralCode: profileId ? undefined : referralCode,
+      referralCode: referralCode || null,
+      generatedReferralCode: profileId ? undefined : generatedReferralCode,
     };
 
     let savedProfileId = profileId;
     if (profileId) {
-      // Exclude username from updates
       delete profileData.username;
+      delete profileData.generatedReferralCode;
       await updateDoc(doc(db, "Profiles", profileId), profileData);
     } else {
       const docRef = await addDoc(collection(db, "ProfileRequests"), profileData);
       savedProfileId = docRef.id;
     }
 
-    if (!profileId) {
-      await databases.createDocument(
-        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-        process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID,
-        ID.unique(),
-        {
-          fullName,
-          email,
-          phone,
-          city: location,
-          typeOfTravel: services,
-          industrySegment: [],
-          destinationExpertise: regions,
-          language: languages.split(", "),
-          designation: "",
-          organization: companies,
-          linkedin: null,
-          inviteCode,
-          referralCode,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      );
-
-      await databases.updateDocument(
-        process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID,
-        process.env.NEXT_PUBLIC_APPWRITE_INVITES_COLLECTION_ID,
-        invite.documents[0].$id,
-        {
-          status: "used",
-          email,
-          usedAt: new Date().toISOString(),
-        }
-      );
-    }
-
+    // Send emails to user and admin
     await sendProfileSubmissionEmails({
-      ...body,
-      referralCode: referralCode || "N/A",
+      ...profileData,
       profileId: savedProfileId,
+      generatedReferralCode: generatedReferralCode || "N/A",
     });
 
-    const slug = `${fullName.toLowerCase().replace(/\s+/g, '-')}-${savedProfileId.slice(0, 6)}`;
+    const slug = `${username.toLowerCase().replace(/\s+/g, '-')}`;
 
     return NextResponse.json({ success: true, profileId: savedProfileId, slug }, { status: 200 });
   } catch (error) {
-    console.error("Error in send-profile-form:", error, error.code, error.response);
-    return NextResponse.json({ error: "Failed to process profile submission" }, { status: 500 });
+    console.error("Error in send-profile-form:", error);
+    return NextResponse.json({ error: error.message || "Failed to process profile submission" }, { status: 500 });
   }
 }

@@ -26,6 +26,9 @@ const storage = getStorage(app);
 
 export default function ManageRequestsPage() {
   const [requests, setRequests] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1); // Added for pagination
+  const [itemsPerPage] = useState(10); // Added for pagination
   const [loading, setLoading] = useState(true);
   const [previewProfile, setPreviewProfile] = useState(null);
   const [loadingStates, setLoadingStates] = useState({});
@@ -35,14 +38,24 @@ export default function ManageRequestsPage() {
       const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
       const profiles = querySnapshot.docs.map((docSnap) => {
         const data = docSnap.data();
+        let rawDate;
+        if (data.timestamp && typeof data.timestamp.toDate === "function") {
+          rawDate = data.timestamp.toDate();
+        } else if (data.timestamp && data.timestamp.seconds) {
+          rawDate = new Date(data.timestamp.seconds * 1000);
+        } else {
+          rawDate = new Date();
+        }
+
         return {
           id: docSnap.id,
           ...data,
-          timestamp: data.timestamp?.toDate
-            ? data.timestamp.toDate().toLocaleDateString("en-GB")
-            : "N/A",
+          rawTimestamp: rawDate,
+          timestamp: rawDate.toLocaleDateString("en-GB"),
         };
       });
+
+      profiles.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
       setRequests(profiles);
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -71,16 +84,14 @@ export default function ManageRequestsPage() {
     }
   };
 
-  // Function to generate a unique referral code
-const generateUniqueReferralCode = async (profileId) => {
+  const generateUniqueReferralCode = async (profileId) => {
     const prefix = "REF";
     const numberLength = 3;
-    const maxAttempts = 30; // Increased for reliability
+    const maxAttempts = 30;
 
     console.log(`Generating referral code for profile ${profileId}...`);
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // Generate a random 3-digit number (100–999)
       const randomNumber = Math.floor(100 + Math.random() * 900);
       const code = `${prefix}${randomNumber}`;
 
@@ -98,18 +109,16 @@ const generateUniqueReferralCode = async (profileId) => {
         console.error(`Error checking code uniqueness (attempt ${attempt + 1}):`, error);
         if (attempt === maxAttempts - 1) {
           console.warn("Max attempts reached, using fallback code");
-          // Fallback: REF + first 2 chars of profileId + 3-digit timestamp-based number
           const timestampNum = Date.now().toString().slice(-3);
           return `REF${profileId.slice(0, 2).toUpperCase()}${timestampNum}`;
         }
       }
     }
 
-    // Ultimate fallback
     console.warn("Using ultimate fallback code");
     const timestampNum = Date.now().toString().slice(-3);
     return `REF${profileId.slice(0, 2).toUpperCase()}${timestampNum}`;
-};
+  };
 
   const handleApprove = async (profile) => {
     setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
@@ -127,7 +136,6 @@ const generateUniqueReferralCode = async (profileId) => {
       const data = docSnap.data();
       console.log("Profile data:", data);
 
-      // Generate a unique referral code
       let generatedReferralCode;
       try {
         generatedReferralCode = await generateUniqueReferralCode(profile.id);
@@ -138,20 +146,17 @@ const generateUniqueReferralCode = async (profileId) => {
         console.warn(`Using fallback referral code: ${generatedReferralCode}`);
       }
 
-      // Ensure generatedReferralCode is valid
       if (!generatedReferralCode || generatedReferralCode.length < 6) {
         console.error("Invalid referral code, using emergency fallback");
         generatedReferralCode = `EM-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
       }
 
-      // Include the generated referral code in the profile data
       const updatedData = {
         ...data,
         generatedReferralCode,
         approvalTimestamp: new Date().toISOString(),
       };
 
-      // Save to Profiles collection
       console.log("Saving to Profiles with data:", updatedData);
       try {
         await setDoc(doc(db, "Profiles", profile.id), updatedData);
@@ -161,7 +166,6 @@ const generateUniqueReferralCode = async (profileId) => {
         throw new Error(`Failed to save profile: ${error.message}`);
       }
 
-      // Delete from ProfileRequests
       try {
         await deleteDoc(docRef);
         console.log(`Profile ${profile.id} deleted from ProfileRequests`);
@@ -170,7 +174,6 @@ const generateUniqueReferralCode = async (profileId) => {
         throw new Error(`Failed to delete profile: ${error.message}`);
       }
 
-      // Send approval email
       const slug = data.username || `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
       try {
         console.log("Sending approval email with payload:", {
@@ -247,13 +250,31 @@ const generateUniqueReferralCode = async (profileId) => {
     setLoadingStates((prev) => ({ ...prev, [`preview-${profile.id}`]: false }));
   };
 
+  const filteredRequests = requests.filter((profile) =>
+    profile.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredRequests.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-semibold text-[#36013F] mb-6">📥 Manage Requests</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-[#36013F]">📥 Manage Requests</h1>
+        <input
+          type="text"
+          placeholder="Search by name..."
+          className="p-2 border rounded w-full max-w-sm"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
       {loading ? (
         <p>Loading requests...</p>
-      ) : requests.length === 0 ? (
-        <p className="text-gray-600">No pending requests.</p>
+      ) : currentItems.length === 0 ? (
+        <p className="text-gray-600">No matching requests found.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl shadow border bg-white">
           <table className="min-w-full text-sm text-left border rounded-xl shadow-sm">
@@ -269,7 +290,7 @@ const generateUniqueReferralCode = async (profileId) => {
               </tr>
             </thead>
             <tbody>
-              {requests.map((profile) => (
+              {currentItems.map((profile) => (
                 <tr key={profile.id} className="bg-white hover:bg-gray-50 transition">
                   <td className="p-3 border font-medium">{profile.timestamp}</td>
                   <td className="p-3 border font-medium">{profile.fullName}</td>
@@ -373,6 +394,24 @@ const generateUniqueReferralCode = async (profileId) => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6 gap-2">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
+                page === currentPage
+                  ? "bg-[#36013F] text-white border-[#36013F]"
+                  : "text-gray-700 border-gray-300 hover:bg-gray-100"
+              }`}
+              onClick={() => setCurrentPage(page)}
+            >
+              {page}
+            </button>
+          ))}
         </div>
       )}
 
