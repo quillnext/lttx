@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from "next/server";
 import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
@@ -23,6 +24,7 @@ export async function POST(req) {
       fullName,
       email,
       phone,
+      dateOfBirth, 
       tagline,
       location,
       languages,
@@ -32,19 +34,26 @@ export async function POST(req) {
       services,
       regions,
       experience,
-      companies,
       certifications,
+      referred,
       referralCode,
       profileId,
       photo,
+      leadId,
     } = body;
 
+  
     if (!email || !fullName || !phone || (!profileId && !username)) {
       return NextResponse.json({ error: "Missing required fields: email, fullName, phone, username" }, { status: 400 });
     }
 
+   
+    if (!profileId && !["Yes", "No"].includes(referred)) {
+      return NextResponse.json({ error: "Referred must be 'Yes' or 'No'" }, { status: 400 });
+    }
+
     if (!profileId) {
-      // Check username uniqueness
+     
       const profilesQuery = query(collection(db, 'Profiles'), where('username', '==', username));
       const profileRequestsQuery = query(collection(db, 'ProfileRequests'), where('username', '==', username));
       const [profilesSnap, profileRequestsSnap] = await Promise.all([
@@ -55,20 +64,23 @@ export async function POST(req) {
         return NextResponse.json({ error: "Username is already taken" }, { status: 400 });
       }
 
-      // Validate username format
+     
       if (!/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username)) {
         return NextResponse.json({ error: "Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores" }, { status: 400 });
       }
 
-      // Check for duplicate email in Profiles
+     
       const emailQuery = query(collection(db, 'Profiles'), where('email', '==', email));
       const emailSnap = await getDocs(emailQuery);
       if (!emailSnap.empty) {
-        return NextResponse.json({ error: "This email is already registered. Please use a different email to sign up." }, { status: 400 });
+        return NextResponse.json({ error: "User already exists. No duplicate profile allowed." }, { status: 400 });
       }
 
-      // Validate referral code if provided
-      if (referralCode) {
+     
+      if (referred === "Yes") {
+        if (!referralCode) {
+          return NextResponse.json({ error: "Referral code is required when referred is 'Yes'" }, { status: 400 });
+        }
         const codeQuery = query(collection(db, 'Profiles'), where('generatedReferralCode', '==', referralCode));
         const codeSnap = await getDocs(codeQuery);
         if (codeSnap.empty) {
@@ -77,7 +89,7 @@ export async function POST(req) {
       }
     }
 
-    // Generate unique referral code for new profiles
+   
     let generatedReferralCode = null;
     if (!profileId) {
       let isUnique = false;
@@ -93,6 +105,7 @@ export async function POST(req) {
       fullName,
       email,
       phone,
+      dateOfBirth: dateOfBirth || '', 
       tagline,
       location,
       languages,
@@ -102,12 +115,13 @@ export async function POST(req) {
       services,
       regions,
       experience,
-      companies,
       certifications,
+      referred: referred || 'No', 
+      referralCode: referred === 'Yes' ? referralCode : null, 
       photo,
       timestamp: serverTimestamp(),
-      referralCode: referralCode || null,
       generatedReferralCode: profileId ? undefined : generatedReferralCode,
+      leadId: leadId || null,
     };
 
     let savedProfileId = profileId;

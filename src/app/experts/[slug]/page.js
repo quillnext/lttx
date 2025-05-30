@@ -1,8 +1,10 @@
+
+
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import Image from "next/image";
 import Link from "next/link";
-import Head from "next/head"; // Ensure this is imported correctly
+import Head from "next/head";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +32,42 @@ export async function generateMetadata({ params }) {
   });
 
   if (!profile) {
-    return { title: "Profile Not Found | Travel Expert" };
+    return {
+      title: "Profile Not Found | Travel Expert",
+      description: "The requested travel expert profile could not be found.",
+    };
   }
 
-  return { title: `${profile.fullName} (@${slug}) | Travel Expert` };
+  const metaTitle = `${profile.fullName} - ${profile.title || "Travel Expert"} (@${slug}) | Travel Expert`;
+  const metaDescription = `${profile.tagline || "Explore amazing travel experiences"} | Connect with @${slug}, a ${profile.title || "travel expert"} on Travel Expert`;
+  const metaImage = profile.photo || "https://lttx.vercel.app/default.jpg";
+
+  return {
+    title: metaTitle,
+    description: metaDescription,
+    openGraph: {
+      title: metaTitle,
+      description: metaDescription,
+      images: [
+        {
+          url: metaImage,
+          width: 1200,
+          height: 630,
+          alt: `${profile.fullName}'s Profile Image`,
+        },
+      ],
+      url: `https://lttx.vercel.app/experts/${slug}`,
+      type: "profile",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: metaTitle,
+      description: metaDescription,
+      images: [metaImage],
+      site: "@Xmytravel",
+      creator: `@${slug}`,
+    },
+  };
 }
 
 export default async function ProfilePage({ params }) {
@@ -51,6 +85,10 @@ export default async function ProfilePage({ params }) {
     return <div className="p-10 text-center text-xl">Profile not found.</div>;
   }
 
+  const metaTitle = `${profile.fullName} - ${profile.title || "Travel Expert"} (@${slug}) | Travel Expert`;
+  const metaDescription = `${profile.tagline || "Explore amazing travel experiences"} | Connect with @${slug}, a ${profile.title || "travel expert"} on Travel Expert`;
+  const metaImage = profile.photo || "https://lttx.vercel.app/default.jpg";
+
   return (
     <div className="text-gray-800">
       <Head>
@@ -58,6 +96,23 @@ export default async function ProfilePage({ params }) {
           href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap"
           rel="stylesheet"
         />
+        <title>{metaTitle}</title>
+        <meta name="description" content={metaDescription} />
+        {/* Open Graph Meta Tags */}
+        <meta property="og:title" content={metaTitle} />
+        <meta property="og:description" content={metaDescription} />
+        <meta property="og:image" content={metaImage} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:type" content="profile" />
+        <meta property="og:url" content={`https://lttx.vercel.app/experts/${slug}`} />
+        {/* Twitter Card Meta Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={metaTitle} />
+        <meta name="twitter:description" content={metaDescription} />
+        <meta name="twitter:image" content={metaImage} />
+        <meta name="twitter:site" content="@Xmytravel" />
+        <meta name="twitter:creator" content={`@${slug}`} />
       </Head>
       <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <aside className="lg:col-span-1 space-y-4">
@@ -82,18 +137,19 @@ export default async function ProfilePage({ params }) {
                 className="w-28 h-28 rounded-full border-4 border-[#F4D35E] object-cover mx-auto shadow-md"
               />
             </div>
-             <p className="text-sm mt-1 text-white">@{profile.username}</p>
+            <p className="text-sm mt-1 text-white">@{profile.username}</p>
             <h1
               className="text-xl font-semibold text-white"
               style={{ fontFamily: "'DM Serif Display', serif" }}
             >
-              {profile.fullName} 
+              {profile.fullName}
             </h1>
-           
+            {profile.title && (
+              <p className="text-sm mt-1 text-white">{profile.title}</p>
+            )}
             {profile.tagline && (
               <p className="text-sm mt-1 text-white">{profile.tagline}</p>
             )}
-
             <span className="inline-flex items-center gap-1 bg-[#F4D35E] text-black text-xs font-medium px-3 py-1 mt-2 rounded-full">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -109,7 +165,6 @@ export default async function ProfilePage({ params }) {
               </svg>
               Verified by Xmytravel
             </span>
-
             <div className="mt-4 text-sm text-left space-y-2 text-white">
               {profile.location && (
                 <p className="flex items-center gap-2">
@@ -253,9 +308,7 @@ export default async function ProfilePage({ params }) {
             </details>
           )}
 
-          {(profile.experience?.length > 0 ||
-            profile.companies ||
-            profile.certifications) && (
+          {profile.experience?.length > 0 && (
             <details
               className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden"
             >
@@ -264,7 +317,7 @@ export default async function ProfilePage({ params }) {
                   style={{ fontFamily: "'DM Serif Display', serif" }}
                   className="text-lg font-semibold text-[#36013F]"
                 >
-                  Experience & Credentials
+                  Experience
                 </h2>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -283,15 +336,11 @@ export default async function ProfilePage({ params }) {
               </summary>
               <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
                 <ul className="list-disc list-inside space-y-1">
-                  {profile.experience?.map((e, i) => (
-                    <li key={i}>{e}</li>
+                  {profile.experience.map((e, i) => (
+                    <li key={i}>
+                      {e.title} at {e.company}, {e.startDate} - {e.endDate || "Present"}
+                    </li>
                   ))}
-                  {profile.companies && (
-                    <li>Companies: {profile.companies}</li>
-                  )}
-                  {profile.certifications && (
-                    <li>Certifications: {profile.certifications}</li>
-                  )}
                 </ul>
               </div>
             </details>

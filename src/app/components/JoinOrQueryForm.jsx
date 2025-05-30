@@ -67,7 +67,7 @@ await fetch("/api/send-expert-form", {
           Join Us
         </h2>
         <p className="text-primary">
-         Whether you’re a traveler seeking truth or a professional ready to share it — Xmytravel 
+         Whether you’re a traveler seeking truth or a professional ready to share it Xmytravel 
 is your platform
         </p>
         

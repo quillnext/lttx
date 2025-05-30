@@ -63,7 +63,7 @@ const WhyPlatformMattersSection = () => {
             })}
           </ul>
           <p className="text-textcolor mb-6 text-base sm:text-lg md:text-xl font-bold">
-            Think of it as having a panel of travel scientists — for your life’s most memorable decisions.
+            Think of it as having a panel of travel scientists for your life’s most memorable decisions.
           </p>
           <Button btn="Learn More" />
         </div>
