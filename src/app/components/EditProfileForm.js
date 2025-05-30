@@ -6,6 +6,7 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { getFirestore } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import Image from "next/image";
 
 const db = getFirestore(app);
 
@@ -259,7 +260,7 @@ export default function EditProfileForm({ initialData, onSave }) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Upload Profile Photo</label>
           {formData.photo && typeof formData.photo === "string" && (
-            <img src={formData.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full mb-2" />
+            <Image src={formData.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full mb-2" />
           )}
           <input
             type="file"

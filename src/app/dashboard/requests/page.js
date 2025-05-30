@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { getStorage, ref, listAll, deleteObject } from "firebase/storage";
 import { app } from "@/lib/firebase";
+import Image from "next/image";
 
 const db = getFirestore(app);
 const storage = getStorage(app);
@@ -62,7 +63,7 @@ function ProfilePreview({ profile, onClose }) {
           {profile.photo && (
             <div className="mt-2">
               <strong>Photo:</strong>
-              <img src={profile.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full mt-1" />
+              <Image src={profile.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full mt-1" />
             </div>
           )}
         </div>
