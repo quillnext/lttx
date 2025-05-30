@@ -4,7 +4,7 @@ import Image from 'next/image';
 const WhatIsXmytravelSection = () => {
   return (
     <section id='what-is-xmytravel' className="mt-20 bg-secondary p-2 py-10 rounded-[40px]">
-      <div className="container mx-auto px-4 flex flex-col lg:flex-row items-center gap-16">
+      <div className="container mx-auto px-4 flex md:flex-row items-center gap-2 md:gap-10 flex-col-reverse">
         {/* Content */}
         <div className="md:w-2/3">
           <h2 className="text-2xl lg:text-5xl font-bold text-textcolor mb-5">
