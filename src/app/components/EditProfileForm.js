@@ -260,7 +260,7 @@ export default function EditProfileForm({ initialData, onSave }) {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Upload Profile Photo</label>
           {formData.photo && typeof formData.photo === "string" && (
-            <Image src={formData.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full mb-2" />
+            <Image src={formData.photo} width={500} height={500} alt="Profile" className="w-32 h-32 object-cover rounded-full mb-2" />
           )}
           <input
             type="file"

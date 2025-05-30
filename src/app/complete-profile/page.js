@@ -160,9 +160,9 @@ export default function CompleteProfile() {
         setErrors((prev) => ({ ...prev, referralCode: 'Invalid referral code' }));
       } else {
         const referrerData = querySnapshot.docs[0].data();
-        const username = referrerData.username || 'Unknown';
-        setReferralCodeStatus(`Referred by ${username}`);
-        setReferrerUsername(username);
+        const fullName = referrerData.fullName || 'Unknown';
+        setReferralCodeStatus(`Referred by ${fullName}`);
+        setReferrerUsername(fullName);
         setErrors((prev) => ({ ...prev, referralCode: '' }));
       }
     } catch (error) {

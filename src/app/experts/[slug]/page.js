@@ -38,9 +38,9 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const metaTitle = `${profile.fullName} - ${profile.title || "Travel Expert"} (@${slug}) | Travel Expert`;
-  const metaDescription = `${profile.tagline || "Explore amazing travel experiences"} | Connect with @${slug}, a ${profile.title || "travel expert"} on Travel Expert`;
-  const metaImage = profile.photo || "https://lttx.vercel.app/default.jpg";
+  const metaTitle = `${profile.fullName} -${profile.tagline}`;
+  const metaDescription = `${profile.about}`;
+  const metaImage = `${profile.photo}`;
 
   return {
     title: metaTitle,
@@ -85,9 +85,9 @@ export default async function ProfilePage({ params }) {
     return <div className="p-10 text-center text-xl">Profile not found.</div>;
   }
 
-  const metaTitle = `${profile.fullName} - ${profile.title || "Travel Expert"} (@${slug}) | Travel Expert`;
-  const metaDescription = `${profile.tagline || "Explore amazing travel experiences"} | Connect with @${slug}, a ${profile.title || "travel expert"} on Travel Expert`;
-  const metaImage = profile.photo || "https://lttx.vercel.app/default.jpg";
+   const metaTitle = `${profile.fullName} -${profile.tagline}`;
+  const metaDescription = `${profile.about}`;
+  const metaImage = `${profile.photo}`;
 
   return (
     <div className="text-gray-800">
@@ -338,7 +338,7 @@ export default async function ProfilePage({ params }) {
                 <ul className="list-disc list-inside space-y-1">
                   {profile.experience.map((e, i) => (
                     <li key={i}>
-                      {e.title} at {e.company}, {e.startDate} - {e.endDate || "Present"}
+                      {e.title} at {e.company}, ({e.startDate}) - {e.endDate || "Present"}
                     </li>
                   ))}
                 </ul>

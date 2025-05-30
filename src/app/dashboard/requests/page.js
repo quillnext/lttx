@@ -63,7 +63,7 @@ function ProfilePreview({ profile, onClose }) {
           {profile.photo && (
             <div className="mt-2">
               <strong>Photo:</strong>
-              <Image src={profile.photo} alt="Profile" className="w-32 h-32 object-cover rounded-full mt-1" />
+              <Image src={profile.photo} alt="Profile" width={500} height={500} className="w-32 h-32 object-cover rounded-full mt-1" />
             </div>
           )}
         </div>
@@ -439,7 +439,7 @@ export default function ManageRequestsPage() {
                 <th className="p-3 border">Location</th>
                 <th className="p-3 border">Date of Birth</th>
                 <th className="p-3 border">Referred</th>
-                <th className="p-3 border">Referral Code</th>
+                <th className="p-3 border">Referred By (Code)</th>
                 <th className="p-3 border">Actions</th>
               </tr>
             </thead>
