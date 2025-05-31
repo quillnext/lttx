@@ -49,6 +49,8 @@ export default function ProfilesTablePage() {
           id: docSnap.id,
           fullName: data.fullName,
           username: data.username,
+          generatedReferralCode: data.generatedReferralCode,
+          referralCode: data.referralCode,
           email: data.email,
           location: data.location,
           phone: data.phone,
@@ -160,9 +162,11 @@ export default function ProfilesTablePage() {
           <thead className="bg-[#F4D35E] text-[#36013F] font-semibold text-left">
             <tr>
               <th className="p-3 border">Date</th>
+              <th className="p-3 border">Own Referral Code</th>
               <th className="p-3 border">Name</th>
               <th className="p-3 border">Email</th>
               <th className="p-3 border">Location</th>
+              <th className="p-3 border">Referred By (Code)</th>
               <th className="p-3 border">Actions</th>
             </tr>
           </thead>
@@ -170,9 +174,11 @@ export default function ProfilesTablePage() {
             {currentItems.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50 transition">
                 <td className="p-3 border text-gray-600">{p.timestamp}</td>
+                <td className="p-3 border text-gray-600">{p.generatedReferralCode}</td>
                 <td className="p-3 border font-medium">{p.fullName}</td>
                 <td className="p-3 border">{p.email}</td>
                 <td className="p-3 border">{p.location}</td>
+                <td className="p-3 border">{p.referralCode}</td>
                 <td className="p-3 border flex gap-2 items-center">
                   <button
                     onClick={() => handleView(p.username)}

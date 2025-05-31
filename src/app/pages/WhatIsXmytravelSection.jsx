@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 const WhatIsXmytravelSection = () => {
   return (
-    <section id='what-is-xmytravel' className="mt-20 bg-secondary p-2 py-10 rounded-[40px]">
+    <section id='about' className="mt-20 bg-secondary p-2 py-10 rounded-[40px]">
       <div className="container mx-auto px-4 flex md:flex-row items-center gap-2 md:gap-10 flex-col-reverse">
         {/* Content */}
         <div className="md:w-2/3">
@@ -14,12 +14,12 @@ const WhatIsXmytravelSection = () => {
             The world doesn’t need more travel content. It needs clarity.
           </p>
           <p className="text-lg text-textcolor mb-4">
-            Xmytravel is a curated platform that bridges the gap between confused travelers and credible travel experts. Whether you need help with visas, planning a multi-country trip, or navigating aviation rules, here, you get more than advice — you get accountability.
+            Xmytravel is a curated platform that bridges the gap between confused travelers and credible travel experts. Whether you need help with visas, planning a multi-country trip, or navigating aviation rules, here, you get more than advice you get accountability.
           </p>
           <p className="text-lg text-textcolor font-bold">
             This is not Reddit.<br />
             This is not AI guesswork.<br />
-            This is Xmytravel — expert-led, purpose-built.
+            This is Xmytravel expert-led, purpose-built.
           </p>
         </div>
         {/* Illustration */}

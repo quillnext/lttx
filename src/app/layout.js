@@ -28,8 +28,8 @@ const inter = Inter({
 
 
 export const metadata = {
-  title: "Join the Invite-Only Network of Verified Travel Experts | Xmytravel.com",
-  description: "Become part of an elite community dedicated to transforming travel consultancy.",
+  title: "Xmytravel — India's Top Network of Verified Travel Experts",
+  description: "Get expert travel consultation from verified professionals across flights, visas, hotels, holidays, and more. Join Xmytravel, India’s trusted travel hub.",
 };
 
 export default function RootLayout({ children }) {

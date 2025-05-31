@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -9,6 +10,8 @@ import '@/app/globals.css';
 import Link from 'next/link';
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const storage = getStorage(app);
 const db = getFirestore(app);
@@ -26,6 +29,7 @@ export default function CompleteProfile() {
     fullName: '',
     email: '',
     phone: '',
+    dateOfBirth: null,
     tagline: '',
     location: '',
     languages: '',
@@ -35,8 +39,7 @@ export default function CompleteProfile() {
     photo: null,
     services: [''],
     regions: [],
-    experience: [''],
-    companies: '',
+    experience: [{ title: '', company: '', startDate: null, endDate: null }],
     certifications: '',
     referred: '',
     referralCode: '',
@@ -48,6 +51,29 @@ export default function CompleteProfile() {
   const [usernameStatus, setUsernameStatus] = useState('');
   const [referralCodeStatus, setReferralCodeStatus] = useState('');
   const [referrerUsername, setReferrerUsername] = useState('');
+
+
+  const formatDate = (date, format = 'YYYY-MM-DD') => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    if (format === 'YYYY-MM') return `${year}-${month}`;
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+ 
+  const parseDate = (dateString, format = 'YYYY-MM-DD') => {
+    if (!dateString) return null;
+    const parts = dateString.split('-');
+    if (format === 'YYYY-MM' && parts.length === 2) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1);
+    }
+    if (format === 'YYYY-MM-DD' && parts.length === 3) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (profileId) {
@@ -63,6 +89,7 @@ export default function CompleteProfile() {
               fullName: data.fullName || '',
               email: data.email || '',
               phone: data.phone || '',
+              dateOfBirth: data.dateOfBirth ? parseDate(data.dateOfBirth, 'YYYY-MM-DD') : null,
               tagline: data.tagline || '',
               location: data.location || '',
               languages: data.languages || '',
@@ -72,8 +99,14 @@ export default function CompleteProfile() {
               photo: null,
               services: data.services?.length ? data.services : [''],
               regions: data.regions?.length ? data.regions : [],
-              experience: data.experience?.length ? data.experience : [''],
-              companies: data.companies || '',
+              experience: data.experience?.length
+                ? data.experience.map(exp => ({
+                    title: exp.title || '',
+                    company: exp.company || '',
+                    startDate: exp.startDate ? parseDate(exp.startDate, 'YYYY-MM') : null,
+                    endDate: exp.endDate === 'Present' ? 'Present' : parseDate(exp.endDate, 'YYYY-MM'),
+                  }))
+                : [{ title: '', company: '', startDate: null, endDate: null }],
               certifications: data.certifications || '',
               referred: data.referred || '',
               referralCode: data.referralCode || '',
@@ -88,6 +121,29 @@ export default function CompleteProfile() {
       fetchProfile();
     }
   }, [profileId]);
+
+  const fetchLeadByPhone = async (phone) => {
+    if (!phone || phone.length < 7) return;
+  
+    try {
+      const leadsQuery = query(collection(db, 'JoinQueries'), where('phone', '==', phone));
+      const querySnapshot = await getDocs(leadsQuery);
+      if (!querySnapshot.empty) {
+        const leads = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), timestamp: doc.data().timestamp?.toDate() || new Date() }));
+        const mostRecentLead = leads.sort((a, b) => b.timestamp - a.timestamp)[0];
+        setFormData((prev) => ({
+          ...prev,
+          fullName: mostRecentLead.name || prev.fullName,
+          email: mostRecentLead.email || prev.email,
+          phone: phone,
+        }));
+        setErrors((prev) => ({ ...prev, fullName: '', email: '', phone: '' }));
+      }
+    } catch (error) {
+      console.error('Error fetching lead by phone:', error);
+      setErrors((prev) => ({ ...prev, phone: 'Failed to fetch lead data.' }));
+    }
+  };
 
   const checkUsernameAvailability = async (username) => {
     if (!username || profileId) return;
@@ -127,9 +183,9 @@ export default function CompleteProfile() {
         setErrors((prev) => ({ ...prev, referralCode: 'Invalid referral code' }));
       } else {
         const referrerData = querySnapshot.docs[0].data();
-        const username = referrerData.username || 'Unknown';
-        setReferralCodeStatus(`Referred by ${username}`);
-        setReferrerUsername(username);
+        const fullName = referrerData.fullName || 'Unknown';
+        setReferralCodeStatus(`Referred by ${fullName}`);
+        setReferrerUsername(fullName);
         setErrors((prev) => ({ ...prev, referralCode: '' }));
       }
     } catch (error) {
@@ -188,9 +244,52 @@ export default function CompleteProfile() {
     setFormData((prev) => ({ ...prev, [key]: updated }));
   };
 
+  const handleExperienceChange = (index, field, value) => {
+    const updated = [...formData.experience];
+    updated[index] = { ...updated[index], [field]: value };
+    setFormData((prev) => ({ ...prev, experience: updated }));
+    setErrors((prev) => ({ ...prev, experience: '' }));
+  };
+
+  const addExperience = () => {
+    setFormData((prev) => ({
+      ...prev,
+      experience: [...prev.experience, { title: '', company: '', startDate: null, endDate: null }],
+    }));
+  };
+
+  const removeExperience = (index) => {
+    const updated = formData.experience.filter((_, i) => i !== index);
+    setFormData((prev) => ({ ...prev, experience: updated }));
+  };
+
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^\+?[0-9]{7,15}$/.test(phone);
   const validateUsername = (username) => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
+
+  const validateDateOfBirth = (date) => {
+    if (!date) return false;
+    const today = new Date();
+    const minAgeDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+    const minDate = new Date(1900, 0, 1);
+    return date <= minAgeDate && date >= minDate && date <= today;
+  };
+
+  const validateExperienceDates = (experience) => {
+    const today = new Date();
+    for (let i = 0; i < experience.length; i++) {
+      const { startDate, endDate } = experience[i];
+      if (!startDate) return 'Start date is required';
+      if (!endDate) return 'End date is required';
+      if (startDate > today) return 'Start date cannot be in the future';
+      if (endDate !== 'Present') {
+        if (!endDate) return 'End date is required';
+        if (endDate < startDate) return 'End date must be after start date';
+        if (endDate > today) return 'End date cannot be in the future';
+      }
+    }
+    return '';
+  };
 
   const validateStep = () => {
     const newErrors = {};
@@ -200,26 +299,33 @@ export default function CompleteProfile() {
         if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
       });
       if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
+      if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
       if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
       if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
       if (formData.username && !validateUsername(formData.username)) {
         newErrors.username = 'Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores';
       }
       if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
+      if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
+        newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old and not in the future.';
+      }
     }
 
     if (currentStep === 1) {
-      if (!formData.services.length || formData.services.some((s) => !s.trim())) {
+      if (!formData.services.length || formData.services.some(s => !s.trim())) {
         newErrors.services = 'At least one service is required';
       }
       if (!formData.regions.length) newErrors.regions = 'At least one region is required';
     }
 
     if (currentStep === 2) {
-      if (!formData.experience.length || formData.experience.some((e) => !e.trim())) {
-        newErrors.experience = 'At least one experience entry is required';
+      if (!formData.experience.length || formData.experience.some((exp) => 
+        !exp.title.trim() || !exp.company.trim()
+      )) {
+        newErrors.experience = 'All experience fields (title, company) are required';
       }
-      if (!formData.companies.trim()) newErrors.companies = 'This field is required';
+      const dateError = validateExperienceDates(formData.experience);
+      if (dateError) newErrors.experience = dateError;
       if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
       if (!agreed) newErrors.agreed = 'You must agree to the terms';
       if (!formData.referred) newErrors.referred = 'Please select whether you were referred';
@@ -250,6 +356,7 @@ export default function CompleteProfile() {
       fullName: '',
       email: '',
       phone: '',
+      dateOfBirth: null,
       tagline: '',
       location: '',
       languages: '',
@@ -259,8 +366,7 @@ export default function CompleteProfile() {
       photo: null,
       services: [''],
       regions: [],
-      experience: [''],
-      companies: '',
+      experience: [{ title: '', company: '', startDate: null, endDate: null }],
       certifications: '',
       referred: '',
       referralCode: '',
@@ -294,8 +400,29 @@ export default function CompleteProfile() {
       }
 
       const profileData = {
-        ...formData,
+        username: formData.username,
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        dateOfBirth: formData.dateOfBirth ? formatDate(formData.dateOfBirth, 'YYYY-MM-DD') : '',
+        tagline: formData.tagline,
+        location: formData.location,
+        languages: formData.languages,
+        responseTime: formData.responseTime,
+        pricing: formData.pricing,
+        about: formData.about,
         photo: photoURL,
+        services: formData.services,
+        regions: formData.regions,
+        experience: formData.experience.map(exp => ({
+          title: exp.title,
+          company: exp.company,
+          startDate: exp.startDate ? formatDate(exp.startDate, 'YYYY-MM') : '',
+          endDate: exp.endDate === 'Present' ? 'Present' : exp.endDate ? formatDate(exp.endDate, 'YYYY-MM') : '',
+        })),
+        certifications: formData.certifications,
+        referred: formData.referred || 'No',
+        referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
         timestamp: serverTimestamp(),
       };
 
@@ -303,7 +430,7 @@ export default function CompleteProfile() {
       const response = await fetch("/api/send-profile-form", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, profileId: localProfileId, photo: photoURL }),
+        body: JSON.stringify({ ...profileData, profileId: localProfileId }),
       });
 
       const result = await response.json();
@@ -320,10 +447,9 @@ export default function CompleteProfile() {
       setTimeout(() => {
         setShowSuccessModal(false);
         resetForm();
-        router.push(`/experts/${slug}`);
+        router.push(`/`);
       }, 3000);
     } catch (error) {
-      // console.error("Submission failed", error);
       alert(error.message || 'Failed to submit profile. Please try again.');
       setErrors((prev) => ({ ...prev, submit: error.message || 'Failed to submit profile. Please try again.' }));
     } finally {
@@ -381,6 +507,26 @@ export default function CompleteProfile() {
               <h2 className="text-2xl font-semibold text-[var(--primary)] mb-4">👤 Basic Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
+                  <PhoneInput
+                    country={"in"}
+                    value={formData.phone}
+                    onChange={(phone) => {
+                      setFormData((prev) => ({ ...prev, phone }));
+                      fetchLeadByPhone(phone);
+                    }}
+                    placeholder="Enter phone number"
+                    inputProps={{
+                      id: "phone",
+                      className: `w-full p-3 border px-12 border-gray-300 rounded-2xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
+                      required: true,
+                      autoFocus: false,
+                    }}
+                  />
+                  {errors.phone && (
+                    <p className="text-sm text-red-600 mt-1">{errors.phone}</p>
+                  )}
+                </div>
+                <div>
                   <input
                     type="text"
                     name="username"
@@ -424,20 +570,23 @@ export default function CompleteProfile() {
                   )}
                 </div>
                 <div>
-                  <PhoneInput
-                    country={"in"}
-                    value={formData.phone}
-                    onChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
-                    placeholder="Enter phone number"
-                    inputProps={{
-                      id: "phone",
-                      className: `w-full p-3 border px-12 border-gray-300 rounded-2xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
-                      required: true,
-                      autoFocus: false,
+                  <DatePicker
+                    selected={formData.dateOfBirth}
+                    onChange={(date) => {
+                      setFormData((prev) => ({ ...prev, dateOfBirth: date }));
+                      setErrors((prev) => ({ ...prev, dateOfBirth: '' }));
                     }}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Date of Birth"
+                    className={`px-4 py-3 border rounded-xl w-full ${errors.dateOfBirth ? 'border-red-500' : ''}`}
+                    maxDate={new Date()}
+                    showYearDropdown
+                    yearDropdownItemNumber={100}
+                    scrollableYearDropdown
                   />
-                  {errors.phone && (
-                    <p className="text-sm text-red-600 mt-1">{errors.phone}</p>
+                  <p className="text-sm text-gray-500 mt-1">e.g. 1990-01-01</p>
+                  {errors.dateOfBirth && (
+                    <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>
                   )}
                 </div>
                 <div>
@@ -601,47 +750,80 @@ export default function CompleteProfile() {
           {currentStep === 2 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-semibold text-[var(--primary)] mb-4">📚 Experience & Credentials</h2>
-              {formData.experience.map((exp, index) => (
-                <div key={index} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                    placeholder="e.g. 8+ years at MakeMyTrip"
-                    value={exp}
-                    onChange={(e) => handleArrayChange(index, 'experience', e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="text-red-500"
-                    onClick={() => removeField('experience', index)}
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addField('experience')}
-                className="text-sm text-[var(--primary)] mt-2"
-              >
-                + Add Experience
-              </button>
-              {errors.experience && (
-                <p className="text-sm text-red-600 mt-1">{errors.experience}</p>
-              )}
-
               <div>
-                <input
-                  type="text"
-                  name="companies"
-                  className={`w-full px-4 py-2 border rounded-xl ${errors.companies ? 'border-red-500' : ''}`}
-                  placeholder="Companies Worked With (comma separated)"
-                  value={formData.companies}
-                  onChange={handleChange}
-                />
-                <p className="text-sm text-gray-500 mt-1">e.g. MakeMyTrip, TravelTriangle, DMCs</p>
-                {errors.companies && (
-                  <p className="text-sm text-red-600 mt-1">{errors.companies}</p>
+                <label className="block mb-2 font-medium text-gray-700">Experience</label>
+                {formData.experience.map((exp, index) => (
+                  <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Job Title (e.g. Travel Consultant)"
+                          className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
+                          value={exp.title}
+                          onChange={(e) => handleExperienceChange(index, 'title', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Company (e.g. MakeMyTrip)"
+                          className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
+                          value={exp.company}
+                          onChange={(e) => handleExperienceChange(index, 'company', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <DatePicker
+                          selected={exp.startDate}
+                          onChange={(date) => handleExperienceChange(index, 'startDate', date)}
+                          dateFormat="yyyy-MM"
+                          placeholderText="Start Date (YYYY-MM)"
+                          className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
+                          maxDate={new Date()}
+                          showMonthYearPicker
+                        />
+                        <p className="text-sm text-gray-500 mt-1">e.g. 2020-01</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DatePicker
+                          selected={exp.endDate !== 'Present' ? exp.endDate : null}
+                          onChange={(date) => handleExperienceChange(index, 'endDate', date)}
+                          dateFormat="yyyy-MM"
+                          placeholderText="End Date (YYYY-MM)"
+                          className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
+                          maxDate={new Date()}
+                          showMonthYearPicker
+                          disabled={exp.endDate === 'Present'}
+                        />
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={exp.endDate === 'Present'}
+                            onChange={(e) => handleExperienceChange(index, 'endDate', e.target.checked ? 'Present' : null)}
+                          />
+                          Present
+                        </label>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="text-red-500 mt-2"
+                      onClick={() => removeExperience(index)}
+                    >
+                      ✕ Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addExperience}
+                  className="text-sm text-[var(--primary)] mt-2"
+                >
+                  + Add Experience
+                </button>
+                {errors.experience && (
+                  <p className="text-sm text-red-600 mt-1">{errors.experience}</p>
                 )}
               </div>
 
