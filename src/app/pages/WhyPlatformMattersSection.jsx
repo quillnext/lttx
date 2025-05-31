@@ -24,7 +24,7 @@ const WhyPlatformMattersSection = () => {
   ];
 
   return (
-    <section id="why-platform-matters" className="py-12 px-4 md:px-8 lg:px-12">
+    <section id="why-us" className="py-12 px-4 md:px-8 lg:px-12">
       <div className="container mx-auto px-4 flex flex-col md:flex-row items-center gap-10">
         {/* Image Section */}
         <div className="md:w-1/2 mb-8 md:mb-0 w-full">

@@ -1,5 +1,4 @@
 
-
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import Image from "next/image";
@@ -38,7 +37,7 @@ export async function generateMetadata({ params }) {
     };
   }
 
-  const metaTitle = `${profile.fullName} -${profile.tagline}`;
+  const metaTitle = `${profile.fullName} - ${profile.tagline}`;
   const metaDescription = `${profile.about}`;
   const metaImage = `${profile.photo}`;
 
@@ -85,9 +84,80 @@ export default async function ProfilePage({ params }) {
     return <div className="p-10 text-center text-xl">Profile not found.</div>;
   }
 
-   const metaTitle = `${profile.fullName} -${profile.tagline}`;
+  const metaTitle = `${profile.fullName} - ${profile.tagline}`;
   const metaDescription = `${profile.about}`;
   const metaImage = `${profile.photo}`;
+
+  // Function to parse date strings (e.g., "2023-01" to Date)
+  const parseDate = (dateString) => {
+    if (!dateString || typeof dateString !== "string") return null;
+    const [year, month] = dateString.split("-").map(Number);
+    if (!year || !month) return null;
+    return new Date(year, month - 1); // Month is 0-based in JavaScript
+  };
+
+  // Function to format date to "MMM YYYY" (e.g., "Jan 2025")
+  const formatDate = (dateString) => {
+    if (dateString === "Present") return "Present";
+    const date = parseDate(dateString);
+    if (!date) return "";
+    return date.toLocaleString("en-US", { month: "short", year: "numeric" }).replace(" ", " ");
+  };
+
+  // Function to calculate duration in "X years Y months" or "X months" format
+  const calculateDuration = (startDateStr, endDateStr) => {
+    const startDate = parseDate(startDateStr);
+    const endDate = endDateStr === "Present" ? new Date() : parseDate(endDateStr);
+
+    if (!startDate || !endDate || startDate > endDate) return "";
+
+    let years = endDate.getFullYear() - startDate.getFullYear();
+    let months = endDate.getMonth() - startDate.getMonth();
+
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    if (endDate.getDate() < startDate.getDate()) {
+      months--;
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+    }
+
+    const totalMonths = years * 12 + months;
+
+    if (totalMonths < 12) {
+      return totalMonths > 0
+        ? `${totalMonths} ${totalMonths === 1 ? "month" : "months"}`
+        : "Less than a month";
+    }
+
+    const parts = [];
+    if (years > 0) {
+      parts.push(`${years} ${years === 1 ? "year" : "years"}`);
+    }
+    if (months > 0) {
+      parts.push(`${months} ${months === 1 ? "month" : "months"}`);
+    }
+
+    return parts.length > 0 ? parts.join(" ") : "Less than a month";
+  };
+
+  // Sort experiences by startDate (latest first) and add formatted dates and duration
+  const sortedExperience = profile.experience
+    ?.map((exp) => ({
+      ...exp,
+      startDateParsed: parseDate(exp.startDate),
+      startDateFormatted: formatDate(exp.startDate),
+      endDateFormatted: formatDate(exp.endDate),
+      duration: calculateDuration(exp.startDate, exp.endDate),
+    }))
+    .filter((exp) => exp.startDateParsed) // Exclude invalid dates
+    .sort((a, b) => b.startDateParsed - a.startDateParsed) // Latest first
+    .map(({ startDateParsed, ...exp }) => exp); // Remove temporary parsed date
 
   return (
     <div className="text-gray-800">
@@ -308,7 +378,7 @@ export default async function ProfilePage({ params }) {
             </details>
           )}
 
-          {profile.experience?.length > 0 && (
+          {sortedExperience?.length > 0 && (
             <details
               className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden"
             >
@@ -335,10 +405,11 @@ export default async function ProfilePage({ params }) {
                 </svg>
               </summary>
               <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
-                <ul className="list-disc list-inside space-y-1">
-                  {profile.experience.map((e, i) => (
+                <ul className="list-disc list-inside space-y-2">
+                  {sortedExperience.map((exp, i) => (
                     <li key={i}>
-                      {e.title} at {e.company}, ({e.startDate}) - {e.endDate || "Present"}
+                      {exp.title} at {exp.company} ({exp.startDateFormatted} - {exp.endDateFormatted}
+                      {exp.duration && `, ${exp.duration}`})
                     </li>
                   ))}
                 </ul>

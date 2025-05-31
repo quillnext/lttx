@@ -43,7 +43,7 @@ const PlatformComparisonSection = () => {
   ];
 
   return (
-    <section className="container mx-auto py-12 bg-primary rounded-3xl mt-20">
+    <section id='features' className="container mx-auto py-12 bg-primary rounded-3xl mt-20">
       <div className="px-4 sm:px-10">
         {/* Heading */}
         <h2 className="text-2xl lg:text-5xl font-bold text-white text-center">

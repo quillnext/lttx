@@ -10,6 +10,8 @@ import '@/app/globals.css';
 import Link from 'next/link';
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 const storage = getStorage(app);
 const db = getFirestore(app);
@@ -27,7 +29,7 @@ export default function CompleteProfile() {
     fullName: '',
     email: '',
     phone: '',
-    dateOfBirth: '', 
+    dateOfBirth: null,
     tagline: '',
     location: '',
     languages: '',
@@ -37,7 +39,7 @@ export default function CompleteProfile() {
     photo: null,
     services: [''],
     regions: [],
-    experience: [{ title: '', company: '', startDate: '', endDate: '' }],
+    experience: [{ title: '', company: '', startDate: null, endDate: null }],
     certifications: '',
     referred: '',
     referralCode: '',
@@ -50,7 +52,29 @@ export default function CompleteProfile() {
   const [referralCodeStatus, setReferralCodeStatus] = useState('');
   const [referrerUsername, setReferrerUsername] = useState('');
 
+
+  const formatDate = (date, format = 'YYYY-MM-DD') => {
+    if (!date) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    if (format === 'YYYY-MM') return `${year}-${month}`;
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
  
+  const parseDate = (dateString, format = 'YYYY-MM-DD') => {
+    if (!dateString) return null;
+    const parts = dateString.split('-');
+    if (format === 'YYYY-MM' && parts.length === 2) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1);
+    }
+    if (format === 'YYYY-MM-DD' && parts.length === 3) {
+      return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (profileId) {
       const fetchProfile = async () => {
@@ -65,7 +89,7 @@ export default function CompleteProfile() {
               fullName: data.fullName || '',
               email: data.email || '',
               phone: data.phone || '',
-              dateOfBirth: data.dateOfBirth || '', 
+              dateOfBirth: data.dateOfBirth ? parseDate(data.dateOfBirth, 'YYYY-MM-DD') : null,
               tagline: data.tagline || '',
               location: data.location || '',
               languages: data.languages || '',
@@ -79,11 +103,10 @@ export default function CompleteProfile() {
                 ? data.experience.map(exp => ({
                     title: exp.title || '',
                     company: exp.company || '',
-                    startDate: exp.startDate || '',
-                    endDate: exp.endDate || '',
+                    startDate: exp.startDate ? parseDate(exp.startDate, 'YYYY-MM') : null,
+                    endDate: exp.endDate === 'Present' ? 'Present' : parseDate(exp.endDate, 'YYYY-MM'),
                   }))
-                : [{ title: '', company: '', startDate: '', endDate: '' }],
-             
+                : [{ title: '', company: '', startDate: null, endDate: null }],
               certifications: data.certifications || '',
               referred: data.referred || '',
               referralCode: data.referralCode || '',
@@ -99,9 +122,9 @@ export default function CompleteProfile() {
     }
   }, [profileId]);
 
-  
   const fetchLeadByPhone = async (phone) => {
     if (!phone || phone.length < 7) return;
+  
     try {
       const leadsQuery = query(collection(db, 'JoinQueries'), where('phone', '==', phone));
       const querySnapshot = await getDocs(leadsQuery);
@@ -231,7 +254,7 @@ export default function CompleteProfile() {
   const addExperience = () => {
     setFormData((prev) => ({
       ...prev,
-      experience: [...prev.experience, { title: '', company: '', startDate: '', endDate: '' }],
+      experience: [...prev.experience, { title: '', company: '', startDate: null, endDate: null }],
     }));
   };
 
@@ -243,23 +266,40 @@ export default function CompleteProfile() {
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^\+?[0-9]{7,15}$/.test(phone);
   const validateUsername = (username) => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
-  const validateDate = (date) => /^\d{4}-\d{2}$/.test(date);
-  const validateDateOfBirth = (dob) => {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return false;
-    const date = new Date(dob);
+
+  const validateDateOfBirth = (date) => {
+    if (!date) return false;
     const today = new Date();
     const minAgeDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-    return date <= minAgeDate && date >= new Date(1900, 0, 1);
+    const minDate = new Date(1900, 0, 1);
+    return date <= minAgeDate && date >= minDate && date <= today;
+  };
+
+  const validateExperienceDates = (experience) => {
+    const today = new Date();
+    for (let i = 0; i < experience.length; i++) {
+      const { startDate, endDate } = experience[i];
+      if (!startDate) return 'Start date is required';
+      if (!endDate) return 'End date is required';
+      if (startDate > today) return 'Start date cannot be in the future';
+      if (endDate !== 'Present') {
+        if (!endDate) return 'End date is required';
+        if (endDate < startDate) return 'End date must be after start date';
+        if (endDate > today) return 'End date cannot be in the future';
+      }
+    }
+    return '';
   };
 
   const validateStep = () => {
     const newErrors = {};
 
     if (currentStep === 0) {
-      ['username', 'fullName', 'email', 'phone', 'dateOfBirth', 'tagline', 'location', 'languages', 'responseTime', 'pricing', 'about'].forEach(field => {
+      ['username', 'fullName', 'email', 'phone', 'tagline', 'location', 'languages', 'responseTime', 'pricing', 'about'].forEach(field => {
         if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
       });
       if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
+      if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
       if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
       if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
       if (formData.username && !validateUsername(formData.username)) {
@@ -267,7 +307,7 @@ export default function CompleteProfile() {
       }
       if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
       if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
-        newErrors.dateOfBirth = 'Invalid date of birth. Must be YYYY-MM-DD and at least 18 years old.';
+        newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old and not in the future.';
       }
     }
 
@@ -280,19 +320,12 @@ export default function CompleteProfile() {
 
     if (currentStep === 2) {
       if (!formData.experience.length || formData.experience.some((exp) => 
-        !exp.title.trim() || !exp.company.trim() || !exp.startDate.trim() || !exp.endDate.trim()
+        !exp.title.trim() || !exp.company.trim()
       )) {
-        newErrors.experience = 'All experience fields (title, company, start date, end date) are required';
+        newErrors.experience = 'All experience fields (title, company) are required';
       }
-      formData.experience.forEach((exp, index) => {
-        if (exp.startDate && !validateDate(exp.startDate)) {
-          newErrors.experience = newErrors.experience || 'Invalid start date format (use YYYY-MM)';
-        }
-        if (exp.endDate && !validateDate(exp.endDate) && exp.endDate !== 'Present') {
-          newErrors.experience = newErrors.experience || 'Invalid end date format (use YYYY-MM or "Present")';
-        }
-      });
-      
+      const dateError = validateExperienceDates(formData.experience);
+      if (dateError) newErrors.experience = dateError;
       if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
       if (!agreed) newErrors.agreed = 'You must agree to the terms';
       if (!formData.referred) newErrors.referred = 'Please select whether you were referred';
@@ -323,7 +356,7 @@ export default function CompleteProfile() {
       fullName: '',
       email: '',
       phone: '',
-      dateOfBirth: '', 
+      dateOfBirth: null,
       tagline: '',
       location: '',
       languages: '',
@@ -333,7 +366,7 @@ export default function CompleteProfile() {
       photo: null,
       services: [''],
       regions: [],
-      experience: [{ title: '', company: '', startDate: '', endDate: '' }],
+      experience: [{ title: '', company: '', startDate: null, endDate: null }],
       certifications: '',
       referred: '',
       referralCode: '',
@@ -371,7 +404,7 @@ export default function CompleteProfile() {
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
-        dateOfBirth: formData.dateOfBirth, 
+        dateOfBirth: formData.dateOfBirth ? formatDate(formData.dateOfBirth, 'YYYY-MM-DD') : '',
         tagline: formData.tagline,
         location: formData.location,
         languages: formData.languages,
@@ -381,9 +414,14 @@ export default function CompleteProfile() {
         photo: photoURL,
         services: formData.services,
         regions: formData.regions,
-        experience: formData.experience,
+        experience: formData.experience.map(exp => ({
+          title: exp.title,
+          company: exp.company,
+          startDate: exp.startDate ? formatDate(exp.startDate, 'YYYY-MM') : '',
+          endDate: exp.endDate === 'Present' ? 'Present' : exp.endDate ? formatDate(exp.endDate, 'YYYY-MM') : '',
+        })),
         certifications: formData.certifications,
-        referred: formData.referred || 'No', 
+        referred: formData.referred || 'No',
         referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
         timestamp: serverTimestamp(),
       };
@@ -532,13 +570,19 @@ export default function CompleteProfile() {
                   )}
                 </div>
                 <div>
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    placeholder="Date of Birth"
+                  <DatePicker
+                    selected={formData.dateOfBirth}
+                    onChange={(date) => {
+                      setFormData((prev) => ({ ...prev, dateOfBirth: date }));
+                      setErrors((prev) => ({ ...prev, dateOfBirth: '' }));
+                    }}
+                    dateFormat="yyyy-MM-dd"
+                    placeholderText="Date of Birth"
                     className={`px-4 py-3 border rounded-xl w-full ${errors.dateOfBirth ? 'border-red-500' : ''}`}
-                    value={formData.dateOfBirth}
-                    onChange={handleChange}
+                    maxDate={new Date()}
+                    showYearDropdown
+                    yearDropdownItemNumber={100}
+                    scrollableYearDropdown
                   />
                   <p className="text-sm text-gray-500 mt-1">e.g. 1990-01-01</p>
                   {errors.dateOfBirth && (
@@ -730,24 +774,36 @@ export default function CompleteProfile() {
                         />
                       </div>
                       <div>
-                        <input
-                          type="text"
-                          placeholder="Start Date (YYYY-MM)"
+                        <DatePicker
+                          selected={exp.startDate}
+                          onChange={(date) => handleExperienceChange(index, 'startDate', date)}
+                          dateFormat="yyyy-MM"
+                          placeholderText="Start Date (YYYY-MM)"
                           className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                          value={exp.startDate}
-                          onChange={(e) => handleExperienceChange(index, 'startDate', e.target.value)}
+                          maxDate={new Date()}
+                          showMonthYearPicker
                         />
                         <p className="text-sm text-gray-500 mt-1">e.g. 2020-01</p>
                       </div>
-                      <div>
-                        <input
-                          type="text"
-                          placeholder="End Date (YYYY-MM or Present)"
+                      <div className="flex items-center gap-2">
+                        <DatePicker
+                          selected={exp.endDate !== 'Present' ? exp.endDate : null}
+                          onChange={(date) => handleExperienceChange(index, 'endDate', date)}
+                          dateFormat="yyyy-MM"
+                          placeholderText="End Date (YYYY-MM)"
                           className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                          value={exp.endDate}
-                          onChange={(e) => handleExperienceChange(index, 'endDate', e.target.value)}
+                          maxDate={new Date()}
+                          showMonthYearPicker
+                          disabled={exp.endDate === 'Present'}
                         />
-                        <p className="text-sm text-gray-500 mt-1">e.g. 2023-06 or Present</p>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={exp.endDate === 'Present'}
+                            onChange={(e) => handleExperienceChange(index, 'endDate', e.target.checked ? 'Present' : null)}
+                          />
+                          Present
+                        </label>
                       </div>
                     </div>
                     <button
@@ -770,8 +826,6 @@ export default function CompleteProfile() {
                   <p className="text-sm text-red-600 mt-1">{errors.experience}</p>
                 )}
               </div>
-
-            
 
               <div>
                 <input
@@ -863,7 +917,7 @@ export default function CompleteProfile() {
                   />
                   <label>
                     I confirm that the information provided is accurate and complies with{" "}
-                    <strong>Xmytravel Experts&#39;</strong> professional and ethical standards. I also agree to the{" "}
+                    <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
                     <Link
                       href="/privacy-policy"
                       className="text-blue-600 underline hover:text-blue-800"

@@ -57,10 +57,11 @@ const Navbar = () => {
         {/* Desktop Menu */}
         <div className="hidden md:flex space-x-6 text-white text-xl">
           <Link href="/" className="hover:underline">Home</Link>
-          <Link href="/#why-Xmytravel" className="hover:underline">Why Xmytravel</Link>
-          <Link href="/#eligibility" className="hover:underline">Eligibility</Link>
+          <Link href="/#about" className="hover:underline">About </Link>
+          <Link href="/#why-us" className="hover:underline">Why us</Link>
+           <Link href="#features" className="hover:underline">Features</Link>
           <Link href="/#joining-process" className="hover:underline">Joining Process</Link>
-          {/* <Link href="#aoetc" className="hover:underline">ASSOTEC</Link> */}
+         
         </div>
 
         {/* Button (Desktop) */}
@@ -83,8 +84,9 @@ const Navbar = () => {
             <FiX />
           </button>
           <Link href="/" className="text-2xl hover:underline" onClick={toggleMenu}>Home</Link>
-          <Link href="/#why-Xmytravel" className="text-2xl hover:underline" onClick={toggleMenu}>Why Xmytravel</Link>
-          <Link href="/#eligibility" className="text-2xl hover:underline" onClick={toggleMenu}>Eligibility</Link>
+          <Link href="/#about" className="text-2xl hover:underline" onClick={toggleMenu}>About</Link>
+          <Link href="/#why-us" className="text-2xl hover:underline" onClick={toggleMenu}>Why us</Link>
+                <Link href="/#features" className="text-2xl hover:underline" onClick={toggleMenu}>Features</Link>
           <Link href="/#joining-process" className="text-2xl hover:underline" onClick={toggleMenu}>Joining Process</Link>
           {/* <Link href="#aoetc" className="text-2xl hover:underline" onClick={toggleMenu}>ASSOTEC</Link> */}
           <Button btn="Apply Now" />

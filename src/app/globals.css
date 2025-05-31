@@ -305,3 +305,18 @@ html {
   }
 
 }
+
+
+.react-datepicker-wrapper {
+  width: 100%;
+}
+.react-datepicker__input-container input {
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  border: 1px solid #d1d5db;
+}
+.react-datepicker__input-container input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
