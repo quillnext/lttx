@@ -917,7 +917,7 @@ export default function CompleteProfile() {
                   />
                   <label>
                     I confirm that the information provided is accurate and complies with{" "}
-                    <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
+                    <strong>Xmytravel Experts&#39;</strong> professional and ethical standards. I also agree to the{" "}
                     <Link
                       href="/privacy-policy"
                       className="text-blue-600 underline hover:text-blue-800"
