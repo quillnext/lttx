@@ -408,9 +408,10 @@ export default async function ProfilePage({ params }) {
                 <ul className="list-disc list-inside space-y-2">
                   {sortedExperience.map((exp, i) => (
                     <li key={i}>
-                      {exp.title} at {exp.company} ({exp.startDateFormatted} - {exp.endDateFormatted}
-                      {exp.duration && `, ${exp.duration}`})
+                      {exp.title} at {exp.company} <strong>| {exp.startDateFormatted} - {exp.endDateFormatted}
+                     <span className="text-gray-400"> {exp.duration && `, ${exp.duration}`}</span></strong>
                     </li>
+                    
                   ))}
                 </ul>
               </div>
