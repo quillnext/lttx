@@ -1,7 +1,8 @@
 
+
 // "use client";
 
-// import { useState } from "react";
+// import { useState, useEffect, useCallback } from "react";
 // import PhoneInput from "react-phone-input-2";
 // import "react-phone-input-2/lib/style.css";
 // import { getFirestore, query, collection, where, getDocs } from "firebase/firestore";
@@ -9,6 +10,8 @@
 // import Image from "next/image";
 // import DatePicker from "react-datepicker";
 // import "react-datepicker/dist/react-datepicker.css";
+// import { useRouter } from "next/navigation";
+// import _ from "lodash";
 
 // const db = getFirestore(app);
 
@@ -38,6 +41,53 @@
 //   });
 //   const [errors, setErrors] = useState({});
 //   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [usernameStatus, setUsernameStatus] = useState("");
+//   const [hasChanges, setHasChanges] = useState(false);
+//   const router = useRouter();
+
+//   // Check username availability with debouncing
+//   const checkUsernameAvailability = useCallback(
+//     _.debounce(async (username) => {
+//       if (!username || username === initialData.username) {
+//         setUsernameStatus("");
+//         setErrors((prev) => ({ ...prev, username: "" }));
+//         return;
+//       }
+//       try {
+//         const profilesQuery = query(collection(db, "Profiles"), where("username", "==", username));
+//         const profileRequestsQuery = query(collection(db, "ProfileRequests"), where("username", "==", username));
+//         const [profilesSnap, profileRequestsSnap] = await Promise.all([
+//           getDocs(profilesQuery),
+//           getDocs(profileRequestsQuery),
+//         ]);
+//         if (!profilesSnap.empty || !profileRequestsSnap.empty) {
+//           setUsernameStatus("Username is already taken");
+//           // setErrors((prev) => ({ ...prev, username: "Username is already taken" }));
+//         } else {
+//           setUsernameStatus("Username is available");
+//           setErrors((prev) => ({ ...prev, username: "" }));
+//         }
+//       } catch (error) {
+//         console.error("Error checking usernames:", error);
+//         setUsernameStatus("Error checking username");
+//         setErrors((prev) => ({ ...prev, username: "Error checking username" }));
+//       }
+//     }, 500),
+//     [initialData.username]
+//   );
+
+//   // Track form changes
+//   useEffect(() => {
+//     const isEqual = _.isEqual(formData, {
+//       ...initialData,
+//       services: Array.isArray(initialData.services) && initialData.services.length ? initialData.services : [""],
+//       regions: Array.isArray(initialData.regions) && initialData.regions.length ? initialData.regions : [],
+//       experience: Array.isArray(initialData.experience) && initialData.experience.length
+//         ? initialData.experience
+//         : [{ title: "", company: "", startDate: null, endDate: null }],
+//     });
+//     setHasChanges(!isEqual);
+//   }, [formData, initialData]);
 
 //   const fetchLeadByPhone = async (phone) => {
 //     if (!phone || phone.length < 7) return;
@@ -69,6 +119,9 @@
 //     const { name, value } = e.target;
 //     setFormData((prev) => ({ ...prev, [name]: value }));
 //     setErrors((prev) => ({ ...prev, [name]: "" }));
+//     if (name === "username") {
+//       checkUsernameAvailability(value);
+//     }
 //   };
 
 //   const handlePhoneChange = (phone) => {
@@ -177,6 +230,9 @@
 //     if (formData.referred === "Yes" && !formData.referralCode.trim()) {
 //       newErrors.referralCode = "Referral code is required if referred";
 //     }
+//     if (formData.username !== initialData.username && usernameStatus !== "Username is available") {
+//       newErrors.username = "Please choose an available username";
+//     }
 //     setErrors(newErrors);
 //     return Object.keys(newErrors).length === 0;
 //   };
@@ -196,6 +252,10 @@
 //     }
 //   };
 
+//   const handleClose = () => {
+//     router.back();
+//   };
+
 //   return (
 //     <div className="bg-[#F4D35E] min-h-screen flex items-center justify-center p-3">
 //       <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-6 md:p-10">
@@ -209,11 +269,20 @@
 //                   type="text"
 //                   name="username"
 //                   placeholder="Username"
-//                   className="px-4 py-3 border rounded-xl w-full bg-gray-100 cursor-not-allowed"
+//                   className={`px-4 py-3 border rounded-xl w-full ${errors.username ? "border-red-500" : ""}`}
 //                   value={formData.username}
-//                   disabled
+//                   onChange={handleChange}
 //                 />
-//                 <p className="text-sm text-gray-500 mt-1">Username cannot be changed</p>
+//                 {usernameStatus && (
+//                   <p
+//                     className={`text-sm mt-1 ${
+//                       usernameStatus === "Username is available" ? "text-green-600" : "text-red-600"
+//                     }`}
+//                   >
+//                     {usernameStatus}
+//                   </p>
+//                 )}
+//                 {errors.username && <p className="text-sm text-red-600 mt-1">{errors.username}</p>}
 //               </div>
 //               <div>
 //                 <input
@@ -578,8 +647,17 @@
 //             </div>
 //           </div>
 
-//           {/* Submit Button */}
-//           <div className="flex justify-end">
+//           {/* Form Actions */}
+//           <div className="flex justify-end gap-4">
+//             {!hasChanges && (
+//               <button
+//                 type="button"
+//                 onClick={handleClose}
+//                 className="px-6 py-2 rounded-xl text-white font-semibold bg-red-600 hover:bg-red-700"
+//               >
+//                 Close
+//               </button>
+//             )}
 //             <button
 //               type="submit"
 //               disabled={isSubmitting}
@@ -626,7 +704,7 @@ export default function EditProfileForm({ initialData, onSave }) {
     pricing: initialData.pricing || "",
     about: initialData.about || "",
     photo: initialData.photo || null,
-    services: Array.isArray(initialData.services) && initialData.services.length ? initialData.services : [""],
+    services: Array.isArray(initialData.services) ? initialData.services.filter(s => typeof s === "string" && s.trim()).length > 0 ? initialData.services : [""] : [""],
     regions: Array.isArray(initialData.regions) && initialData.regions.length ? initialData.regions : [],
     experience: Array.isArray(initialData.experience) && initialData.experience.length
       ? initialData.experience
@@ -659,7 +737,6 @@ export default function EditProfileForm({ initialData, onSave }) {
         ]);
         if (!profilesSnap.empty || !profileRequestsSnap.empty) {
           setUsernameStatus("Username is already taken");
-          // setErrors((prev) => ({ ...prev, username: "Username is already taken" }));
         } else {
           setUsernameStatus("Username is available");
           setErrors((prev) => ({ ...prev, username: "" }));
@@ -677,7 +754,7 @@ export default function EditProfileForm({ initialData, onSave }) {
   useEffect(() => {
     const isEqual = _.isEqual(formData, {
       ...initialData,
-      services: Array.isArray(initialData.services) && initialData.services.length ? initialData.services : [""],
+      services: Array.isArray(initialData.services) ? initialData.services.filter(s => typeof s === "string" && s.trim()).length > 0 ? initialData.services : [""] : [""],
       regions: Array.isArray(initialData.regions) && initialData.regions.length ? initialData.regions : [],
       experience: Array.isArray(initialData.experience) && initialData.experience.length
         ? initialData.experience
@@ -745,7 +822,7 @@ export default function EditProfileForm({ initialData, onSave }) {
 
   const removeField = (key, index) => {
     const updated = formData[key].filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, [key]: updated }));
+    setFormData((prev) => ({ ...prev, [key]: updated.length > 0 ? updated : [""] }));
   };
 
   const handleExperienceChange = (index, field, value) => {
@@ -764,7 +841,7 @@ export default function EditProfileForm({ initialData, onSave }) {
 
   const removeExperience = (index) => {
     const updated = formData.experience.filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, experience: updated }));
+    setFormData((prev) => ({ ...prev, experience: updated.length > 0 ? updated : [{ title: "", company: "", startDate: null, endDate: null }] }));
   };
 
   const handleMultiChange = (e) => {
@@ -812,19 +889,19 @@ export default function EditProfileForm({ initialData, onSave }) {
     if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
       newErrors.dateOfBirth = "Invalid date of birth. Must be at least 18 years old and not in the future.";
     }
-    if (!formData.services.length || formData.services.some((s) => !s.trim())) {
-      newErrors.services = "At least one service is required";
+    if (!formData.services.length || formData.services.some((s) => s == null || typeof s !== "string" || !s.trim())) {
+      newErrors.services = "At least one valid service is required";
     }
     if (!formData.regions.length) newErrors.regions = "At least one region is required";
     if (
       !formData.experience.length ||
-      formData.experience.some((exp) => !exp.title.trim() || !exp.company.trim())
+      formData.experience.some((exp) => !exp.title?.trim() || !exp.company?.trim())
     ) {
       newErrors.experience = "Title and company are required for each experience";
     }
     const dateError = validateExperienceDates(formData.experience);
     if (dateError) newErrors.experience = dateError;
-    if (formData.referred === "Yes" && !formData.referralCode.trim()) {
+    if (formData.referred === "Yes" && !formData.referralCode?.trim()) {
       newErrors.referralCode = "Referral code is required if referred";
     }
     if (formData.username !== initialData.username && usernameStatus !== "Username is available") {
