@@ -57,7 +57,7 @@ export default function JoinUsSection() {
           Join Us
         </h2>
         <p className="text-primary">
-          Whether you’re a traveler seeking truth or a professional ready to share it Xmytravel is your platform.
+          Whether you’re a traveller seeking truth or a professional ready to share it Xmytravel is your platform.
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export default function JoinUsSection() {
           <option value="" disabled>
             Who are you?
           </option>
-          <option value="Traveler">Traveler</option>
+          <option value="traveller">traveller</option>
           <option value="Expert">Expert</option>
         </select>
         <input
