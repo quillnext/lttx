@@ -88,7 +88,7 @@ export default function UserLoginPage() {
         </form>
        <p className="mt-4 text-center text-sm text-gray-600">
           Forgot your password?{" "}
-          <Link href="/user-forgot-password" className="text-[#36013F] hover:underline">
+          <Link href="/expert-forgot-password" className="text-[#36013F] hover:underline">
             Reset it here
           </Link>
         </p>

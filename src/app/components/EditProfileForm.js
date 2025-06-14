@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -41,7 +43,33 @@ export default function EditProfileForm({ initialData, onSave }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
+  const [referrerName, setReferrerName] = useState(""); // New state for referrer's name
   const router = useRouter();
+
+  // Fetch referrer's name based on referralCode
+  useEffect(() => {
+    const fetchReferrerName = async () => {
+      if (formData.referred === "Yes" && formData.referralCode) {
+        try {
+          const profilesQuery = query(
+            collection(db, "Profiles"),
+            where("generatedReferralCode", "==", formData.referralCode)
+          );
+          const profilesSnap = await getDocs(profilesQuery);
+          if (!profilesSnap.empty) {
+            const referrerProfile = profilesSnap.docs[0].data();
+            setReferrerName(referrerProfile.fullName || "Unknown Referrer");
+          } else {
+            setReferrerName("Unknown Referrer");
+          }
+        } catch (error) {
+          console.error("Error fetching referrer name:", error);
+          setReferrerName("Unknown Referrer");
+        }
+      }
+    };
+    fetchReferrerName();
+  }, [formData.referred, formData.referralCode]);
 
   // Check username availability with debouncing
   const checkUsernameAvailability = useCallback(
@@ -254,7 +282,7 @@ export default function EditProfileForm({ initialData, onSave }) {
   };
 
   return (
-    <div className=" min-h-screen flex items-center justify-center p-2 md:p-4">
+    <div className="min-h-screen flex items-center justify-center p-2 md:p-4">
       <div className="w-full max-w-5xl bg-white">
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Information */}
@@ -295,8 +323,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                 <p className="text-sm text-gray-500 mt-1">e.g. Rishabh</p>
                 {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
               </div>
-              <div className="row-span-2 items-center justify-center  flex flex-col">
-                {/* <label className="block text-sm font-medium text-gray-700 mb-1">Upload Profile Photo</label> */}
+              <div className="row-span-2 items-center justify-center flex flex-col">
                 {formData.photo && typeof formData.photo === "string" && (
                   <Image
                     src={formData.photo}
@@ -380,7 +407,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                   type="text"
                   name="location"
                   placeholder="City & Country"
-                  className={`w-full px-4 py-3 border rounded-xl shadow-xl  focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.location ? "border-red-500" : ""}`}
+                  className={`w-full px-4 py-3 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.location ? "border-red-500" : ""}`}
                   value={formData.location}
                   onChange={handleChange}
                 />
@@ -393,7 +420,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                   type="text"
                   name="languages"
                   placeholder="Languages Spoken"
-                  className={`w-full px-4 py-3 border rounded-xl shadow-xl  focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.languages ? "border-red-500" : ""}`}
+                  className={`w-full px-4 py-3 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.languages ? "border-red-500" : ""}`}
                   value={formData.languages}
                   onChange={handleChange}
                 />
@@ -432,7 +459,7 @@ export default function EditProfileForm({ initialData, onSave }) {
               <textarea
                 name="about"
                 placeholder="About Me (e.g. 10+ years guiding travellers across Europe)"
-                className={`w-full px-4 py-3 border rounded-xl  shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.about ? "border-red-500" : ""}`}
+                className={`w-full px-4 py-3 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.about ? "border-red-500" : ""}`}
                 rows="4"
                 value={formData.about}
                 onChange={handleChange}
@@ -474,7 +501,7 @@ export default function EditProfileForm({ initialData, onSave }) {
               {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
             </div>
             <div>
-              <label className="block mb-2 font-medium text-gray-700">Regions You Secialize In</label>
+              <label className="block mb-2 font-medium text-gray-700">Regions You Specialize In</label>
               <select
                 multiple
                 className={`w-full px-4 py-3 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.regions ? "border-red-500" : ""}`}
@@ -533,7 +560,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                       <input
                         type="text"
                         placeholder="Company (e.g. MakeMyTrip)"
-                        className={`w-full px-4 py-2 border rounded-xl shadow-xl  focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                        className={`w-full px-4 py-2 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
                         value={exp.company}
                         onChange={(e) => handleExperienceChange(index, "company", e.target.value)}
                       />
@@ -545,14 +572,14 @@ export default function EditProfileForm({ initialData, onSave }) {
                         onChange={(date) => handleExperienceChange(index, "startDate", date)}
                         dateFormat="yyyy-MM"
                         placeholderText="Start Date (YYYY-MM)"
-                        className={`w-full px-4 py-2 border rounded-xl shadow-xl  focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                        className={`w-full px-4 py-2 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
                         maxDate={new Date()}
                         showMonthYearPicker
                       />
                       <p className="text-sm text-gray-500 mt-1">e.g. 2020-01</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 items-center justify-between">
+                      <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
                         <DatePicker
                           selected={exp.endDate !== "Present" ? exp.endDate : null}
@@ -564,8 +591,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                           showMonthYearPicker
                           disabled={exp.endDate === "Present"}
                         />
-
-                      </div> 
+                      </div>
                       <label className="flex items-center gap-2 mt-4">
                         <input
                           type="checkbox"
@@ -576,9 +602,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                         />
                         Present
                       </label>
-                
                     </div>
-                    
                   </div>
                   <button
                     type="button"
@@ -602,52 +626,43 @@ export default function EditProfileForm({ initialData, onSave }) {
 
           {/* Referral Information */}
           <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">🤝 Referral Information</h2>
-            <div>
-              <label className="block mb-2 font-medium text-gray-700">Were you referred?</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="referred"
-                    value="Yes"
-                    checked={formData.referred === "Yes"}
-                    onChange={handleChange}
-                    className={`${errors.referred ? "ring-2 ring-red-500" : ""}`}
-                  />
-                  Yes
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="referred"
-                    value="No"
-                    checked={formData.referred === "No"}
-                    onChange={handleChange}
-                    className={`${errors.referred ? "ring-2 ring-red-500" : ""}`}
-                  />
-                  No
-                </label>
-              </div>
-              {errors.referred && <p className="text-sm text-red-600 mt-1">{errors.referred}</p>}
-            </div>
-            {formData.referred === "Yes" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referral Code</label>
-                <input
-                  type="text"
-                  name="referralCode"
-                  placeholder="Enter referral code"
-                  className={`w-full px-4 py-2 border rounded-xl shadow-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.referralCode ? "border-red-500" : ""}`}
-                  value={formData.referralCode}
-                  onChange={handleChange}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  A verification call might be made to your referrer to confirm your recommendation.
+            <h2 className="text-2xl font-semibold text-[var(--primary)]">🤝 Referral Details</h2>
+            <div className="border p-6 rounded-xl ">
+              {formData.referred === "Yes" ? (
+                <>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Referred by
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 border rounded-xl shadow-xl bg-gray-100 cursor-not-allowed"
+                      value={referrerName}
+                      disabled
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Referral Code
+                    </label>
+                    <input
+                      type="text"
+                      name="referralCode"
+                      className="w-full px-4 py-3 border rounded-xl shadow-xl bg-gray-100 cursor-not-allowed"
+                      value={formData.referralCode}
+                      disabled
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      A verification call might have been made to your referrer to confirm your recommendation.
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-600">
+                  You were not referred by anyone.
                 </p>
-                {errors.referralCode && <p className="text-sm text-red-600 mt-1">{errors.referralCode}</p>}
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Generated Referral Code */}
@@ -659,7 +674,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                 type="text"
                 name="generatedReferralCode"
                 placeholder="Your referral code"
-                className={`w-full px-4 py-2 border rounded-xl shadow-xl bg-gray-100 cursor-not-allowed focus:ring-[var(--primary)] focus:border-[var(--primary)]`}
+                className="w-full px-4 py-3 border rounded-xl shadow-xl bg-gray-100 cursor-not-allowed focus:ring-[var(--primary)] focus:border-[var(--primary)]"
                 value={formData.generatedReferralCode}
                 disabled
               />
@@ -684,7 +699,7 @@ export default function EditProfileForm({ initialData, onSave }) {
               type="submit"
               disabled={isSubmitting}
               className={`w-full sm:w-auto px-6 py-2 rounded-xl text-white font-semibold ${
-                isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-[var(--primary)] hover:bg-[var(--primary-hover)]"
+                isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-[var(--primary)] curser-pointer"
               }`}
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
