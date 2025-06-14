@@ -25,7 +25,7 @@ const EngagementSection = () => {
     {
 
       title: 'Public Q&A Forums',
-      description: 'Answer real traveler questions & build credibility.',
+      description: 'Answer real traveller questions & build credibility.',
     },
   ];
 

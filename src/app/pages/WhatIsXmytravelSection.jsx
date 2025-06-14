@@ -14,7 +14,7 @@ const WhatIsXmytravelSection = () => {
             The world doesn’t need more travel content. It needs clarity.
           </p>
           <p className="text-lg text-textcolor mb-4">
-            Xmytravel is a curated platform that bridges the gap between confused travelers and credible travel experts. Whether you need help with visas, planning a multi-country trip, or navigating aviation rules, here, you get more than advice you get accountability.
+            Xmytravel is a curated platform that bridges the gap between confused travellers and credible travel experts. Whether you need help with visas, planning a multi-country trip, or navigating aviation rules, here, you get more than advice you get accountability.
           </p>
           <p className="text-lg text-textcolor font-bold">
             This is not Reddit.<br />
