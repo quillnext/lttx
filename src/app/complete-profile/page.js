@@ -659,7 +659,7 @@ export default function CompleteProfile() {
               </div>
 
               <textarea
-                placeholder="About Me (e.g. 10+ years guiding travellers across Europe)"
+                placeholder="About Me (e.g. 10+ years guiding travelers across Europe)"
                 className={`w-full px-4 py-3 border rounded-xl ${errors.about ? 'border-red-500' : ''}`}
                 rows="4"
                 name="about"

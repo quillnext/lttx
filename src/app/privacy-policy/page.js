@@ -26,7 +26,7 @@ export default function PrivacyPolicyPage() {
         </ul>
         <p className="font-semibold">How We Use It:</p>
         <ul className="list-disc list-inside mb-2">
-          <li>To provide relevant services to travellers and experts</li>
+          <li>To provide relevant services to travelers and experts</li>
           <li>To verify and onboard experts</li>
           <li>To maintain account security and customer support</li>
           <li>For platform analytics (anonymized)</li>
@@ -39,7 +39,7 @@ export default function PrivacyPolicyPage() {
       <section className="mb-10">
         <h2 className="text-2xl font-semibold mb-2">2. Terms of Service</h2>
         <p className="mb-2">Welcome to Xmytravel. By signing up or using our services, you agree to the following:</p>
-        <p className="font-semibold">For travellers:</p>
+        <p className="font-semibold">For Travelers:</p>
         <ul className="list-disc list-inside mb-2">
           <li>You agree to engage respectfully and professionally with experts.</li>
           <li>You understand that expert advice is based on professional experience, and not guaranteed for legal outcomes (e.g., visa approvals).</li>
@@ -78,7 +78,7 @@ export default function PrivacyPolicyPage() {
       {/* Refund Policy */}
       <section className="mb-10">
         <h2 className="text-2xl font-semibold mb-2">4. Refund Policy</h2>
-        <p className="font-semibold">travellers:</p>
+        <p className="font-semibold">Travelers:</p>
         <ul className="list-disc list-inside mb-2">
           <li>If you cancel a consultation 12 hours before the scheduled time, you’ll receive a full refund.</li>
           <li>No refunds for last-minute cancellations or no-shows.</li>

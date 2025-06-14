@@ -14,7 +14,7 @@ const YoureInvitedSection = () => {
   const platformPoints = [
     'You don’t sell packages. You share wisdom.',
     'You don’t compete for attention. You stand out with credibility.',
-    'You don’t answer to algorithms. You serve travellers with ethics and knowledge.',
+    'You don’t answer to algorithms. You serve travelers with ethics and knowledge.',
   ];
 
   // Matching bullet styles from previous sections

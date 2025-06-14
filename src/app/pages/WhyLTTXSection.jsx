@@ -32,7 +32,7 @@ const WhyLTTXSection = () => {
     {
       image: '/card6.png',
       title: 'Lead the Travel Industry',
-      description: 'Play a key role in educating and guiding travellers.',
+      description: 'Play a key role in educating and guiding travelers.',
     },
   ];
 

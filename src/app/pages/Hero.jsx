@@ -14,7 +14,7 @@ const Hero = () => {
           Travel with experts.
         </h1>
         <p className="text-textcolor mt-4 text-base sm:text-lg md:text-xl max-w-xl">
-         Xmytravel connects travellers with verified travel experts — not hobbyists, not bots, not
+         Xmytravel connects travelers with verified travel experts — not hobbyists, not bots, not
 crowd-sourced confusion.
 This is where insight meets integrity.
         </p>
