@@ -13,6 +13,7 @@ const transporter = nodemailer.createTransport({
 export async function sendApprovalNotificationEmail({ fullName, email, slug, generatedReferralCode, username, password }) {
   console.log("Sending email with config:", {
     user: process.env.EMAIL_USER,
+    
     pass: process.env.EMAIL_PASS ? "****" : "undefined",
   });
 
@@ -23,7 +24,7 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
   const loginCredentialsSection = password
     ? `
       <p><strong>Your Login Credentials:</strong></p>
-      <p>Username: ${username}<br>Password: ${password}</p>
+      <p>Username: ${username}<br>Email: ${email}<br> Password: ${password}</p>
       <p>Please use these credentials to log in to your dashboard at <a href="https://xmytravel.com/user-login">https://xmytravel.com/user-login</a>.</p>
     `
     : `
