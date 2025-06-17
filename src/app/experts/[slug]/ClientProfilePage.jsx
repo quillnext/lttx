@@ -26,7 +26,7 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                 <div className="flex justify-center lg:justify-end">
                   <div className="border border-[#F4D35E] rounded-lg p-2 mb-2 lg:mb-0">
                     <Image
-                      src="https://lttx.vercel.app/logolttx.svg"
+                      src="https://www.xmytravel.com/logolttx.svg"
                       alt="LTTX Logo"
                       width={24}
                       height={24}

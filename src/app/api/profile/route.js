@@ -339,7 +339,7 @@ info@xmytravel.com
 </head>
 <body>
     <div class="header">
-        <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
+        <img src="https://www.xmytravel.com/emailbanner.jpeg" alt="Xmytravel Logo" />
     </div>
     <div class="content">
         <p>Hi Team,</p>
@@ -388,7 +388,7 @@ info@xmytravel.com
             <p><i>"At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity."</i></p>
         </div>
         <div class="signature">
-            <img src="https://lttx.vercel.app/profile%20photo.png" alt="Xmytravel Team Photo" />
+            <img src="https://www.xmytravel.com/profile%20photo.png" alt="Xmytravel Team Photo" />
             <div class="text">
                 <p>Rishabh Vyas<br> Founder, Xmytravel</p>
             </div>
@@ -442,7 +442,7 @@ info@xmytravel.com
 </head>
 <body>
     <div class="header">
-        <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
+        <img src="https://www.xmytravel.com/emailbanner.jpeg" alt="Xmytravel Logo" />
     </div>
     <div class="content">
         <p>Hi ${fullName || email.split("@")[0]},</p>
@@ -457,7 +457,7 @@ info@xmytravel.com
             <p><i>"At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity."</i></p>
         </div>
         <div class="signature">
-            <img src="https://lttx.vercel.app/profile%20photo.png" alt="Xmytravel Team Photo" />
+            <img src="https://www.xmytravel.com/profile%20photo.png" alt="Xmytravel Team Photo" />
             <div class="text">
                 <p>Rishabh Vyas<br> Founder, Xmytravel</p>
             </div>
@@ -883,7 +883,7 @@ export async function GET(request) {
 // </head>
 // <body>
 //     <div class="header">
-//         <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
+//         <img src="https://www.xmytravel.com/emailbanner.jpeg" alt="Xmytravel Logo" />
 //     </div>
 //     <div class="content">
 //         <p>Hi Team,</p>
@@ -932,7 +932,7 @@ export async function GET(request) {
 //             <p><i>"At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity."</i></p>
 //         </div>
 //         <div class="signature">
-//             <img src="https://lttx.vercel.app/profile%20photo.png" alt="Xmytravel Team Photo" />
+//             <img src="https://www.xmytravel.com/profile%20photo.png" alt="Xmytravel Team Photo" />
 //             <div class="text">
 //                 <p>Rishabh Vyas<br> Founder, Xmytravel</p>
 //             </div>
@@ -986,7 +986,7 @@ export async function GET(request) {
 // </head>
 // <body>
 //     <div class="header">
-//         <img src="https://lttx.vercel.app/emailbanner.jpeg" alt="Xmytravel Logo" />
+//         <img src="https://www.xmytravel.com/emailbanner.jpeg" alt="Xmytravel Logo" />
 //     </div>
 //     <div class="content">
 //         <p>Hi ${fullName || email.split("@")[0]},</p>
@@ -1001,7 +1001,7 @@ export async function GET(request) {
 //             <p><i>"At Xmytravel, we believe that the future of travel lies in trusted, expert-led guidance. This platform was built to recognize, celebrate, and empower professionals like you — the ones who shape journeys with insight and integrity."</i></p>
 //         </div>
 //         <div class="signature">
-//             <img src="https://lttx.vercel.app/profile%20photo.png" alt="Xmytravel Team Photo" />
+//             <img src="https://www.xmytravel.com/profile%20photo.png" alt="Xmytravel Team Photo" />
 //             <div class="text">
 //                 <p>Rishabh Vyas<br> Founder, Xmytravel</p>
 //             </div>

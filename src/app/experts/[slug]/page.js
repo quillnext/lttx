@@ -55,7 +55,7 @@
 //           alt: `${profile.fullName}'s Profile Image`,
 //         },
 //       ],
-//       url: `https://lttx.vercel.app/experts/${slug}`,
+//       url: `https://www.xmytravel.com/experts/${slug}`,
 //       type: "profile",
 //     },
 //     twitter: {
@@ -175,7 +175,7 @@
 //         <meta property="og:image:width" content="1200" />
 //         <meta property="og:image:height" content="630" />
 //         <meta property="og:type" content="profile" />
-//         <meta property="og:url" content={`https://lttx.vercel.app/experts/${slug}`} />
+//         <meta property="og:url" content={`https://www.xmytravel.com/experts/${slug}`} />
 //         {/* Twitter Card Meta Tags */}
 //         <meta name="twitter:card" content="summary_large_image" />
 //         <meta name="twitter:title" content={metaTitle} />
@@ -191,7 +191,7 @@
 //               <div className="flex justify-center lg:justify-end">
 //                 <div className="border border-[#F4D35E] rounded-lg p-2 mb-2 lg:mb-0">
 //                   <Image
-//                     src="https://lttx.vercel.app/logolttx.svg"
+//                     src="https://www.xmytravel.com/logolttx.svg"
 //                     alt="LTTX Logo"
 //                     width={24}
 //                     height={24}
@@ -547,7 +547,7 @@ export async function generateMetadata({ params }) {
           alt: `${profile.fullName}'s Profile Image`,
         },
       ],
-      url: `https://lttx.vercel.app/experts/${slug}`,
+      url: `https://www.xmytravel.com/experts/${slug}`,
       type: "profile",
     },
     twitter: {
