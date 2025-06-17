@@ -102,7 +102,7 @@ export default function ForgotPassword() {
           {auth.currentUser ? (
             <>
               Back to{" "}
-              <Link href="/user-dashboard" className="text-[#36013F] hover:underline">
+              <Link href="/expert-dashboard" className="text-[#36013F] hover:underline">
                 Dashboard
               </Link>
             </>
