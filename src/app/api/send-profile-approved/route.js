@@ -102,18 +102,18 @@ export async function POST(req) {
     console.log("Old profile document deleted:", profileId);
 
     // If the user already existed, we still need to send an email (but without a new password)
-    if (userRecord && !userRecord.password) {
-      console.log("User already existed, sending notification email without password");
-      await sendApprovalNotificationEmail({
-        fullName,
-        email,
-        slug,
-        generatedReferralCode,
-        username,
-        password: null, // Indicate no new password was generated
-      });
-      console.log("Notification email sent successfully");
-    }
+    // if (userRecord && !userRecord.password) {
+    //   console.log("User already existed, sending notification email without password");
+    //   await sendApprovalNotificationEmail({
+    //     fullName,
+    //     email,
+    //     slug,
+    //     generatedReferralCode,
+    //     username,
+    //     password: null, // Indicate no new password was generated
+    //   });
+    //   console.log("Notification email sent successfully");
+    // }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

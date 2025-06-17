@@ -26,11 +26,28 @@ export default function UserLoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       console.log("User logged in successfully");
       router.push("/expert-dashboard/edit-profile"); // Redirect to user dashboard after login
-    } catch (err) {
-      console.error("Login error:", err.message);
-      setError(err.message);
-      setLoading(false);
     }
+    //  catch (err) {
+    //   console.error("Login error:", err.message);
+    //   setError(err.message);
+    //   setLoading(false);
+
+    // }
+    catch (err) {
+  // console.error("Login error:", err.code);
+  if (
+    err.code === "auth/user-not-found" ||
+    err.code === "auth/wrong-password"
+  ) {
+    setError("Invalid email or password");
+  } else if (err.code === "auth/invalid-credential") {
+    setError("Please enter a valid email address");
+  } else {
+    setError("Something went wrong. Please try again later.");
+  }
+  setLoading(false);
+}
+
   };
 
   return (
