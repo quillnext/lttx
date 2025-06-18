@@ -1,14 +1,13 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  // host: "smtp.zoho.in",
-  // port: 465,
-  // secure: true,
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+   host: 'smtp.zoho.in',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
 });
 
 const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isExpert }) => `
