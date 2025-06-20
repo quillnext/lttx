@@ -209,7 +209,21 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                       <li key={i}>{s}</li>
                     ))}
                   </ul>
+                  
                 </div>
+
+                  {profile.regions?.length > 0 && (
+            
+              
+                <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
+              
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Regions:  {profile.regions.join(", ")} </li>
+                  </ul>
+                </div>
+             
+            )}
+
               </details>
             )}
 
@@ -258,7 +272,7 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
               </details>
             )}
 
-            {profile.regions?.length > 0 && (
+            {/* {profile.regions?.length > 0 && (
               <details
                 className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden"
               >
@@ -288,7 +302,7 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                   {profile.regions.join(", ")}
                 </div>
               </details>
-            )}
+            )} */}
 
             <details
               className="group bg-[#FFF9E0] border-l-4 border-[#F4D35E] rounded-2xl shadow overflow-hidden"

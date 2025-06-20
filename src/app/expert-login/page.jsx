@@ -25,7 +25,7 @@ export default function UserLoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       console.log("User logged in successfully");
-      router.push("/expert-dashboard/edit-profile"); // Redirect to user dashboard after login
+      router.push("/expert-dashboard/messages"); // Redirect to user dashboard after login
     }
     //  catch (err) {
     //   console.error("Login error:", err.message);

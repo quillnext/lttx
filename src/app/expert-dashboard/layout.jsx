@@ -50,7 +50,7 @@ export default function UserLayout({ children }) {
 
         // Redirect /expert-dashboard to /expert-dashboard/edit-profile
         if (pathname === "/expert-dashboard") {
-          router.push("/expert-dashboard/edit-profile");
+          router.push("/expert-dashboard/messages");
           return;
         }
 
@@ -183,6 +183,19 @@ export default function UserLayout({ children }) {
           </div>
 
           <nav className="flex flex-col space-y-4">
+             <Link
+              href="/expert-dashboard/messages"
+              className={`flex items-center gap-2 p-2 ${
+                pathname === "/expert-dashboard/messages"
+                  ? "bg-[#F4D35E] rounded-3xl text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+              }`}
+              prefetch={true}
+              aria-label="Messages"
+            >
+              <MailPlus className="w-6 h-6" />
+              <span className="hidden md:inline">Messages</span>
+            </Link>
             <Link
               href="/expert-dashboard/edit-profile"
               className={`flex items-center gap-2 p-2 ${
@@ -197,19 +210,7 @@ export default function UserLayout({ children }) {
               <span className="hidden md:inline">Edit Profile</span>
             </Link>
 
-            <Link
-              href="/expert-dashboard/messages"
-              className={`flex items-center gap-2 p-2 ${
-                pathname === "/expert-dashboard/messages"
-                  ? "bg-[#F4D35E] rounded-3xl text-black"
-                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-              }`}
-              prefetch={true}
-              aria-label="Messages"
-            >
-              <MailPlus className="w-6 h-6" />
-              <span className="hidden md:inline">Messages</span>
-            </Link>
+           
 
             <Link
               href="/expert-dashboard/change-password"
