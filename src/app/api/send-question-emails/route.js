@@ -68,8 +68,7 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
           <p>You've received a new question from a traveler on your XMyTravel profile.</p>
           <p><strong>Question:</strong><br/>"${question}"</p>
           <p><strong>From:</strong> ${userName}</p>
-          <p><strong>Email:</strong> ${userEmail}</p>
-          <p><strong>Phone:</strong> ${userPhone}</p>
+
           <p>To reply, login to your expert dashboard:</p>
           <a class="cta-button" href="${dashboardLink}" target="_blank">Reply Now</a>
           <p style="font-size: 13px; margin-top: 16px;">

@@ -464,8 +464,8 @@ export default function Messages() {
               <tr>
                 <th className="p-3 border">Date</th>
                 <th className="p-3 border">User Name</th>
-                <th className="p-3 border">Email</th>
-                <th className="p-3 border">Phone</th>
+                {/* <th className="p-3 border">Email</th> */}
+                {/* <th className="p-3 border">Phone</th> */}
                 <th className="p-3 border">Status</th>
                 <th className="p-3 border">Action</th>
                 <th className="p-3 border w-12"></th>
@@ -477,15 +477,15 @@ export default function Messages() {
                   <tr className="hover:bg-gray-50 transition">
                     <td className="p-3 border font-medium">{q.timestamp || "N/A"}</td>
                     <td className="p-3 border font-medium">{q.userName || "N/A"}</td>
-                    <td className="p-3 border">{q.userEmail || "N/A"}</td>
-                    <td className="p-3 border">{q.userPhone || "N/A"}</td>
+                    {/* <td className="p-3 border">{q.userEmail || "N/A"}</td> */}
+                    {/* <td className="p-3 border">{q.userPhone || "N/A"}</td> */}
                     <td className="p-3 border">
                       {q.status === "pending" ? (
                         <span className="bg-secondary text-[#36013F] font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-2">
                         <Loader className="spin-animation" />  Pending
                         </span>
                       ) : (
-                        <span className="bg-green-500 text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
+                        <span className="bg-green-500  text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
                          <CircleCheckBig /> Answered
                         </span>
                       )}
@@ -517,7 +517,7 @@ export default function Messages() {
                   </tr>
                   {expandedRows[q.id] && (
                     <tr key={`${q.id}-details`}>
-                      <td colSpan="7" className="p-3 border bg-gray-50">
+                      <td colSpan="5" className="p-3 border bg-gray-50">
                         <div className="flex flex-col md:flex-row gap-4 text-gray-700">
                           <div className="w-[30%] border-r">
                             <p>
