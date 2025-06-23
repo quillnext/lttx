@@ -4,6 +4,8 @@ import "./globals.css";
 
 import Footer from "./pages/Footer"; // Assuming these are correctly resolved in your app structure
 import Navbar from "./components/Navbar";
+import GTMHead from "@/components/GTMHead";
+import GTMNoScript from "@/components/GTMNoScript";
 
 
 const ralewaySans = Raleway({
@@ -42,12 +44,14 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         {/* REMOVE the direct Google Fonts <link> tags from here */}
         {/* <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" /> */}
+        <GTMHead/>
       </head>
       <body
         className={`antialiased`} // Remove ralewaySans.variable from here as it's already on <html> if you want it site-wide, or apply specific font classes via Tailwind
       >
 
         {/* <Navbar/> */}
+        <GTMNoScript/>
 
         {children}
         {/* <Footer/> */}
