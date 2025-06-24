@@ -27,10 +27,10 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
     ? `
       <p><strong>Your Login Credentials:</strong></p>
       <p>Username: ${username}<br>Email: ${email}<br> Password: ${password}</p>
-      <p>Please use these credentials to log in to your dashboard at <a href="https://xmytravel.com/user-login">https://xmytravel.com/user-login</a>.</p>
+      <p>Please use these credentials to log in to your dashboard at <a href="https://xmytravel.com/expert-login">https://xmytravel.com/expert-login</a>.</p>
     `
     : `
-      <p>Your profile has been approved! You can log in to your dashboard using your existing credentials at <a href="https://xmytravel.com/user-login">https://xmytravel.com/user-login</a>.</p>
+      <p>Your profile has been approved! You can log in to your dashboard using your existing credentials at <a href="https://xmytravel.com/expert-login">https://xmytravel.com/expert-login</a>.</p>
     `;
 
   const html = `
