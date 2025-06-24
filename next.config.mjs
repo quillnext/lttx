@@ -1,7 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["picsum.photos","cloud.appwrite.io","firebasestorage.googleapis.com"],
+     remotePatterns: [
+    {
+      protocol: 'https',
+      hostname: 'picsum.photos',
+      pathname: '/**',
+    },
+  ],
+   remotePatterns: [
+    {
+      protocol: 'https',
+      hostname: 'cloud.appwrite.io',
+      pathname: '/**',
+    },
+  ],
+   remotePatterns: [
+    {
+      protocol: 'https',
+      hostname: 'firebasestorage.googleapis.com',
+      pathname: '/**',
+    },
+  ],
+   
 
   }, 
 };
