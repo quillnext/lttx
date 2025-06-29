@@ -104,6 +104,11 @@ export default function UserLoginPage() {
           </button>
         </form>
        <p className="mt-4 text-center text-sm text-gray-600">
+         <Link href="/complete-profile" className="text-[#36013F] hover:underline">
+           New to Xmytravel? Sign up here
+         </Link>
+         <br />
+         
           Forgot your password?{" "}
           <Link href="/expert-forgot-password" className="text-[#36013F] hover:underline">
             Reset it here
