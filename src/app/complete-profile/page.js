@@ -2496,7 +2496,7 @@ export default function CompleteProfile() {
                     placeholder="Enter phone number"
                     inputProps={{
                       id: "phone",
-                      className: `w-full p-3 border border-gray-300 rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
+                      className: `w-full p-3 border px-12 border-gray-300 rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
                       required: true,
                       autoFocus: false,
                     }}
@@ -2659,7 +2659,7 @@ export default function CompleteProfile() {
                 <p className="text-sm text-gray-500 mt-1">e.g. Visa Documentation, Itinerary Planning</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tags (Up to 5)</label>
                 <div className="flex gap-2 mb-2">
                   <input
                     type="text"
