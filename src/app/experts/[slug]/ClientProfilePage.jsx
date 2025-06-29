@@ -337,7 +337,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Share2 } from "lucide-react";
+import { Share2, MessageCircle, Instagram, Facebook, Link as LinkIcon } from 'lucide-react';
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 
@@ -347,27 +347,19 @@ const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal
 export default function ClientProfilePage({ profile, sortedExperience }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isShareMessageVisible, setIsShareMessageVisible] = useState(false);
+   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const username = profile?.username;
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/experts/${username}` : "";
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `${profile.fullName} | Travel Expert`,
-          text: profile.tagline || "Check out this travel expert's profile!",
-          url: profileUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(profileUrl);
-        setIsShareMessageVisible(true);
-        setTimeout(() => setIsShareMessageVisible(false), 2000);
-      }
-    } catch (error) {
-      console.error("Error sharing profile:", error);
-    }
+const handleCopy = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
+
+
 
   return (
     <>
@@ -499,19 +491,44 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                 )}
               </div>
             </div>
-            <button
-              onClick={handleShare}
-              className="fixed bottom-4 right-4 bg-secondary text-primary p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
-              title="Share Profile"
-            >
-                  <Share2 />
-              <span className="text-sm hidden sm:inline">Share</span>
-            </button>
-            {isShareMessageVisible && (
-              <div className="fixed bottom-16 right-4 bg-[#F4D35E] text-black text-sm px-4 py-2 rounded-lg shadow-lg z-50">
-                Profile URL copied to clipboard!
-              </div>
-            )}
+             {/* Floating Share Button */}
+      <button
+        onClick={() => setShowShareMenu(!showShareMenu)}
+        className="fixed bottom-4 right-4 bg-yellow-400 text-black p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
+        title="Share"
+      >
+        <Share2 className="w-5 h-5" />
+        <span className="text-sm hidden sm:inline">Share</span>
+      </button>
+
+      {/* Share Menu */}
+      {showShareMenu && (
+        <div className="fixed bottom-20 right-4 bg-white text-black rounded-xl shadow-xl p-4 z-50 w-64 flex flex-col gap-3 text-sm">
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(window.location.href)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 hover:underline"
+          >
+            <MessageCircle className="w-4 h-4" />
+            Share on WhatsApp
+          </a>
+
+         
+
+          <button onClick={handleCopy} className="flex items-center gap-2 text-left hover:underline">
+            <LinkIcon className="w-4 h-4" />
+            Copy Link
+          </button>
+        </div>
+      )}
+
+      {/* Toast Message */}
+      {copied && (
+        <div className="fixed bottom-32 right-4 bg-yellow-300 text-black text-xs px-3 py-1 rounded shadow-md z-50">
+          Link copied to clipboard!
+        </div>
+      )}
           </aside>
 
           <section className="lg:col-span-2 space-y-4">
