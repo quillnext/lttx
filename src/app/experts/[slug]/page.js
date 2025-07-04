@@ -11,11 +11,45 @@ export async function generateMetadata({ params }) {
   const querySnapshot = await getDocs(q);
   const profile = querySnapshot.docs[0]?.data() || null;
 
+  if (!profile) {
+    return {
+      title: "Expert Not Found | XmyTravel",
+      description: "This expert profile could not be found.",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = `${profile.fullName} - ${profile.tagline || "Travel Expert"}`;
+  const description = profile.about?.substring(0, 200) || "Verified expert on XmyTravel";
+  const image = profile.photo || "https://www.xmytravel.com/logolttx.svg";
+  const url = `https://www.xmytravel.com/experts/${params.slug}`;
+
   return {
-    title: profile ? `${profile.fullName} | Travel Expert` : "Expert Not Found",
-    description: profile?.tagline || "Profile of a travel expert",
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url,
+      type: "profile",
+      images: [
+        {
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: `${profile.fullName}'s profile image`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image],
+    },
   };
 }
+
 
 export default async function ExpertProfilePage({ params }) {
   const db = getFirestore(app);
