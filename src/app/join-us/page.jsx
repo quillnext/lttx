@@ -8,6 +8,8 @@ import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useRouter } from "next/navigation";
+import Navbar from "../components/Navbar";
+import Footer from "../pages/Footer";
 
 const db = getFirestore(app);
 
@@ -115,8 +117,10 @@ export default function JoinLTTXForm() {
   };
 
   return (
-    <div className="bg-[#F4D35E] w-full rounded-3xl shadow-lg md:p-10 text-[#36013F] p-6" id="apply">
-      <div className="text-center mb-8 max-w-3xl mx-auto">
+    <div className="bg-[#F4D35E] min-h-screen">
+    <Navbar/>
+    <div className=" w-full  md:p-10 text-[#36013F] p-6 " >
+      <div className="text-center mb-8 max-w-3xl mx-auto mt-20">
         <h2 className="text-2xl md:text-4xl font-bold text-primary mb-4">
           Join Us
         </h2>
@@ -211,6 +215,10 @@ export default function JoinLTTXForm() {
           </button>
         </div>
       </form>
+
+     
+    </div>
+     <Footer/>
     </div>
   );
 }

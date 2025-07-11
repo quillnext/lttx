@@ -1,4 +1,4 @@
-// src/app/expert-dashboard/edit-profile/page.js
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -18,7 +18,6 @@ export default function UserEditProfile() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Helper to parse date strings to Date objects
   const parseDate = (dateString, format = "YYYY-MM-DD") => {
     if (!dateString) return null;
     const parts = dateString.split("-");
@@ -51,6 +50,7 @@ export default function UserEditProfile() {
               ? data.services.filter((s) => typeof s === "string" && s.trim())
               : [""],
             regions: Array.isArray(data.regions) ? data.regions : [],
+            expertise: Array.isArray(data.expertise) ? data.expertise : [],
             experience: Array.isArray(data.experience) && data.experience.length
               ? data.experience.map((exp) => ({
                   ...exp,
@@ -91,7 +91,6 @@ export default function UserEditProfile() {
         newPhotoURL = await getDownloadURL(storageRef);
       }
 
-      // Format dates for Firestore
       const formatDate = (date, format = "YYYY-MM-DD") => {
         if (!date) return "";
         const year = date.getFullYear();
@@ -114,8 +113,6 @@ export default function UserEditProfile() {
           endDate: exp.endDate === "Present" ? "Present" : exp.endDate ? formatDate(exp.endDate, "YYYY-MM") : "",
         })),
       });
-
-      router.push(`/experts/${updatedData.username}`);
     } catch (error) {
       console.error("Error saving profile:", error);
       throw new Error("Failed to save profile");
