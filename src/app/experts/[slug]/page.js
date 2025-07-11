@@ -3,6 +3,21 @@
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
+import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
+import { app } from "@/lib/firebase";
+import { Timestamp } from "firebase/firestore";
+
+export async function generateMetadata({ params }) {
+  const db = getFirestore(app);
+  const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
+  const querySnapshot = await getDocs(q);
+  const profile = querySnapshot.docs[0]?.data() || null;
+
+  return {
+    title: profile ? `${profile.fullName} | Travel Expert` : "Expert Not Found",
+    description: profile?.tagline || "Profile of a travel expert",
+  };
+}
 
 export default async function ExpertProfilePage({ params }) {
   const db = getFirestore(app);
