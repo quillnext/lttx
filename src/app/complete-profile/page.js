@@ -580,303 +580,335 @@ export default function CompleteProfile() {
   const progress = Math.round(((currentStep + 1) / 3) * 100);
 
   return (
-    <div className="bg-[#F4D35E] min-h-screen flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="relative">
-          <div className="bg-[#D8E7EC] h-3 w-full">
-            <div
-              id="progress-bar"
-              className="bg-[var(--primary)] h-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <div className="absolute right-4 top-[-1.75rem] text-sm font-semibold text-[var(--primary)]">
-            Step {currentStep + 1} of 3 ({progress}%)
-          </div>
-        </div>
-        {showSuccessModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full shadow-xl">
-              <h2 className="text-xl font-semibold text-[var(--primary)] mb-3">
-                🎉 Profile {profileId ? 'Updated' : 'Submitted'}!
-              </h2>
-              <p className="text-gray-700 mb-6 text-sm">
-                Your expert profile has been successfully {profileId ? 'updated' : 'submitted'}.<br />
-                {profileId
-                  ? 'Changes have been saved.'
-                  : 'Our team will review the details and reach out if anything more is needed.'}
-              </p>
-              <button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  resetForm();
-                  const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-                  router.push(`/experts/${slug}`);
-                }}
-                className="px-6 py-2 rounded-full text-white bg-[var(--primary)] hover:bg-green-700 transition"
-              >
-                Got it!
-              </button>
+    <>
+      <Navbar />
+      <div className="bg-[#F4D35E] flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden mt-20">
+          <div className="relative">
+            <div className="bg-[#D8E7EC] h-3 w-full">
+              <div
+                id="progress-bar"
+                className="bg-[var(--primary)] h-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+            <div className="absolute right-4 top-[-1.75rem] text-sm font-semibold text-[var(--primary)]">
+              Step {currentStep + 1} of 3 ({progress}%)
             </div>
           </div>
-        )}
-
-        <form className="p-6 md:p-8 space-y-8">
-          {currentStep === 0 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <PhoneInput
-                    country={"in"}
-                    value={formData.phone}
-                    onChange={(phone) => {
-                      setFormData((prev) => ({ ...prev, phone }));
-                      fetchLeadByPhone(phone);
-                    }}
-                    placeholder="Enter phone number"
-                    inputProps={{
-                      id: "phone",
-                      className: `w-full p-3 border border-gray-300 rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
-                      required: true,
-                      autoFocus: false,
-                    }}
-                  />
-                  {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                  <input
-                    type="text"
-                    name="username"
-                    placeholder="Username"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.username ? 'border-red-500' : ''}`}
-                    value={formData.username}
-                    onChange={handleChange}
-                    disabled={!!profileId}
-                  />
-                  {usernameStatus && (
-                    <p className={`text-sm mt-1 ${usernameStatus.includes('available') ? 'text-green-600' : 'text-red-600'}`}>
-                      {usernameStatus}
-                    </p>
-                  )}
-                  {errors.username && errors.username !== 'Username is already taken' && (
-                    <p className="text-sm text-red-600 mt-1">{errors.username}</p>
-                  )}
-                  <p className="text-sm text-gray-500 mt-1">e.g. travelwithjohn</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    placeholder="Full Name"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.fullName ? 'border-red-500' : ''}`}
-                    value={formData.fullName}
-                    onChange={handleChange}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. Rishabh</p>
-                  {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="text"
-                    name="email"
-                    placeholder="Email"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.email ? 'border-red-500' : ''}`}
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. rishabh@example.com</p>
-                  {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <DatePicker
-                    selected={formData.dateOfBirth}
-                    onChange={(date) => {
-                      setFormData((prev) => ({ ...prev, dateOfBirth: date }));
-                      setErrors((prev) => ({ ...prev, dateOfBirth: '' }));
-                    }}
-                    dateFormat="yyyy-MM-dd"
-                    placeholderText="Date of Birth"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.dateOfBirth ? 'border-red-500' : ''}`}
-                    maxDate={new Date()}
-                    showYearDropdown
-                    yearDropdownItemNumber={100}
-                    scrollableYearDropdown
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. 1990-01-01</p>
-                  {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                  <input
-                    type="text"
-                    name="location"
-                    placeholder="City & Country"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.location ? 'border-red-500' : ''}`}
-                    value={formData.location}
-                    onChange={handleChange}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. Mumbai, India</p>
-                  {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
-                  <input
-                    type="text"
-                    name="languages"
-                    placeholder="Languages Spoken"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.languages ? 'border-red-500' : ''}`}
-                    value={formData.languages}
-                    onChange={handleChange}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. English, French, Hindi</p>
-                  {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
-                  <input
-                    type="text"
-                    name="responseTime"
-                    placeholder="Response Time"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.responseTime ? 'border-red-500' : ''}`}
-                    value={formData.responseTime}
-                    onChange={handleChange}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. Responds in 12 hours</p>
-                  {errors.responseTime && <p className="text-sm text-red-600 mt-1">{errors.responseTime}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pricing</label>
-                  <input
-                    type="text"
-                    name="pricing"
-                    placeholder="Pricing"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.pricing ? 'border-red-500' : ''}`}
-                    value={formData.pricing}
-                    onChange={handleChange}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g. ₹2000/session or $30/consult</p>
-                  {errors.pricing && <p className="text-sm text-red-600 mt-1">{errors.pricing}</p>}
-                </div>
+          {showSuccessModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full shadow-xl">
+                <h2 className="text-xl font-semibold text-[var(--primary)] mb-3">
+                  🎉 Profile {profileId ? 'Updated' : 'Submitted'}!
+                </h2>
+                <p className="text-gray-700 mb-6 text-sm">
+                  Your expert profile has been successfully {profileId ? 'updated' : 'submitted'}.<br />
+                  {profileId
+                    ? 'Changes have been saved.'
+                    : 'Our team will review the details and reach out if anything more is needed.'}
+                </p>
+                <button
+                  onClick={() => {
+                    setShowSuccessModal(false);
+                    resetForm();
+                    const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
+                    router.push(`/experts/${slug}`);
+                  }}
+                  className="px-6 py-2 rounded-full text-white bg-[var(--primary)] hover:bg-green-700 transition"
+                >
+                  Got it!
+                </button>
               </div>
             </div>
           )}
-
-          {currentStep === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-[var(--primary)]">🎯 Services, Expertise & Regions</h2>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">What I Can Help You With</label>
-                {formData.services.map((service, index) => (
-                  <div key={index} className="flex gap-2 items-center mb-2">
+          <form className="p-6 md:p-8 space-y-8">
+            {apiError && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
+                {apiError}
+              </div>
+            )}
+            {currentStep === 0 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <PhoneInput
+                      country={"in"}
+                      value={formData.phone}
+                      onChange={phone => {
+                        setFormData(prev => ({ ...prev, phone }));
+                        fetchLeadByPhone(phone);
+                      }}
+                      placeholder="Enter phone number (e.g., +91 9876543210)"
+                      inputProps={{
+                        id: 'phone',
+                        className: `w-full p-3 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
+                        required: true,
+                        autoFocus: false,
+                      }}
+                    />
+                    {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                     <input
                       type="text"
-                      className={`w-full px-4 py-2 border rounded-xl ${errors.services ? 'border-red-500' : ''}`}
-                      placeholder="e.g. Visa Documentation"
-                      value={service}
-                      onChange={(e) => handleArrayChange(index, 'services', e.target.value)}
+                      name="username"
+                      placeholder="Enter username (e.g., travelwithjohn)"
+                      className={`w-full px-4 py-3 border rounded-xl ${errors.username ? 'border-red-500' : ''}`}
+                      value={formData.username}
+                      onChange={handleChange}
+                      disabled={!!profileId}
                     />
-                    <button
-                      type="button"
-                      className="text-red-500 text-sm hover:text-red-700"
-                      onClick={() => removeField('services', index)}
-                    >
-                      ✕
-                    </button>
+                    {usernameStatus && (
+                      <p className={`text-sm mt-1 ${usernameStatus.includes('available') ? 'text-green-600' : 'text-red-600'}`}>
+                        {usernameStatus}
+                      </p>
+                    )}
+                    {errors.username && errors.username !== 'Username is already taken' && (
+                      <p className="text-sm text-red-600 mt-1">{errors.username}</p>
+                    )}
+                    <p className="text-sm text-gray-500 mt-1">e.g., travelwithjohn</p>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => addField('services')}
-                  className="text-sm text-[var(--primary)] hover:underline mt-2"
-                >
-                  + Add More
-                </button>
-                {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
-                <p className="text-sm text-gray-500 mt-1">e.g. Visa Documentation, Itinerary Planning</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="Enter expertise (e.g. Visa Documentation)"
-                    className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.expertise ? 'border-red-500' : ''}`}
-                    value={customExpertise}
-                    onChange={handleCustomExpertiseChange}
-                  />
-                  <button
-                    type="button"
-                    className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl hover:bg-green-700"
-                    onClick={addCustomExpertise}
-                    disabled={!customExpertise.trim()}
-                  >
-                    Add
-                  </button>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      name="fullName"
+                      placeholder="Enter full name (e.g., John Doe)"
+                      className={`w-full px-4 py-3 border rounded-xl ${errors.fullName ? 'border-red-500' : ''}`}
+                      value={formData.fullName}
+                      onChange={handleChange}
+                    />
+                    {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
+                    <p className="text-sm text-gray-500 mt-1">e.g., John Doe</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Enter email (e.g., john@example.com)"
+                      className={`w-full px-4 py-3 border rounded-xl ${errors.email ? 'border-red-500' : ''}`}
+                      value={formData.email}
+                      onChange={handleChange}
+                    />
+                    {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
+                    <p className="text-sm text-gray-500 mt-1">e.g., john@example.com</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <DatePicker
+                      selected={formData.dateOfBirth}
+                      onChange={date => {
+                        setFormData(prev => ({ ...prev, dateOfBirth: date }));
+                        setErrors(prev => ({ ...prev, dateOfBirth: '' }));
+                      }}
+                      dateFormat="yyyy-MM-dd"
+                      placeholderText="Select date of birth (YYYY-MM-DD)"
+                      className={`w-full px-4 py-3 border rounded-xl ${errors.dateOfBirth ? 'border-red-500' : ''}`}
+                      maxDate={new Date()}
+                      showYearDropdown
+                      yearDropdownItemNumber={100}
+                      scrollableYearDropdown
+                    />
+                    {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
+                    <p className="text-sm text-gray-500 mt-1">e.g., 1990-01-01</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                    <Select
+                      instanceId="location-select"
+                      options={cityOptions}
+                      value={cityOptions.find(option => option.value === formData.location) || null}
+                      onChange={selected => handleSingleChange(selected, 'location')}
+                      placeholder="Select a location (e.g., Mumbai, India)"
+                      className={`w-full ${errors.location ? 'border-red-500' : ''}`}
+                      classNamePrefix="react-select"
+                      isDisabled={cityOptions.length === 0}
+                      isSearchable={true}
+                      onInputChange={inputValue => {
+                        if (inputValue) {
+                          fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
+                            .then(res => {
+                              if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
+                              return res.json();
+                            })
+                            .then(data => setCityOptions(data))
+                            .catch(err => {
+                              console.error('Error fetching cities:', err);
+                              setApiError('Failed to fetch city options. Please try again.');
+                            });
+                        }
+                      }}
+                    />
+                    {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
+                    <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
+                    <Select
+                      instanceId="language-select"
+                      isMulti
+                      options={languageOptions}
+                      value={languageOptions.filter(option => formData.languages.includes(option.value))}
+                      onChange={selected => handleMultiChange(selected, 'languages')}
+                      placeholder="Select up to 5 languages (e.g., English, Hindi)"
+                      className={`w-full ${errors.languages ? 'border-red-500' : ''}`}
+                      classNamePrefix="react-select"
+                      isDisabled={languageOptions.length === 0}
+                    />
+                    {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
+                    <p className="text-sm text-gray-500 mt-1">Select up to 5 languages (e.g., English, Hindi)</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
+                    <input
+                      type="text"
+                      name="responseTime"
+                      placeholder="Enter response time (e.g., Within 12 hours)"
+                      className={`w-full px-4 py-3 border rounded-xl ${errors.responseTime ? 'border-red-500' : ''}`}
+                      value={formData.responseTime}
+                      onChange={handleChange}
+                    />
+                    {errors.responseTime && <p className="text-sm text-red-600 mt-1">{errors.responseTime}</p>}
+                    <p className="text-sm text-gray-500 mt-1">e.g., Within 12 hours</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Pricing</label>
+                    <input
+                      type="text"
+                      name="pricing"
+                      placeholder="Enter pricing (e.g., ₹2000/session)"
+                      className={`w-full px-4 py-3 border rounded-xl ${errors.pricing ? 'border-red-500' : ''}`}
+                      value={formData.pricing}
+                      onChange={handleChange}
+                    />
+                    {errors.pricing && <p className="text-sm text-red-600 mt-1">{errors.pricing}</p>}
+                    <p className="text-sm text-gray-500 mt-1">e.g., ₹2000/session or $30/consult</p>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {formData.expertise.map((exp) => (
-                    <span
-                      key={exp}
-                      className="bg-[var(--primary)] text-white px-2 py-1 rounded-full text-sm flex items-center"
-                    >
-                      {exp}
+              </div>
+            )}
+
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold text-[var(--primary)]">🎯 Services, Expertise & Regions</h2>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">What I Can Help You With</label>
+                  {formData.services.map((service, index) => (
+                    <div key={index} className="flex gap-2 items-center mb-2">
+                      <input
+                        type="text"
+                        className={`w-full px-4 py-2 border rounded-xl ${errors.services ? 'border-red-500' : ''}`}
+                        placeholder="Enter service (e.g., Visa Documentation)"
+                        value={service}
+                        onChange={e => handleArrayChange(index, 'services', e.target.value)}
+                      />
                       <button
                         type="button"
-                        className="ml-2 text-white"
-                        onClick={() => removeExpertise(exp)}
+                        className="text-red-500 text-sm hover:text-red-700"
+                        onClick={() => removeField('services', index)}
                       >
                         ✕
                       </button>
-                    </span>
+                    </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={() => addField('services')}
+                    className="text-sm text-[var(--primary)] hover:underline mt-2"
+                  >
+                    + Add More
+                  </button>
+                  {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
+                  <p className="text-sm text-gray-500 mt-1">e.g., Visa Documentation, Itinerary Planning</p>
                 </div>
-                {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
-                <p className="text-sm text-gray-500 mt-1">Add up to 5 expertise areas, e.g., Visa Documentation, Itinerary Planning</p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
+                  <div className="flex gap-2 mb-2">
+                    <Select
+                      instanceId="expertise-select"
+                      options={expertiseOptions}
+                      value={selectedExpertise}
+                      onChange={handleExpertiseChange}
+                      placeholder="Select expertise area"
+                      className={`w-full ${errors.expertise ? 'border-red-500' : ''}`}
+                      classNamePrefix="react-select"
+                    />
+                    <button
+                      type="button"
+                      className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl hover:bg-green-700"
+                      onClick={addExpertise}
+                      disabled={!selectedExpertise}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.expertise.map(exp => (
+                      <span
+                        key={exp}
+                        className="bg-[var(--primary)] text-white px-2 py-1 rounded-full text-sm flex items-center"
+                      >
+                        {exp}
+                        <button type="button" className="ml-2 text-white" onClick={() => removeExpertise(exp)}>
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
+                  <p className="text-sm text-gray-500 mt-1">Select up to 5 expertise areas (e.g., Visa Documentation)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Regions You Specialize In</label>
+                  <select
+                    multiple
+                    className={`w-full px-4 py-3 border rounded-xl ${errors.regions ? 'border-red-500' : ''}`}
+                    onChange={e => {
+                      const options = Array.from(e.target.selectedOptions).map(o => o.value);
+                      if (options.length > 5) {
+                        setErrors(prev => ({ ...prev, regions: 'You can select up to 5 regions.' }));
+                        return;
+                      }
+                      setFormData(prev => ({ ...prev, regions: options }));
+                      setErrors(prev => ({ ...prev, regions: '' }));
+                    }}
+                    value={formData.regions}
+                  >
+                    <option value="south-asia">South Asia</option>
+                    <option value="southeast-asia">Southeast Asia</option>
+                    <option value="east-asia">East Asia</option>
+                    <option value="central-asia">Central Asia</option>
+                    <option value="west-asia">West Asia</option>
+                    <option value="north-africa">North Africa</option>
+                    <option value="west-africa">West Africa</option>
+                    <option value="east-africa">East Africa</option>
+                    <option value="central-africa">Central Africa</option>
+                    <option value="southern-africa">Southern Africa</option>
+                    <option value="north-america">North America</option>
+                    <option value="central-america">Central America</option>
+                    <option value="caribbean">Caribbean</option>
+                    <option value="south-america">South America</option>
+                    <option value="western-europe">Western Europe</option>
+                    <option value="eastern-europe">Eastern Europe</option>
+                    <option value="northern-europe">Northern Europe</option>
+                    <option value="southern-europe">Southern Europe</option>
+                    <option value="australia-nz">Australia & New Zealand</option>
+                    <option value="pacific-islands">Pacific Islands</option>
+                    <option value="mena">MENA</option>
+                    <option value="emea">EMEA</option>
+                    <option value="apac">APAC</option>
+                    <option value="latam">LATAM</option>
+                  </select>
+                  <p className="text-sm text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select up to 5 regions</p>
+                  {errors.regions && <p className="text-sm text-red-600 mt-1">{errors.regions}</p>}
+                </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Regions You Specialize In</label>
-                <select
-                  multiple
-                  className={`w-full px-4 py-3 border rounded-xl ${errors.regions ? 'border-red-500' : ''}`}
-                  onChange={handleMultiChange}
-                  value={formData.regions}
-                >
-                  <option value="south-asia">South Asia</option>
-                  <option value="southeast-asia">Southeast Asia</option>
-                  <option value="east-asia">East Asia</option>
-                  <option value="central-asia">Central Asia</option>
-                  <option value="west-asia">West Asia</option>
-                  <option value="north-africa">North Africa</option>
-                  <option value="west-africa">West Africa</option>
-                  <option value="east-africa">East Africa</option>
-                  <option value="central-africa">Central Africa</option>
-                  <option value="southern-africa">Southern Africa</option>
-                  <option value="north-america">North America</option>
-                  <option value="central-america">Central America</option>
-                  <option value="caribbean">Caribbean</option>
-                  <option value="south-america">South America</option>
-                  <option value="western-europe">Western Europe</option>
-                  <option value="eastern-europe">Eastern Europe</option>
-                  <option value="northern-europe">Northern Europe</option>
-                  <option value="southern-europe">Southern Europe</option>
-                  <option value="australia-nz">Australia & New Zealand</option>
-                  <option value="pacific-islands">Pacific Islands</option>
-                  <option value="mena">MENA</option>
-                  <option value="emea">EMEA</option>
-                  <option value="apac">APAC</option>
-                  <option value="latam">LATAM</option>
-                </select>
-                <p className="text-sm text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple regions</p>
-                {errors.regions && <p className="text-sm text-red-600 mt-1">{errors.regions}</p>}
-              </div>
-            </div>
-          )}
+            )}
 
             {currentStep === 2 && (
               <div className="space-y-6">

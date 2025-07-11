@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { Share2, MessageCircle, Instagram, Facebook, Link as LinkIcon } from 'lucide-react';
+import { Share2 } from "lucide-react";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 
@@ -14,16 +14,31 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isShareMessageVisible, setIsShareMessageVisible] = useState(false);
 
+  // Ensure profile has an id
+  if (!profile?.id) {
+    console.error("Profile ID is missing:", profile);
+  }
+
   const username = profile?.username;
   const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/experts/${username}` : "";
-const handleCopy = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${profile.fullName} | Travel Expert`,
+          text: profile.tagline || "Check out this travel expert's profile!",
+          url: profileUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(profileUrl);
+        setIsShareMessageVisible(true);
+        setTimeout(() => setIsShareMessageVisible(false), 2000);
+      }
+    } catch (error) {
+      console.error("Error sharing profile:", error);
+    }
   };
-
-
 
   return (
     <>
@@ -149,7 +164,7 @@ const handleCopy = () => {
               className="fixed bottom-4 right-4 bg-secondary text-primary p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
               title="Share Profile"
             >
-                  <Share2 />
+              <Share2 />
               <span className="text-sm hidden sm:inline">Share</span>
             </button>
             {isShareMessageVisible && (
