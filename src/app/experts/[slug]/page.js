@@ -19,44 +19,41 @@ export async function generateMetadata({ params }) {
     console.error("Meta error:", error);
   }
 
-  if (!profile) {
+   if (!profile) {
     return {
-      title: "Profile Not Found | XmyTravel",
-      description: "This expert profile is not available.",
+      title: "Expert Not Found | XmyTravel",
+      description: "This expert profile could not be found.",
       robots: { index: false, follow: false },
     };
   }
 
-  const metaTitle = `${profile.fullName} - ${profile.tagline || "Travel Expert"} | XmyTravel`;
-  const metaDescription =
-    profile.about?.length > 160 ? `${profile.about.substring(0, 157)}...` : profile.about || "Explore this expert's travel advice on XmyTravel.";
-  const metaImage =
-    profile.photo?.endsWith(".jpg") || profile.photo?.endsWith(".png")
-      ? profile.photo
-      : "https://www.xmytravel.com/default-profile.jpg";
+  const title = `${profile.fullName} - ${profile.tagline || "Travel Expert"}`;
+  const description = profile.about?.substring(0, 200) || "Verified expert on XmyTravel";
+  const image = profile.photo || "https://www.xmytravel.com/logolttx.svg";
+  const url = `https://www.xmytravel.com/experts/${params.slug}`;
 
   return {
-    title: metaTitle,
-    description: metaDescription,
+     title,
+    description,
     openGraph: {
-      title: metaTitle,
-      description: metaDescription,
-      url: `https://www.xmytravel.com/experts/${params.slug}`,
+      title,
+      description,
+      url,
       type: "profile",
       images: [
         {
-          url: metaImage,
+          url: image,
           width: 1200,
           height: 630,
-          alt: `${profile.fullName}'s profile photo`,
+          alt: `${profile.fullName}'s profile image`,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: metaTitle,
-      description: metaDescription,
-      images: [metaImage],
+      title,
+      description,
+      images: [image],
     },
   };
 }
