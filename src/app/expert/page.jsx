@@ -658,13 +658,13 @@ export default function ExpertsDirectory() {
               key={expert.id}
               className="bg-white rounded-xl shadow-lg p-4 border border-gray-200 hover:shadow-xl transition-shadow"
             >
-              <div className="flex items-center gap-3 mb-3">
+              {/* <div className="flex items-center gap-3 mb-3">
                 <Image
                   src={expert.photo || "/default.jpg"}
                   alt={expert.fullName}
                   width={60}
                   height={60}
-                  className="rounded-full object-cover border-2 border-[#36013F] shadow-sm"
+                  className="rounded-full  border-2 border-[#36013F] shadow-sm"
                 />
                 <div className="flex-1">
                   <h2 className="text-base font-semibold text-gray-800">
@@ -677,7 +677,37 @@ export default function ExpertsDirectory() {
                     {calculateTotalExperience(expert.experience)}
                   </p>
                 </div>
-              </div>
+              </div> */}
+
+              import Image from 'next/image';
+
+<div className="flex items-center gap-3 mb-3">
+  {/* Square, circular frame with explicit positioning */}
+  <div className="relative w-[60px] h-[60px] shrink-0 overflow-hidden rounded-full border-2 border-[#36013F] shadow-sm">
+    <Image
+      src={expert.photo && expert.photo !== '' ? expert.photo : '/default.jpg'}
+      alt={expert.fullName || 'Expert Profile'}
+      fill
+      sizes="60px"
+      className="object-cover object-center rounded-full"
+      priority={false} // Set to true for above-the-fold images
+      onError={(e) => console.error(`Failed to load image for ${expert.fullName || 'unknown'}: ${expert.photo || '/default.jpg'}`)}
+    />
+  </div>
+  <div className="flex-1">
+    <h2 className="text-base font-semibold text-gray-800">
+      {expert.fullName || 'Unknown Expert'}
+    </h2>
+    <p className="text-xs text-gray-600 line-clamp-2">
+      {truncateTagline(expert.tagline) || 'No tagline provided'}
+    </p>
+    <p className="text-xs text-gray-600 font-medium">
+      {calculateTotalExperience(expert.experience) || 'No experience provided'}
+    </p>
+  </div>
+</div>
+
+              
               <div className="space-y-3">
                 <div className="flex flex-wrap gap-1.5">
                   {expert.expertise?.map((expertise) => (
@@ -710,13 +740,13 @@ export default function ExpertsDirectory() {
               </div>
               <div className="flex gap-2 mt-4">
                 <Link href={`/experts/${expert.username}`} className="flex-1">
-                  <button className="w-full bg-[#36013F] text-white py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm">
+                  <button className="w-full bg-[#36013F] text-white py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer">
                     View Profile
                   </button>
                 </Link>
                 <button
                   onClick={() => setModalExpert(expert)}
-                  className="flex-1 bg-[#F4D35E] text-black py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm"
+                  className="flex-1 bg-[#F4D35E] text-black py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
                 >
                   Ask Question
                 </button>

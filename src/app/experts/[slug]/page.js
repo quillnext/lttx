@@ -1,5 +1,4 @@
 
-
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
@@ -7,18 +6,27 @@ import ClientProfilePage from "./ClientProfilePage";
 export default async function ExpertProfilePage({ params }) {
   const db = getFirestore(app);
   const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
-  const querySnapshot = await getDocs(q);
-
   let profile = null;
-  querySnapshot.forEach((doc) => {
-    const data = doc.data();
-    profile = {
-      id: doc.id,
-      ...data,
-      // Convert Firestore Timestamp to a plain string
-      timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : null,
-    };
-  });
+
+  try {
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      return <div>Profile not found</div>;
+    }
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      profile = {
+        id: doc.id,
+        ...data,
+        // Convert Firestore Timestamp to a plain string
+        timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : null,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    return <div>Error loading profile. Please try again later.</div>;
+  }
 
   if (!profile) {
     return <div>Profile not found</div>;
@@ -37,7 +45,11 @@ export default async function ExpertProfilePage({ params }) {
         duration: duration ? `${duration} year${duration > 1 ? "s" : ""}` : null,
       };
     })
-    .sort((a, b) => (b.endDate === "Present" ? new Date() : new Date(b.endDate)) - (a.endDate === "Present" ? new Date() : new Date(a.endDate)));
+    .sort((a, b) => {
+      const dateA = a.endDate === "Present" ? new Date() : new Date(a.endDate);
+      const dateB = b.endDate === "Present" ? new Date() : new Date(b.endDate);
+      return dateB - dateA;
+    });
 
   return <ClientProfilePage profile={profile} sortedExperience={sortedExperience} />;
 }

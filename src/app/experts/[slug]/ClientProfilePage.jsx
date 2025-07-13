@@ -7,7 +7,7 @@ import { Share2 } from "lucide-react";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 
-// Dynamically import the modal to ensure it's only used client-side
+
 const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), { ssr: false });
 
 export default function ClientProfilePage({ profile, sortedExperience }) {

@@ -1,4 +1,6 @@
 
+'use client';
+
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getFirestore, query, collection, where, getDocs } from "firebase/firestore";
@@ -12,8 +14,9 @@ import Image from "next/image";
 import Link from "next/link";
 import _ from "lodash";
 
-// Dynamically import react-select with SSR disabled
+// Dynamically import react-select and creatable-select with SSR disabled
 const Select = dynamic(() => import("react-select"), { ssr: false });
+const CreatableSelect = dynamic(() => import("react-select/creatable"), { ssr: false });
 
 const db = getFirestore(app);
 
@@ -256,9 +259,21 @@ export default function EditProfileForm({ initialData, onSave }) {
     setSelectedExpertise(selectedOption);
   };
 
+  const handleExpertiseKeyDown = (e) => {
+    if (e.key === 'Enter' && selectedExpertise) {
+      e.preventDefault();
+      addExpertise();
+    }
+  };
+
   const addExpertise = () => {
     if (selectedExpertise && formData.expertise.length < 5 && !formData.expertise.includes(selectedExpertise.value)) {
-      setFormData((prev) => ({ ...prev, expertise: [...prev.expertise, selectedExpertise.value] }));
+      const expertiseValue = selectedExpertise.value.trim();
+      if (!expertiseValue) {
+        setErrors(prev => ({ ...prev, expertise: 'Expertise cannot be empty.' }));
+        return;
+      }
+      setFormData((prev) => ({ ...prev, expertise: [...prev.expertise, expertiseValue] }));
       setSelectedExpertise(null);
       setErrors((prev) => ({ ...prev, expertise: "" }));
     } else if (formData.expertise.length >= 5) {
@@ -266,7 +281,7 @@ export default function EditProfileForm({ initialData, onSave }) {
     } else if (selectedExpertise && formData.expertise.includes(selectedExpertise.value)) {
       setErrors((prev) => ({ ...prev, expertise: "This expertise is already added." }));
     } else {
-      setErrors((prev) => ({ ...prev, expertise: "Please select an expertise." }));
+      setErrors((prev) => ({ ...prev, expertise: "Please select or enter an expertise." }));
     }
   };
 
@@ -431,7 +446,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                   setShowSuccessModal(false);
                   router.push(`/experts/${formData.username}`);
                 }}
-                className="px-6 py-2 rounded-full text-white bg-[var(--primary)] hover:bg-green-700 transition"
+                className="px-6 py-2 rounded-full text-white bg-[var(--primary)]  transition"
               >
                 Got it!
               </button>
@@ -686,18 +701,20 @@ export default function EditProfileForm({ initialData, onSave }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
               <div className="flex gap-2 mb-2">
-                <Select
+                <CreatableSelect
                   instanceId="expertise-select"
                   options={expertiseOptions}
                   value={selectedExpertise}
                   onChange={handleExpertiseChange}
-                  placeholder="Select expertise area"
+                  onKeyDown={handleExpertiseKeyDown}
+                  placeholder="Select or type expertise (e.g., Adventure Travel)"
                   className={`w-full ${errors.expertise ? "border-red-500" : ""}`}
                   classNamePrefix="react-select"
+                  formatCreateLabel={inputValue => `Add "${inputValue}"`}
                 />
                 <button
                   type="button"
-                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl hover:bg-green-700"
+                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer "
                   onClick={addExpertise}
                   disabled={!selectedExpertise}
                 >
@@ -722,7 +739,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                 ))}
               </div>
               {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
-              <p className="text-sm text-gray-500 mt-1">Select up to 5 expertise areas (e.g., Visa Documentation)</p>
+              <p className="text-sm text-gray-500 mt-1">Select or type up to 5 expertise areas (e.g., Visa Documentation, Adventure Travel). Press Enter or click Add.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Regions You Specialize In</label>
@@ -962,8 +979,8 @@ export default function EditProfileForm({ initialData, onSave }) {
             <button
               type="submit"
               disabled={isSubmitting || !hasChanges}
-              className={`px-6 py-2 text-sm font-semibold text-white rounded-xl ${
-                isSubmitting || !hasChanges ? "bg-gray-400 cursor-not-allowed" : "bg-[var(--primary)] hover:bg-green-700"
+              className={`px-6 py-2 text-sm font-semibold text-white rounded-xl cursor-pointer ${
+                isSubmitting || !hasChanges ? "bg-gray-400 cursor-not-allowed" : "bg-[var(--primary)] "
               }`}
             >
               {isSubmitting ? "Saving..." : "Save Changes"}

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -13,11 +12,12 @@ import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import Footer from '../pages/Footer'
+import Footer from '../pages/Footer';
 import Navbar from '../components/Navbar';
 
-// Dynamically import react-select with SSR disabled
+// Dynamically import react-select and creatable-select with SSR disabled
 const Select = dynamic(() => import('react-select'), { ssr: false });
+const CreatableSelect = dynamic(() => import('react-select/creatable'), { ssr: false });
 
 const storage = getStorage(app);
 const db = getFirestore(app);
@@ -113,7 +113,21 @@ export default function CompleteProfile() {
         if (data.error) {
           throw new Error(data.error);
         }
-        setCityOptions(data);
+        // Sort cities: Indian cities first (alphabetically by city), then others (alphabetically by label)
+        const sortedCities = data.sort((a, b) => {
+          const isAIndia = a.country === 'India';
+          const isBIndia = b.country === 'India';
+          if (isAIndia && !isBIndia) return -1;
+          if (!isAIndia && isBIndia) return 1;
+          if (isAIndia && isBIndia) {
+            // Sort Indian cities by city name (remove ", India" for comparison)
+            const cityA = a.label.replace(', India', '');
+            const cityB = b.label.replace(', India', '');
+            return cityA.localeCompare(cityB);
+          }
+          return a.label.localeCompare(b.label);
+        });
+        setCityOptions(sortedCities);
       } catch (error) {
         console.error('Error fetching cities:', error);
         setApiError(`Failed to load city options: ${error.message}. Please try again later.`);
@@ -310,7 +324,12 @@ export default function CompleteProfile() {
 
   const addExpertise = () => {
     if (selectedExpertise && formData.expertise.length < 5 && !formData.expertise.includes(selectedExpertise.value)) {
-      setFormData(prev => ({ ...prev, expertise: [...prev.expertise, selectedExpertise.value] }));
+      const expertiseValue = selectedExpertise.value.trim();
+      if (!expertiseValue) {
+        setErrors(prev => ({ ...prev, expertise: 'Expertise cannot be empty.' }));
+        return;
+      }
+      setFormData(prev => ({ ...prev, expertise: [...prev.expertise, expertiseValue] }));
       setSelectedExpertise(null);
       setErrors(prev => ({ ...prev, expertise: '' }));
     } else if (formData.expertise.length >= 5) {
@@ -318,7 +337,14 @@ export default function CompleteProfile() {
     } else if (selectedExpertise && formData.expertise.includes(selectedExpertise.value)) {
       setErrors(prev => ({ ...prev, expertise: 'This expertise is already added.' }));
     } else {
-      setErrors(prev => ({ ...prev, expertise: 'Please select an expertise.' }));
+      setErrors(prev => ({ ...prev, expertise: 'Please select or enter an expertise.' }));
+    }
+  };
+
+  const handleExpertiseKeyDown = e => {
+    if (e.key === 'Enter' && selectedExpertise) {
+      e.preventDefault(); // Prevent form submission
+      addExpertise();
     }
   };
 
@@ -736,7 +762,21 @@ export default function CompleteProfile() {
                               if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
                               return res.json();
                             })
-                            .then(data => setCityOptions(data))
+                            .then(data => {
+                              const sortedCities = data.sort((a, b) => {
+                                const isAIndia = a.country === 'India';
+                                const isBIndia = b.country === 'India';
+                                if (isAIndia && !isBIndia) return -1;
+                                if (!isAIndia && isBIndia) return 1;
+                                if (isAIndia && isBIndia) {
+                                  const cityA = a.label.replace(', India', '');
+                                  const cityB = b.label.replace(', India', '');
+                                  return cityA.localeCompare(cityB);
+                                }
+                                return a.label.localeCompare(b.label);
+                              });
+                              setCityOptions(sortedCities);
+                            })
                             .catch(err => {
                               console.error('Error fetching cities:', err);
                               setApiError('Failed to fetch city options. Please try again.');
@@ -829,14 +869,16 @@ export default function CompleteProfile() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
                   <div className="flex gap-2 mb-2">
-                    <Select
+                    <CreatableSelect
                       instanceId="expertise-select"
                       options={expertiseOptions}
                       value={selectedExpertise}
                       onChange={handleExpertiseChange}
-                      placeholder="Select expertise area"
+                      onKeyDown={handleExpertiseKeyDown}
+                      placeholder="Select or type expertise (e.g., Adventure Travel)"
                       className={`w-full ${errors.expertise ? 'border-red-500' : ''}`}
                       classNamePrefix="react-select"
+                      formatCreateLabel={inputValue => `Add "${inputValue}"`}
                     />
                     <button
                       type="button"
@@ -861,7 +903,7 @@ export default function CompleteProfile() {
                     ))}
                   </div>
                   {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
-                  <p className="text-sm text-gray-500 mt-1">Select up to 5 expertise areas (e.g., Visa Documentation)</p>
+                  <p className="text-sm text-gray-500 mt-1">Select or type up to 5 expertise areas (e.g., Visa Documentation, Adventure Travel). Press Enter or click Add.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Regions You Specialize In</label>
