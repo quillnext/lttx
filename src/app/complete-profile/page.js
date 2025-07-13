@@ -670,7 +670,7 @@ export default function CompleteProfile() {
                       placeholder="Enter phone number (e.g., +91 9876543210)"
                       inputProps={{
                         id: 'phone',
-                        className: `w-full p-3 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
+                        className: `w-full p-3 px-12 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
                         required: true,
                         autoFocus: false,
                       }}
