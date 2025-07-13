@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -31,6 +32,7 @@ export default function AskQuestionModal({ expert, onClose }) {
     else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = "Email is invalid.";
     if (!phone.trim()) newErrors.phone = "Phone number is required.";
     else if (!/^\+?[1-9]\d{1,14}$/.test(phone)) newErrors.phone = "Phone number is invalid.";
+    if (!expert.id) newErrors.form = "Expert profile ID is missing. Please try again later.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -50,7 +52,7 @@ export default function AskQuestionModal({ expert, onClose }) {
     try {
       // Save to Firestore
       const docRef = await addDoc(collection(db, "Questions"), {
-        expertId: expert.id,
+        expertId: expert.id, // This should now be defined
         expertName: expert.fullName,
         expertEmail: expert.email,
         question,
@@ -96,7 +98,7 @@ export default function AskQuestionModal({ expert, onClose }) {
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }} // Fallback for opacity
+      style={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
     >
       <div className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md relative">
         <button
@@ -123,6 +125,7 @@ export default function AskQuestionModal({ expert, onClose }) {
                     onChange={(e) => setQuestion(e.target.value)}
                     className={`mt-1 p-3 w-full border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.question ? "border-red-500" : ""}`}
                     rows="4"
+                    placeholder="Enter your question"
                     required
                   />
                   {errors.question && <p className="text-red-500 text-sm mt-1">{errors.question}</p>}
@@ -144,6 +147,7 @@ export default function AskQuestionModal({ expert, onClose }) {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className={`p-3 w-full border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.name ? "border-red-500" : ""}`}
+                    placeholder="Enter your name"
                     required
                   />
                   {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
@@ -155,6 +159,7 @@ export default function AskQuestionModal({ expert, onClose }) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className={`p-3 w-full border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.email ? "border-red-500" : ""}`}
+                    placeholder="Enter your email"
                     required
                   />
                   {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
@@ -166,6 +171,7 @@ export default function AskQuestionModal({ expert, onClose }) {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className={`p-3 w-full border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.phone ? "border-red-500" : ""}`}
+                    placeholder="Enter your phone number"
                     required
                   />
                   {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}

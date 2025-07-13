@@ -7,8 +7,8 @@ import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock } from "lucide-react";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell } from "lucide-react";
 
 const auth = getAuth(app);
 
@@ -19,6 +19,7 @@ export default function UserLayout({ children }) {
   const [navLoading, setNavLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); // Track pending questions count
   const isMounted = useRef(true);
 
   // Ensure the component is marked as "client" after initial render
@@ -34,21 +35,34 @@ export default function UserLayout({ children }) {
     };
   }, []);
 
-  // Check authentication state and redirect if necessary
+  // Check authentication state, fetch pending questions, and handle redirects
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (!isMounted.current) return;
 
       if (!user) {
         router.push("/expert-login");
+        setLoading(false);
         return;
       }
 
       try {
+        // Fetch pending questions count
+        const questionsQuery = query(
+          collection(db, "Questions"),
+          where("expertId", "==", user.uid),
+          where("status", "==", "pending")
+        );
+        const querySnapshot = await getDocs(questionsQuery);
+        if (isMounted.current) {
+          setPendingQuestionsCount(querySnapshot.size);
+        }
+
+        // Check profile for forcePasswordChange
         const profileRef = doc(db, "Profiles", user.uid);
         const profileSnap = await getDoc(profileRef);
 
-        // Redirect /expert-dashboard to /expert-dashboard/edit-profile
+        // Redirect /expert-dashboard to /expert-dashboard/messages
         if (pathname === "/expert-dashboard") {
           router.push("/expert-dashboard/messages");
           return;
@@ -66,7 +80,7 @@ export default function UserLayout({ children }) {
           }
         }
       } catch (error) {
-        console.error("Error checking forcePasswordChange:", error.message);
+        console.error("Error in auth state handling:", error.message);
       } finally {
         if (isMounted.current) {
           setLoading(false);
@@ -98,7 +112,7 @@ export default function UserLayout({ children }) {
 
     router.events?.on("routeChangeStart", handleStart);
     router.events?.on("routeChangeComplete", handleComplete);
-    router.events?.on("routeChangeError", handleComplete);
+    router.events?.off("routeChangeError", handleComplete);
 
     return () => {
       clearTimeout(timeoutId);
@@ -122,7 +136,7 @@ export default function UserLayout({ children }) {
         setIsLoggingOut(false);
         setNavLoading(false);
       }
-    }
+    };
   };
 
   // Always render the loading UI on the server and during initial client render
@@ -183,9 +197,9 @@ export default function UserLayout({ children }) {
           </div>
 
           <nav className="flex flex-col space-y-4">
-             <Link
+            <Link
               href="/expert-dashboard/messages"
-              className={`flex items-center gap-2 p-2 ${
+              className={`flex items-center gap-2 p-2 relative ${
                 pathname === "/expert-dashboard/messages"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
@@ -195,6 +209,12 @@ export default function UserLayout({ children }) {
             >
               <MailPlus className="w-6 h-6" />
               <span className="hidden md:inline">Messages</span>
+              {pendingQuestionsCount > 0 && (
+                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full md:ml-2">
+                  <Bell size={14} />
+                  {pendingQuestionsCount}
+                </span>
+              )}
             </Link>
             <Link
               href="/expert-dashboard/edit-profile"
@@ -209,9 +229,6 @@ export default function UserLayout({ children }) {
               <UserPen className="w-6 h-6" />
               <span className="hidden md:inline">Edit Profile</span>
             </Link>
-
-           
-
             <Link
               href="/expert-dashboard/change-password"
               className={`flex items-center gap-2 p-2 ${
@@ -225,7 +242,6 @@ export default function UserLayout({ children }) {
               <KeyRound className="w-6 h-6" />
               <span className="hidden md:inline">Change Password</span>
             </Link>
-
             <Link
               href="/expert-forgot-password"
               className={`flex items-center gap-2 p-2 ${

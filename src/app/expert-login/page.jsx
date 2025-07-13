@@ -7,6 +7,8 @@ import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Link from "next/link";
 import Image from "next/image";
+import Navbar from "../components/Navbar";
+import Footer from "../pages/Footer";
 
 const auth = getAuth(app);
 
@@ -51,7 +53,9 @@ export default function UserLoginPage() {
   };
 
   return (
+  <>
     <div className="flex justify-center items-center h-screen bg-[#F4D35E] px-4">
+      <Navbar/>
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-[#36013F]">
           <div className="flex justify-center mb-6">
             <Image
@@ -115,6 +119,11 @@ export default function UserLoginPage() {
           </Link>
         </p>
       </div>
+    
     </div>
+     <div className="-mt-30">
+       <Footer/>
+     </div>
+  </>
   );
 }
