@@ -679,7 +679,6 @@ export default function ExpertsDirectory() {
                 </div>
               </div> */}
 
-              import Image from 'next/image';
 
 <div className="flex items-center gap-3 mb-3">
   {/* Square, circular frame with explicit positioning */}

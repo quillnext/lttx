@@ -1,24 +1,24 @@
-
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
 export default async function Head({ params }) {
   const db = getFirestore(app);
   const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
-  let profile = null;
+
+  let profileData = null;
 
   try {
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
       querySnapshot.forEach((doc) => {
-        profile = { ...doc.data(), id: doc.id };
+        profileData = { ...doc.data(), id: doc.id };
       });
     }
   } catch (error) {
     console.error("Error fetching profile for meta tags:", error);
   }
 
-  if (!profile) {
+  if (!profileData) {
     return (
       <>
         <title>Profile Not Found | XmyTravel</title>
@@ -28,15 +28,20 @@ export default async function Head({ params }) {
     );
   }
 
-  const metaTitle = `${profile.fullName} - ${profile.tagline || "Travel Expert"} | XmyTravel`;
-  const metaDescription = profile.about
-    ? profile.about.length > 160
-      ? `${profile.about.substring(0, 157)}...`
-      : profile.about
-    : "Discover expert travel advice from a verified professional on XmyTravel.";
-  const metaImage = profile.photo && profile.photo.endsWith(".jpg") || profile.photo.endsWith(".png")
-    ? profile.photo
-    : "https://www.xmytravel.com/default-profile.jpg"; // Use a default JPG image instead of SVG
+  const metaTitle = `${profileData.fullName} - ${profileData.tagline || "Travel Expert"} | XmyTravel`;
+  const metaDescription =
+    profileData.about?.length > 160
+      ? `${profileData.about.substring(0, 157)}...`
+      : profileData.about || "Discover expert travel advice from a verified professional on XmyTravel.";
+
+  const metaImage =
+    profileData.photo && (profileData.photo.endsWith(".jpg") || profileData.photo.endsWith(".png"))
+      ? profileData.photo
+      : "https://www.xmytravel.com/default-profile.jpg";
+
+  const profileUrl = `https://www.xmytravel.com/experts/${params.slug}`;
+  const imageAlt = `${profileData.fullName}'s profile image`;
+  const twitterHandle = `@${profileData.username || params.slug}`;
 
   return (
     <>
@@ -48,11 +53,11 @@ export default async function Head({ params }) {
       <meta property="og:title" content={metaTitle} />
       <meta property="og:description" content={metaDescription} />
       <meta property="og:image" content={metaImage} />
-      <meta property="og:url" content={`https://www.xmytravel.com/experts/${params.slug}`} />
+      <meta property="og:url" content={profileUrl} />
       <meta property="og:type" content="profile" />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
-      <meta property="og:image:alt" content={`${profile.fullName}'s profile image`} />
+      <meta property="og:image:alt" content={imageAlt} />
 
       {/* Twitter Card Tags */}
       <meta name="twitter:card" content="summary_large_image" />
@@ -60,7 +65,7 @@ export default async function Head({ params }) {
       <meta name="twitter:description" content={metaDescription} />
       <meta name="twitter:image" content={metaImage} />
       <meta name="twitter:site" content="@XmyTravel" />
-      <meta name="twitter:creator" content={`@${profile.username || params.slug}`} />
+      <meta name="twitter:creator" content={twitterHandle} />
     </>
   );
 }

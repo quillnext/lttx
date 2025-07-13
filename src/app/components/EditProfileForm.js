@@ -69,52 +69,59 @@ export default function EditProfileForm({ initialData, onSave }) {
   const [agreed, setAgreed] = useState(true); // Default to true for editing
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchCities = async () => {
-      try {
-        const response = await fetch("/api/cities");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch cities: ${response.status}`);
-        }
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response format from cities API");
-        }
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        setCityOptions(data);
-      } catch (error) {
-        console.error("Error fetching cities:", error);
-        setApiError(`Failed to load city options: ${error.message}. Please try again later.`);
+useEffect(() => {
+  const fetchCities = async () => {
+    try {
+      const response = await fetch("/api/cities");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch cities: ${response.status}`);
       }
-    };
-
-    const fetchLanguages = async () => {
-      try {
-        const response = await fetch("/api/languages");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch languages: ${response.status}`);
-        }
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response format from languages API");
-        }
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        setLanguageOptions(data);
-      } catch (error) {
-        console.error("Error fetching languages:", error);
-        setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format from cities API");
       }
-    };
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      // Add initialData.location to cityOptions if it exists and isn't already included
+      const updatedCities = Array.isArray(data) ? [...data] : [];
+      if (initialData.location && !updatedCities.some(option => option.value === initialData.location)) {
+        updatedCities.push({ value: initialData.location, label: initialData.location });
+      }
+      setCityOptions(updatedCities);
+    } catch (error) {
+      console.error("Error fetching cities:", error);
+      // Fallback to include initialData.location even on error
+      setCityOptions(initialData.location ? [{ value: initialData.location, label: initialData.location }] : []);
+      setApiError(`Failed to load city options: ${error.message}. Using initial location as fallback.`);
+    }
+  };
 
-    fetchCities();
-    fetchLanguages();
-  }, []);
+  const fetchLanguages = async () => {
+    try {
+      const response = await fetch("/api/languages");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch languages: ${response.status}`);
+      }
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response format from languages API");
+      }
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      setLanguageOptions(data);
+    } catch (error) {
+      console.error("Error fetching languages:", error);
+      setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
+    }
+  };
+
+  fetchCities();
+  fetchLanguages();
+}, [initialData.location]);
 
   useEffect(() => {
     const fetchReferrer = async () => {
@@ -575,7 +582,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                 <p className="text-sm text-gray-500 mt-1">e.g., Europe Travel Expert (max 150 characters)</p>
                 {errors.tagline && <p className="text-sm text-red-600 mt-1">{errors.tagline}</p>}
               </div>
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <Select
                   instanceId="location-select"
@@ -604,7 +611,44 @@ export default function EditProfileForm({ initialData, onSave }) {
                 />
                 {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
                 <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
-              </div>
+              </div> */}
+
+              <div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+  <Select
+    instanceId="location-select"
+    options={cityOptions}
+    value={cityOptions.find(option => option.value === formData.location) || null}
+    onChange={selected => handleSingleChange(selected, "location")}
+    placeholder="Select a location (e.g., Mumbai, India)"
+    className={`w-full ${errors.location ? "border-red-500" : ""}`}
+    classNamePrefix="react-select"
+    isDisabled={cityOptions.length === 0}
+    isSearchable={true}
+    onInputChange={inputValue => {
+      if (inputValue) {
+        fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
+          .then(res => {
+            if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
+            return res.json();
+          })
+          .then(data => {
+            const updatedCities = Array.isArray(data) ? [...data] : [];
+            if (formData.location && !updatedCities.some(option => option.value === formData.location)) {
+              updatedCities.push({ value: formData.location, label: formData.location });
+            }
+            setCityOptions(updatedCities);
+          })
+          .catch(err => {
+            console.error("Error fetching cities:", err);
+            setApiError("Failed to fetch city options. Please try again.");
+          });
+      }
+    }}
+  />
+  {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
+  <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
+</div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
                 <Select

@@ -29,7 +29,7 @@ export async function GET(req) {
     }
 
     // Limit to 20 results for dropdown performance
-    cityOptions = cityOptions.slice(0, 20);
+    cityOptions = cityOptions.slice(0, 100);
 
     return NextResponse.json(cityOptions);
   } catch (error) {

@@ -882,7 +882,7 @@ export default function CompleteProfile() {
                     />
                     <button
                       type="button"
-                      className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl hover:bg-green-700"
+                      className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer"
                       onClick={addExpertise}
                       disabled={!selectedExpertise}
                     >
@@ -1182,7 +1182,7 @@ export default function CompleteProfile() {
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-6 py-2 text-sm font-semibold text-white bg-[var(--primary)] rounded-xl hover:bg-green-700 transition"
+                  className="px-6 py-2 text-sm font-semibold text-white bg-[var(--primary)] rounded-xl cursor-pointer transition"
                 >
                   Next
                 </button>
@@ -1191,8 +1191,8 @@ export default function CompleteProfile() {
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className={`px-6 py-2 text-sm font-semibold text-white rounded-xl transition ${
-                    isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--primary)] hover:bg-green-700'
+                  className={`px-6 py-2 text-sm font-semibold text-white rounded-xl transition cursor-pointer ${
+                    isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--primary)] '
                   }`}
                 >
                   {isSubmitting ? 'Submitting...' : profileId ? 'Update Profile' : 'Submit'}
