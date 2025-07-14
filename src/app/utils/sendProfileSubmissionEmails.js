@@ -184,7 +184,6 @@ const emailTemplate = ({ data, year, isAdmin }) => {
               <tr><td><strong>About</strong></td><td>${about}</td></tr>
               <tr><td><strong>Services</strong></td><td>${services.join(", ")}</td></tr>
               <tr><td><strong>Regions</strong></td><td>${regions.join(", ")}</td></tr>
-              <tr><td><strong>Experience</strong></td><td>${experience.join(", ")}</td></tr>
               <tr><td><strong>Companies</strong></td><td>${companies}</td></tr>
               <tr><td><strong>Certifications</strong></td><td>${certifications}</td></tr>
               <tr><td><strong>Referral Code</strong></td><td>${generatedReferralCode}</td></tr>
