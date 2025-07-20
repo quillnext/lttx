@@ -58,7 +58,7 @@ const EngagementSection = () => {
               Stay active, earn points, and be featured as a top-ranked expert in
               your category!
             </p>
-           <Button btn='Apply Now' />
+           <Button btn='Explore' />
           </div>
         </div>
       </div>

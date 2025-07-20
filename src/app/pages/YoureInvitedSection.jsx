@@ -51,7 +51,7 @@ const YoureInvitedSection = () => {
           <p className="text-textcolor mb-6 text-base sm:text-lg md:text-xl">
             <span className="font-bold">Roles we welcome:</span> Airline professionals, visa specialists, luxury travel planners, revenue managers, logistics experts, operations heads, DMC veterans, and more.
           </p>
-          <Button btn="Apply Now" />
+          <Button btn="Explore" />
         </div>
         {/* Image Section */}
         <div className="md:w-1/2 mb-8 md:mb-0 w-full">

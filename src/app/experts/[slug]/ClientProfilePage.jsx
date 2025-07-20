@@ -6,13 +6,34 @@ import dynamic from "next/dynamic";
 import { Share2 } from "lucide-react";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
-
+import Lightbox from 'react-image-lightbox'; // Added for lightbox
+import 'react-image-lightbox/style.css'; // Added for lightbox styles
 
 const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), { ssr: false });
+
+const calculateTotalExperience = (experience) => {
+    if (!Array.isArray(experience) || experience.length === 0) return "0+ years of experience";
+    const today = new Date();
+    let totalMonths = 0;
+
+    experience.forEach(exp => {
+      const startDate = exp.startDate ? new Date(exp.startDate) : null;
+      const endDate = exp.endDate === "Present" ? today : exp.endDate ? new Date(exp.endDate) : null;
+      if (startDate && endDate && endDate >= startDate) {
+        const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
+        totalMonths += months;
+      }
+    });
+
+    const years = Math.floor(totalMonths / 12);
+    return `${years}+`; // Modified to return only "X+" format
+};
 
 export default function ClientProfilePage({ profile, sortedExperience }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isShareMessageVisible, setIsShareMessageVisible] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false); // Added for lightbox
+  const [selectedImage, setSelectedImage] = useState(""); // Added for lightbox
 
   // Ensure profile has an id
   if (!profile?.id) {
@@ -39,6 +60,15 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
       console.error("Error sharing profile:", error);
     }
   };
+  
+  // Open lightbox with the selected image
+  const openLightbox = (imageSrc) => {
+    setSelectedImage(imageSrc);
+    setIsLightboxOpen(true);
+  };
+
+  // Calculate total experience dynamically
+  const totalExperience = calculateTotalExperience(sortedExperience);
 
   return (
     <>
@@ -51,14 +81,25 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
         <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <aside className="lg:col-span-1 space-y-4">
             <div className="bg-[#36013F] rounded-3xl shadow-lg p-6 text-center sticky top-8 relative">
-              <div className="mb-4">
-                <Image
-                  src={profile.photo || "/default.jpg"}
-                  alt={profile.fullName}
-                  width={112}
-                  height={112}
-                  className="w-28 h-28 rounded-full border-4 border-[#F4D35E] object-cover mx-auto shadow-md"
-                />
+              <div className="mb-4 relative">
+                <button
+                  onClick={() => openLightbox(profile.photo || "/default.jpg")} // Added to trigger lightbox
+                  className="w-28 h-28 rounded-full border-4 border-[#F4D35E] object-cover mx-auto shadow-md overflow-hidden"
+                >
+                  <Image
+                    src={profile.photo || "/default.jpg"}
+                    alt={profile.fullName}
+                    width={112}
+                    height={112}
+                    className=" rounded-full object-cover mx-auto shadow-md"
+                  />
+                </button>
+           <div className="flex justify-center items-center py-5 absolute top-0 right-0 space-y-0.5">
+  <div className="text-secondary border-2 border-secondary rounded-lg px-2 w-[48px] flex flex-col items-center">
+    <h1 className="font-bold text-center text-base">{totalExperience}</h1>
+    <span className="font-semibold text-xs text-center">YEARS</span>
+  </div>
+</div>
               </div>
               <p className="text-sm mt-1 text-white">@{username}</p>
               <h1
@@ -82,7 +123,7 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                 >
                   <path
                     fillRule="evenodd"
-                    d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 3.397 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
+                    d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 2.122 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
                     clipRule="evenodd"
                   />
                 </svg>
@@ -357,6 +398,13 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
             onClose={() => setIsModalOpen(false)}
           />
         )}
+        {isLightboxOpen && (
+          <Lightbox
+            mainSrc={selectedImage}
+            onCloseRequest={() => setIsLightboxOpen(false)}
+            imageTitle={selectedImage.includes('default.jpg') ? 'Default Profile Image' : 'Profile Image'}
+          />
+        )} {/* Added lightbox component */}
       </div>
       <Footer />
     </>

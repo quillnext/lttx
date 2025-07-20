@@ -69,7 +69,7 @@ const TravelExpertSection = () => {
               );
             })}
           </ul>
-          <Button btn="Apply Now" />
+          <Button btn="Explore" />
         </div>
       </div>
     </section>

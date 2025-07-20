@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -14,6 +14,8 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Footer from '../pages/Footer';
 import Navbar from '../components/Navbar';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from './getCroppedImg';
 
 // Dynamically import react-select and creatable-select with SSR disabled
 const Select = dynamic(() => import('react-select'), { ssr: false });
@@ -73,6 +75,11 @@ export default function CompleteProfile() {
   const [languageOptions, setLanguageOptions] = useState([]);
   const [selectedExpertise, setSelectedExpertise] = useState(null);
   const [apiError, setApiError] = useState('');
+  const [imagePreview, setImagePreview] = useState(null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
 
   const formatDate = (date, format = 'YYYY-MM-DD') => {
     if (!date) return '';
@@ -113,14 +120,12 @@ export default function CompleteProfile() {
         if (data.error) {
           throw new Error(data.error);
         }
-        // Sort cities: Indian cities first (alphabetically by city), then others (alphabetically by label)
         const sortedCities = data.sort((a, b) => {
           const isAIndia = a.country === 'India';
           const isBIndia = b.country === 'India';
           if (isAIndia && !isBIndia) return -1;
           if (!isAIndia && isBIndia) return 1;
           if (isAIndia && isBIndia) {
-            // Sort Indian cities by city name (remove ", India" for comparison)
             const cityA = a.label.replace(', India', '');
             const cityB = b.label.replace(', India', '');
             return cityA.localeCompare(cityB);
@@ -199,6 +204,7 @@ export default function CompleteProfile() {
               referred: data.referred || '',
               referralCode: data.referralCode || '',
             });
+            setImagePreview(data.photo || null);
             setAgreed(true);
           }
         } catch (error) {
@@ -209,6 +215,37 @@ export default function CompleteProfile() {
       fetchProfile();
     }
   }, [profileId]);
+
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropConfirm = useCallback(async () => {
+    try {
+      const croppedImage = await getCroppedImg(imagePreview, croppedAreaPixels);
+      const blob = await (await fetch(croppedImage)).blob();
+      const file = new File([blob], `cropped_${formData.photo.name}`, { type: blob.type });
+      setFormData(prev => ({ ...prev, photo: file })); // Fixed typo: 'photo od' to 'photo'
+      setImagePreview(croppedImage);
+      setShowCropModal(false);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    } catch (error) {
+      console.error('Error cropping image:', error);
+      setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
+    }
+  }, [imagePreview, croppedAreaPixels]);
+
+  const handleFile = e => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prev => ({ ...prev, photo: file }));
+      setImagePreview(URL.createObjectURL(file));
+      setShowCropModal(true);
+      setErrors(prev => ({ ...prev, photo: '' }));
+    }
+  };
 
   const fetchLeadByPhone = async phone => {
     if (!phone || phone.length < 7) return;
@@ -343,7 +380,7 @@ export default function CompleteProfile() {
 
   const handleExpertiseKeyDown = e => {
     if (e.key === 'Enter' && selectedExpertise) {
-      e.preventDefault(); // Prevent form submission
+      e.preventDefault();
       addExpertise();
     }
   };
@@ -351,11 +388,6 @@ export default function CompleteProfile() {
   const removeExpertise = expertise => {
     setFormData(prev => ({ ...prev, expertise: prev.expertise.filter(e => e !== expertise) }));
     setErrors(prev => ({ ...prev, expertise: '' }));
-  };
-
-  const handleFile = e => {
-    setFormData(prev => ({ ...prev, photo: e.target.files[0] }));
-    setErrors(prev => ({ ...prev, photo: '' }));
   };
 
   const handleArrayChange = (index, key, value) => {
@@ -509,6 +541,11 @@ export default function CompleteProfile() {
       referred: '',
       referralCode: '',
     });
+    setImagePreview(null);
+    setShowCropModal(false);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
     setCurrentStep(0);
     setErrors({});
     setAgreed(false);
@@ -645,6 +682,61 @@ export default function CompleteProfile() {
                 >
                   Got it!
                 </button>
+              </div>
+            </div>
+          )}
+          {showCropModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
+                <h3 className="text-lg font-semibold text-[var(--primary)] mb-4">Crop Your Photo</h3>
+                <div className="relative w-full h-64">
+                  <Cropper
+                    image={imagePreview}
+                    crop={crop}
+                    zoom={zoom}
+                    aspect={1}
+                    onCropChange={setCrop}
+                    onZoomChange={setZoom}
+                    onCropComplete={onCropComplete}
+                    cropShape="round"
+                    showGrid={true}
+                    style={{
+                      containerStyle: { height: '100%', width: '100%' },
+                    }}
+                  />
+                </div>
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Zoom</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="3"
+                    step="0.1"
+                    value={zoom}
+                    onChange={e => setZoom(parseFloat(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 mt-4">
+                  <button
+                    type="button"
+                    className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
+                    onClick={() => {
+                      setShowCropModal(false);
+                      setImagePreview(null);
+                      setFormData(prev => ({ ...prev, photo: null }));
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 text-sm text-white bg-[var(--primary)] rounded-xl hover:bg-opacity-90"
+                    onClick={handleCropConfirm}
+                  >
+                    Confirm Crop
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1079,6 +1171,25 @@ export default function CompleteProfile() {
                   />
                   {errors.photo && <p className="text-sm text-red-600 mt-1">{errors.photo}</p>}
                   <p className="text-sm text-gray-500 mt-1">Upload a professional photo (JPG, PNG)</p>
+                  {imagePreview && (
+                    <div className="mt-4">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
+                      <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--primary)]">
+                        <img
+                          src={imagePreview}
+                          alt="Profile photo preview"
+                          className="object-cover w-full h-full"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="mt-2 text-sm text-[var(--primary)] hover:underline"
+                        onClick={() => setShowCropModal(true)}
+                      >
+                        Edit Crop
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-4 border-t">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Referral Information</label>
@@ -1151,7 +1262,7 @@ export default function CompleteProfile() {
                     />
                     <span>
                       I confirm that the information provided is accurate and complies with{' '}
-                      <strong>Xmytravel Experts&#39;</strong> professional and ethical standards. I also agree to the{' '}
+                      <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{' '}
                       <Link
                         href="/privacy-policy"
                         className="text-blue-600 underline hover:text-blue-800"
