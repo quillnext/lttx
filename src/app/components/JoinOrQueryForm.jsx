@@ -97,7 +97,7 @@ export default function JoinLTTXForm() {
             });
 
           if (filteredExperts.length > 0) {
-            router.push(`/expert?keywords=${encodeURIComponent(keywords.join(","))}`);
+            router.push(`/ask-an-expert?keywords=${encodeURIComponent(keywords.join(","))}`);
           } else {
             alert("No matching experts found. Try different keywords.");
           }

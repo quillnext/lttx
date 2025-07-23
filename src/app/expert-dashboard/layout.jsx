@@ -8,7 +8,7 @@ import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle } from "lucide-react";
 
 const auth = getAuth(app);
 
@@ -73,6 +73,7 @@ export default function UserLayout({ children }) {
             "/expert-dashboard/edit-profile",
             "/expert-dashboard/messages",
             "/expert-dashboard/change-password",
+            "/expert-dashboard/contact-us",
           ];
           if (!allowedPaths.includes(pathname)) {
             router.push("/expert-dashboard/change-password");
@@ -255,6 +256,19 @@ export default function UserLayout({ children }) {
               <Lock className="w-6 h-6" />
               <span className="hidden md:inline">Forgot Password</span>
             </Link>
+            <Link
+    href="/expert-dashboard/contact-us"
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/expert-dashboard/contact-us"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="Contact Us"
+  >
+    <HelpCircle className="w-6 h-6" /> 
+    <span className="hidden md:inline">Contact Us</span>
+  </Link>
           </nav>
         </div>
 

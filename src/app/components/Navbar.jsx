@@ -66,7 +66,7 @@ const Navbar = () => {
 
         {/* Button (Desktop) */}
         <div className="hidden md:block">
-          <Button btn="Apply Now" />
+          <Button btn="Explore" />
         </div>
 
         {/* Mobile Menu Button */}
@@ -89,7 +89,7 @@ const Navbar = () => {
                 <Link href="/#features" className="text-2xl hover:underline" onClick={toggleMenu}>Features</Link>
           <Link href="/#joining-process" className="text-2xl hover:underline" onClick={toggleMenu}>Joining Process</Link>
           {/* <Link href="#aoetc" className="text-2xl hover:underline" onClick={toggleMenu}>ASSOTEC</Link> */}
-          <Button btn="Apply Now" />
+          <Button btn="Explore" />
         </div>
       </nav>
     </div>

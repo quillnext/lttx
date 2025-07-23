@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,6 +14,8 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import _ from "lodash";
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../complete-profile/getCroppedImg';
 
 // Dynamically import react-select and creatable-select with SSR disabled
 const Select = dynamic(() => import("react-select"), { ssr: false });
@@ -67,61 +70,66 @@ export default function EditProfileForm({ initialData, onSave }) {
   const [selectedExpertise, setSelectedExpertise] = useState(null);
   const [apiError, setApiError] = useState("");
   const [agreed, setAgreed] = useState(true); // Default to true for editing
+  const [imagePreview, setImagePreview] = useState(initialData.photo || null);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const router = useRouter();
 
-useEffect(() => {
-  const fetchCities = async () => {
-    try {
-      const response = await fetch("/api/cities");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch cities: ${response.status}`);
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const response = await fetch("/api/cities");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch cities: ${response.status}`);
+        }
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid response format from cities API");
+        }
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        // Add initialData.location to cityOptions if it exists and isn't already included
+        const updatedCities = Array.isArray(data) ? [...data] : [];
+        if (initialData.location && !updatedCities.some(option => option.value === initialData.location)) {
+          updatedCities.push({ value: initialData.location, label: initialData.location });
+        }
+        setCityOptions(updatedCities);
+      } catch (error) {
+        console.error("Error fetching cities:", error);
+        // Fallback to include initialData.location even on error
+        setCityOptions(initialData.location ? [{ value: initialData.location, label: initialData.location }] : []);
+        setApiError(`Failed to load city options: ${error.message}. Using initial location as fallback.`);
       }
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Invalid response format from cities API");
-      }
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      // Add initialData.location to cityOptions if it exists and isn't already included
-      const updatedCities = Array.isArray(data) ? [...data] : [];
-      if (initialData.location && !updatedCities.some(option => option.value === initialData.location)) {
-        updatedCities.push({ value: initialData.location, label: initialData.location });
-      }
-      setCityOptions(updatedCities);
-    } catch (error) {
-      console.error("Error fetching cities:", error);
-      // Fallback to include initialData.location even on error
-      setCityOptions(initialData.location ? [{ value: initialData.location, label: initialData.location }] : []);
-      setApiError(`Failed to load city options: ${error.message}. Using initial location as fallback.`);
-    }
-  };
+    };
 
-  const fetchLanguages = async () => {
-    try {
-      const response = await fetch("/api/languages");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch languages: ${response.status}`);
+    const fetchLanguages = async () => {
+      try {
+        const response = await fetch("/api/languages");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch languages: ${response.status}`);
+        }
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid response format from languages API");
+        }
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        setLanguageOptions(data);
+      } catch (error) {
+        console.error("Error fetching languages:", error);
+        setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
       }
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Invalid response format from languages API");
-      }
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      setLanguageOptions(data);
-    } catch (error) {
-      console.error("Error fetching languages:", error);
-      setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
-    }
-  };
+    };
 
-  fetchCities();
-  fetchLanguages();
-}, [initialData.location]);
+    fetchCities();
+    fetchLanguages();
+  }, [initialData.location]);
 
   useEffect(() => {
     const fetchReferrer = async () => {
@@ -220,6 +228,37 @@ useEffect(() => {
     }
   };
 
+  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleCropConfirm = useCallback(async () => {
+    try {
+      const croppedImage = await getCroppedImg(imagePreview, croppedAreaPixels);
+      const blob = await (await fetch(croppedImage)).blob();
+      const file = new File([blob], `cropped_${formData.photo.name}`, { type: blob.type });
+      setFormData(prev => ({ ...prev, photo: file }));
+      setImagePreview(croppedImage);
+      setShowCropModal(false);
+      setCrop({ x: 0, y: 0 });
+      setZoom(1);
+      setCroppedAreaPixels(null);
+    } catch (error) {
+      console.error('Error cropping image:', error);
+      setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
+    }
+  }, [imagePreview, croppedAreaPixels]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setFormData(prev => ({ ...prev, photo: file }));
+      setImagePreview(URL.createObjectURL(file));
+      setShowCropModal(true);
+      setErrors(prev => ({ ...prev, photo: '' }));
+    }
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "tagline" && value.length > 150) return;
@@ -239,11 +278,6 @@ useEffect(() => {
     setFormData((prev) => ({ ...prev, phone }));
     setErrors((prev) => ({ ...prev, phone: "" }));
     fetchLeadByPhone(phone);
-  };
-
-  const handleFileChange = (e) => {
-    setFormData((prev) => ({ ...prev, photo: e.target.files[0] }));
-    setErrors((prev) => ({ ...prev, photo: "" }));
   };
 
   const handleSingleChange = (selectedOption, field) => {
@@ -453,10 +487,65 @@ useEffect(() => {
                   setShowSuccessModal(false);
                   router.push(`/experts/${formData.username}`);
                 }}
-                className="px-6 py-2 rounded-full text-white bg-[var(--primary)]  transition"
+                className="px-6 py-2 rounded-full text-white bg-[var(--primary)] transition"
               >
                 Got it!
               </button>
+            </div>
+          </div>
+        )}
+        {showCropModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
+              <h3 className="text-lg font-semibold text-[var(--primary)] mb-4">Crop Your Photo</h3>
+              <div className="relative w-full h-64">
+                <Cropper
+                  image={imagePreview}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                  cropShape="round"
+                  showGrid={true}
+                  style={{
+                    containerStyle: { height: '100%', width: '100%' },
+                  }}
+                />
+              </div>
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Zoom</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="3"
+                  step="0.1"
+                  value={zoom}
+                  onChange={e => setZoom(parseFloat(e.target.value))}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
+                  onClick={() => {
+                    setShowCropModal(false);
+                    setImagePreview(formData.photo || null);
+                    setFormData(prev => ({ ...prev, photo: initialData.photo || null }));
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm text-white bg-[var(--primary)] rounded-xl hover:bg-opacity-90"
+                  onClick={handleCropConfirm}
+                >
+                  Confirm Crop
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -502,14 +591,14 @@ useEffect(() => {
                 {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
               </div>
               <div className="row-span-2 flex flex-col items-center justify-center">
-                {formData.photo && typeof formData.photo === "string" && (
-                  <Image
-                    src={formData.photo}
-                    width={150}
-                    height={150}
-                    alt="Profile"
-                    className="w-32 h-32 object-cover rounded-full mb-2 shadow-lg"
-                  />
+                {imagePreview && (
+                  <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--primary)] mb-2">
+                    <img
+                      src={imagePreview}
+                      alt="Profile photo preview"
+                      className="object-cover w-full h-full"
+                    />
+                  </div>
                 )}
                 <input
                   type="file"
@@ -518,6 +607,15 @@ useEffect(() => {
                   accept="image/jpeg,image/png"
                 />
                 <p className="text-sm text-gray-500 mt-1">Upload a professional photo (JPG, PNG)</p>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    className="mt-2 text-sm text-[var(--primary)] hover:underline"
+                    onClick={() => setShowCropModal(true)}
+                  >
+                    {/* Edit Crop */}
+                  </button>
+                )}
                 {errors.photo && <p className="text-sm text-red-600 mt-1">{errors.photo}</p>}
               </div>
               <div>
@@ -582,7 +680,7 @@ useEffect(() => {
                 <p className="text-sm text-gray-500 mt-1">e.g., Europe Travel Expert (max 150 characters)</p>
                 {errors.tagline && <p className="text-sm text-red-600 mt-1">{errors.tagline}</p>}
               </div>
-              {/* <div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <Select
                   instanceId="location-select"
@@ -601,7 +699,13 @@ useEffect(() => {
                           if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
                           return res.json();
                         })
-                        .then(data => setCityOptions(data))
+                        .then(data => {
+                          const updatedCities = Array.isArray(data) ? [...data] : [];
+                          if (formData.location && !updatedCities.some(option => option.value === formData.location)) {
+                            updatedCities.push({ value: formData.location, label: formData.location });
+                          }
+                          setCityOptions(updatedCities);
+                        })
                         .catch(err => {
                           console.error("Error fetching cities:", err);
                           setApiError("Failed to fetch city options. Please try again.");
@@ -611,44 +715,7 @@ useEffect(() => {
                 />
                 {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
                 <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
-              </div> */}
-
-              <div>
-  <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-  <Select
-    instanceId="location-select"
-    options={cityOptions}
-    value={cityOptions.find(option => option.value === formData.location) || null}
-    onChange={selected => handleSingleChange(selected, "location")}
-    placeholder="Select a location (e.g., Mumbai, India)"
-    className={`w-full ${errors.location ? "border-red-500" : ""}`}
-    classNamePrefix="react-select"
-    isDisabled={cityOptions.length === 0}
-    isSearchable={true}
-    onInputChange={inputValue => {
-      if (inputValue) {
-        fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
-          .then(res => {
-            if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
-            return res.json();
-          })
-          .then(data => {
-            const updatedCities = Array.isArray(data) ? [...data] : [];
-            if (formData.location && !updatedCities.some(option => option.value === formData.location)) {
-              updatedCities.push({ value: formData.location, label: formData.location });
-            }
-            setCityOptions(updatedCities);
-          })
-          .catch(err => {
-            console.error("Error fetching cities:", err);
-            setApiError("Failed to fetch city options. Please try again.");
-          });
-      }
-    }}
-  />
-  {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
-  <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
-</div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
                 <Select
@@ -758,7 +825,7 @@ useEffect(() => {
                 />
                 <button
                   type="button"
-                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer "
+                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer"
                   onClick={addExpertise}
                   disabled={!selectedExpertise}
                 >
@@ -997,7 +1064,7 @@ useEffect(() => {
               />
               <span>
                 I confirm that the information provided is accurate and complies with{" "}
-                <strong>Xmytravel Experts&#39;</strong> professional and ethical standards. I also agree to the{" "}
+                <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
                 <Link
                   href="/privacy-policy"
                   className="text-blue-600 underline hover:text-blue-800"
