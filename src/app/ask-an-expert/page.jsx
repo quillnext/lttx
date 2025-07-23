@@ -86,9 +86,9 @@
 //         .split(" ")
 //         .filter(Boolean)
 //         .join(",");
-//       router.push(`/expert?keywords=${encodeURIComponent(formattedKeywords)}`);
+//       router.push(`/ask-an-expert?keywords=${encodeURIComponent(formattedKeywords)}`);
 //     } else {
-//       router.push("/expert");
+//       router.push("/ask-an-expert");
 //     }
 //   };
 
@@ -605,9 +605,9 @@ export default function ExpertsDirectory() {
         .split(" ")
         .filter(Boolean)
         .join(",");
-      router.push(`/expert?keywords=${encodeURIComponent(formattedKeywords)}`);
+      router.push(`/ask-an-expert?keywords=${encodeURIComponent(formattedKeywords)}`);
     } else {
-      router.push("/expert");
+      router.push("/ask-an-expert");
     }
   };
 
@@ -737,7 +737,7 @@ export default function ExpertsDirectory() {
     setLanguageFilter("");
     setLocationFilter("");
     setSpecializationFilter("");
-    router.push("/expert");
+    router.push("/ask-an-expert");
   };
 
   return (
@@ -756,7 +756,7 @@ export default function ExpertsDirectory() {
           imageTitle={selectedImage.includes('default.jpg') ? 'Default Profile Image' : 'Expert Profile Image'}
         />
       )}
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto mt-5">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-4 text-center">
           Real Experts. Real Answers. For Your Real Travel Plans.
         </h1>
@@ -880,8 +880,8 @@ export default function ExpertsDirectory() {
                       {truncateTagline(expert.tagline) || 'No tagline provided'}
                     </p>
                   </div>
-                  <div className="flex justify-center items-center py-5 space-y-0.5">
-                    <div className="text-primary border-2 border-primary rounded-lg px-2 w-[48px] flex flex-col items-center">
+                  <div className="flex justify-center items-center py-1 space-y-0.5">
+                    <div className="text-primary border-2 border-primary rounded-lg px-2 w-[48px] flex flex-col items-center py-1">
                       <h1 className="font-bold text-center text-base">{calculateTotalExperience(expert.experience) || 'No experience provided'}</h1>
                       <span className="font-semibold text-xs text-center">YEARS</span>
                     </div>
@@ -970,8 +970,8 @@ export default function ExpertsDirectory() {
                         {truncateTagline(expert.tagline) || 'No tagline provided'}
                       </p>
                     </div>
-                    <div className="flex justify-center items-center py-5 space-y-0.5">
-                      <div className="text-primary border-2 border-primary rounded-lg px-2 w-[48px] flex flex-col items-center">
+                    <div className="flex justify-center items-center py-1 space-y-0.5">
+                      <div className="text-primary border-2 border-primary rounded-lg px-2 w-[48px] flex flex-col items-center py-1">
                         <h1 className="font-bold text-center text-base">{calculateTotalExperience(expert.experience) || 'No experience provided'}</h1>
                         <span className="font-semibold text-xs text-center">YEARS</span>
                       </div>
