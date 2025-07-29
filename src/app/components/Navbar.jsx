@@ -59,7 +59,7 @@ const Navbar = () => {
           <Link href="/" className="hover:underline">Home</Link>
           <Link href="/#about" className="hover:underline">About </Link>
           <Link href="/#why-us" className="hover:underline">Why us</Link>
-           <Link href="#features" className="hover:underline">Features</Link>
+           <Link href="/#features" className="hover:underline">Features</Link>
           <Link href="/#joining-process" className="hover:underline">Joining Process</Link>
          
         </div>

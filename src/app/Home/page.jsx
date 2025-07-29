@@ -1382,14 +1382,15 @@ export default function Home() {
 
       <header className="w-full px-6 py-4 text-sm z-10">
         <nav className="flex flex-col sm:flex-row sm:justify-between items-center gap-2">
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link href="/" className="hover:underline">Home</Link>
-            <Link href="/about" className="hover:underline">About</Link>
-            <Link href="/why-us" className="hover:underline">Why us</Link>
+          <div className="flex flex-wrap justify-center gap-2  ">
+            <Link href="/Home" className="animate-gradientShift rounded-2xl p-2   ">Home</Link>
+            <Link href="/about" className="animate-gradientShift rounded-2xl p-2  ">About</Link>
+            <Link href="/#why-us" className="animate-gradientShift p-2  rounded-2xl">Why us</Link>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link href="/features" className="hover:underline">Features</Link>
-            <Link href="/joining-process" className="hover:underline">Joining Process</Link>
+            <Link href="/#features" className="animate-gradientShift p-2 rounded-2xl">Features</Link>
+            <Link href="/#joining-process" className="animate-gradientShift  p-2 rounded-2xl">Joining Process</Link>
+            <Link href="/complete-profile" className="animate-gradientShift p-2 rounded-2xl">Join As Expert</Link>
           </div>
         </nav>
       </header>
@@ -1427,12 +1428,7 @@ export default function Home() {
             >
               Ask Expert
             </button>
-            <Link
-              href="/complete-profile"
-              className="bg-white text-[var(--primary)] font-semibold px-6 py-3 rounded-full shadow hover:scale-105 transition flex items-center justify-center"
-            >
-              Join as Expert
-            </Link>
+            
           </div>
         </div>
       </main>

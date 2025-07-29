@@ -521,9 +521,9 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
         />
       </button>
       <div className="flex justify-center items-center py-1 absolute top-0 right-0 space-y-0.5">
-        <div className="text-secondary border-2 border-secondary rounded-lg px-2 w-[48px] flex flex-col items-center">
-          <h1 className="font-bold text-center text-base text-secondary-foreground">{totalExperience}</h1>
-          <span className="font-semibold text-xs text-center text-secondary-foreground">YEARS</span>
+        <div className="text-secondary border-2 border-white  rounded-lg px-2 w-[48px] flex flex-col items-center">
+          <h1 className="font-bold text-center text-base text-white">{totalExperience}</h1>
+          <span className="font-semibold text-xs text-center text-white">YEARS</span>
         </div>
       </div>
     </div>
