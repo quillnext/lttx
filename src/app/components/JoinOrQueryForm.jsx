@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState } from "react";
@@ -17,7 +15,7 @@ export default function JoinLTTXForm() {
     email: "",
     phone: "",
     message: "",
-    purpose: "",
+    purpose: "General Query",
   });
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -67,11 +65,11 @@ export default function JoinLTTXForm() {
         email: "",
         phone: "",
         message: "",
-        purpose: "",
+        purpose: "General Query",
       });
 
-      // Handle navigation for General Query and I'm a Traveller
-      if (["General Query", "I'm a Traveller"].includes(formData.purpose) && formData.message) {
+      // Handle navigation for General Query
+      if (formData.message) {
         const keywords = extractKeywords(formData.message);
         if (keywords.length > 0) {
           const experts = await getDocs(collection(db, "Profiles"));
@@ -173,24 +171,10 @@ export default function JoinLTTXForm() {
           onChange={handleChange}
           className="w-full px-4 py-3 rounded-xl border bg-white col-span-2 md:col-span-1"
         />
-        <select
-          name="purpose"
-          required
-          value={formData.purpose}
-          onChange={handleChange}
-          className="w-full px-4 py-3 rounded-xl border bg-white col-span-2 md:col-span-1"
-        >
-          <option value="" disabled>
-            What best describes your intent?
-          </option>
-          <option value="Join as an Expert">Join as an Expert</option>
-          <option value="I'm a Traveller">I'm a Traveller</option>
-          <option value="General Query">General Query</option>
-        </select>
         <textarea
           name="message"
           required
-          placeholder="Tell us more about your query or expertise"
+          placeholder="Tell us more about your query"
           value={formData.message}
           onChange={handleChange}
           rows={4}

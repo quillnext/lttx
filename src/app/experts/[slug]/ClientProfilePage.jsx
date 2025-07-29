@@ -424,22 +424,38 @@ import 'react-image-lightbox/style.css';
 
 const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), { ssr: false });
 
+
 const calculateTotalExperience = (experience) => {
-    if (!Array.isArray(experience) || experience.length === 0) return "0+ years of experience";
-    const today = new Date();
-    let totalMonths = 0;
+  if (!Array.isArray(experience) || experience.length === 0) return "0+ years of experience";
 
-    experience.forEach(exp => {
-      const startDate = exp.startDate ? new Date(exp.startDate) : null;
-      const endDate = exp.endDate === "Present" ? today : exp.endDate ? new Date(exp.endDate) : null;
-      if (startDate && endDate && endDate >= startDate) {
-        const months = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth());
-        totalMonths += months;
-      }
-    });
+  const today = new Date();
+  let earliestStart = null;
+  let latestEnd = null;
 
-    const years = Math.floor(totalMonths / 12);
-    return `${years}+`;
+  // Find the earliest start date and latest end date
+  experience.forEach(exp => {
+    const startDate = exp.startDate ? new Date(exp.startDate) : null;
+    const endDate = exp.endDate === "Present" ? today : exp.endDate ? new Date(exp.endDate) : null;
+
+    if (startDate && (!earliestStart || startDate < earliestStart)) {
+      earliestStart = startDate;
+    }
+    if (endDate && (!latestEnd || endDate > latestEnd)) {
+      latestEnd = endDate;
+    }
+  });
+
+  // If no valid dates, return 0
+  if (!earliestStart || !latestEnd || latestEnd < earliestStart) {
+    return "0+ years of experience";
+  }
+
+  // Calculate total months between earliest start and latest end
+  const totalMonths = (latestEnd.getFullYear() - earliestStart.getFullYear()) * 12 +
+                      (latestEnd.getMonth() - earliestStart.getMonth());
+
+  const years = Math.floor(totalMonths / 12);
+  return `${years}+ `;
 };
 
 export default function ClientProfilePage({ profile, sortedExperience }) {
@@ -490,150 +506,148 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
       <div className="text-gray-800 relative mt-20">
         <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
           <aside className="lg:col-span-1 space-y-4">
-            <div className="bg-[#36013F] rounded-3xl shadow-lg p-6 text-center sticky top-8 relative">
-              <div className="mb-4 relative">
-                <button
-                  onClick={() => openLightbox(profile.photo || "/default.jpg")}
-                  className="w-28 h-28 rounded-full border-4 border-[#F4D35E] object-cover mx-auto shadow-md overflow-hidden"
-                >
-                  <Image
-                    src={profile.photo || "/default.jpg"}
-                    alt={profile.fullName}
-                    width={112}
-                    height={112}
-                    className=" rounded-full object-cover mx-auto shadow-md"
-                  />
-                </button>
-                <div className="flex justify-center items-center py-1 absolute top-0 right-0 space-y-0.5">
-                  <div className="text-secondary border-2 border-secondary rounded-lg px-2 w-[48px] flex flex-col items-center">
-                    <h1 className="font-bold text-center text-base">{totalExperience}</h1>
-                    <span className="font-semibold text-xs text-center">YEARS</span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm mt-1 text-white">@{username}</p>
-              <h1
-                className="text-xl font-semibold text-white"
-                style={{ fontFamily: "'DM Serif Display', serif" }}
-              >
-                {profile.fullName}
-              </h1>
-              {profile.title && (
-                <p className="text-sm mt-1 text-white">{profile.title}</p>
-              )}
-              {profile.tagline && (
-                <p className="text-sm mt-1 text-white">{profile.tagline}</p>
-              )}
-              <span className="inline-flex items-center gap-1 bg-[#F4D35E] text-black text-xs font-medium px-3 py-1 mt-2 rounded-full">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="w-4 h-4"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 2.122 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Verified by Xmytravel
-              </span>
-              <div className="mt-4 text-sm text-left space-y-2 text-white">
-                {profile.location && (
-                  <p className="flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                      className="w-4 h-4 text-[#F4D35E] border border-[#F4D35E] rounded-[50%]"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {profile.location}
-                  </p>
-                )}
-                {profile.languages && (
-                  <p className="flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="w-4 h-4 text-[#F4D35E] border border-[#F4D35E] rounded-[50%]"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM6.262 6.072a8.25 8.25 0 1 0 10.562-.766 4.5 4.5 0 0 1-1.318 1.357L14.25 7.5l.165.33a.809.809 0 0 1-1.086 1.085l-.604-.302a1.125 1.125 0 0 0-1.298.21.combined.l-.132.131c-.439.44-.439 1.152 0 1.591l.296.296c.256.257.622.374.98.314l1.17-.195c.323-.054.654.036.905.245l1.33 1.108c.32.267.46.694.358 1.1a8.7 8.7 0 0 1-2.288 4.04l-.723.724a1.125 1.125 0 0 1-1.298.21l-.153-.076a1.125 1.125 0 0 1-.622-1.006v-1.089c0-.298-.119-.585-.33-.796l-1.347-1.347a1.125 1.125 0 0 1-.21-1.298L9.75 12l-1.64-1.64a6 6 0 0 1-1.676-3.257l-.172-1.03Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Languages: {profile.languages}
-                  </p>
-                )}
-                {profile.responseTime && (
-                  <p className="flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                      className="w-4 h-4 text-[#F4D35E] border border-[#F4D35E] rounded-[50%]"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {profile.responseTime}
-                  </p>
-                )}
-                {profile.pricing && (
-                  <p className="flex items-center gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                      className="w-4 h-4 text-[#F4D35E] border border-[#F4D35E] rounded-[50%]"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM9 7.5A.75.75 0 0 0 9 9h1.5c.98 0 1.813.626 2.122 1.5H9A.75.75 0 0 0 9 12h3.622a2.251 2.251 0 0 1-2.122 1.5H9a.75.75 0 0 0-.53 1.28l3 3a.75.75 0 1 0 1.06-1.06L10.8 14.988A3.752 3.752 0 0 0 14.175 12H15a.75.75 0 0 0 0-1.5h-.825A3.733 3.733 0 0 0 13.5 9H15a.75.75 0 0 0 0-1.5H9Z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    {profile.pricing}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={handleShare}
-              className="fixed ..
-
-System: bottom-4 left-4 bg-secondary text-primary p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
-              title="Share Profile"
-            >
-              <Share2 />
-              <span className="text-sm hidden sm:inline">Share</span>
-            </button>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="fixed bottom-4 right-4 bg-primary mb-3 text-secondary p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
-              title="Ask a Question"
-            >
-              <MessageCircle />
-              <span className="text-sm hidden sm:inline">Ask Question</span>
-            </button>
-            {isShareMessageVisible && (
-              <div className="fixed bottom-16 left-4 bg-[#F4D35E] text-black text-sm px-4 py-2 rounded-lg shadow-lg z-50">
-                Profile URL copied to clipboard!
-              </div>
-            )}
-          </aside>
+  <div className="animate-gradientShift rounded-3xl shadow-lg p-6 text-center sticky top-8 relative">
+    <div className="mb-4 relative">
+      <button
+        onClick={() => openLightbox(profile.photo || "/default.jpg")}
+        className="w-28 h-28 rounded-full border-4 border-secondary object-cover mx-auto shadow-md overflow-hidden"
+      >
+        <Image
+          src={profile.photo || "/default.jpg"}
+          alt={profile.fullName}
+          width={112}
+          height={112}
+          className="rounded-full object-cover mx-auto shadow-md"
+        />
+      </button>
+      <div className="flex justify-center items-center py-1 absolute top-0 right-0 space-y-0.5">
+        <div className="text-secondary border-2 border-white  rounded-lg px-2 w-[48px] flex flex-col items-center">
+          <h1 className="font-bold text-center text-base text-white">{totalExperience}</h1>
+          <span className="font-semibold text-xs text-center text-white">YEARS</span>
+        </div>
+      </div>
+    </div>
+    <p className="text-sm mt-1 text-primary-foreground">@{username}</p>
+    <h1
+      className="text-xl font-semibold text-primary-foreground"
+      style={{ fontFamily: "'DM Serif Display', serif" }}
+    >
+      {profile.fullName}
+    </h1>
+    {profile.title && (
+      <p className="text-sm mt-1 text-primary-foreground">{profile.title}</p>
+    )}
+    {profile.tagline && (
+      <p className="text-sm mt-1 text-primary-foreground">{profile.tagline}</p>
+    )}
+    <span className="inline-flex items-center gap-1 bg-secondary text-secondary-foreground text-xs font-medium px-3 py-1 mt-2 rounded-full">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className="w-4 h-4"
+      >
+        <path
+          fillRule="evenodd"
+          d="M8.603 3.799A4.49 4.49 0 0 1 12 2.25c1.357 0 2.573.6 2.122 1.549a4.49 4.49 0 0 1 3.498 1.307 4.491 4.491 0 0 1 1.307 3.497A4.49 4.49 0 0 1 21.75 12a4.49 4.49 0 0 1-1.549 3.397 4.491 4.491 0 0 1-1.307 3.497 4.491 4.491 0 0 1-3.497 1.307A4.49 4.49 0 0 1 12 21.75a4.49 4.49 0 0 1-3.397-1.549 4.49 4.49 0 0 1-3.498-1.306 4.491 4.491 0 0 1-1.307-3.498A4.49 4.49 0 0 1 2.25 12c0-1.357.6-2.573 1.549-3.397a4.49 4.49 0 0 1 1.307-3.497 4.49 4.49 0 0 1 3.497-1.307Zm7.007 6.387a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z"
+          clipRule="evenodd"
+        />
+      </svg>
+      Verified by Xmytravel
+    </span>
+    <div className="mt-4 text-sm text-left space-y-2 text-primary-foreground">
+      {profile.location && (
+        <p className="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            className="w-4 h-4 text-secondary border border-secondary rounded-[50%]"
+          >
+            <path
+              fillRule="evenodd"
+              d="m11.54 22.351.07.04.028.016a.76.76 0 0 0 .723 0l.028-.015.071-.041a16.975 16.975 0 0 0 1.144-.742 19.58 19.58 0 0 0 2.683-2.282c1.944-1.99 3.963-4.98 3.963-8.827a8.25 8.25 0 0 0-16.5 0c0 3.846 2.02 6.837 3.963 8.827a19.58 19.58 0 0 0 2.682 2.282 16.975 16.975 0 0 0 1.145.742ZM12 13.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {profile.location}
+        </p>
+      )}
+      {profile.languages && (
+        <p className="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="w-4 h-4 text-secondary border border-secondary rounded-[50%]"
+          >
+            <path
+              fillRule="evenodd"
+              d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM6.262 6.072a8.25 8.25 0 1 0 10.562-.766 4.5 4.5 0 0 1-1.318 1.357L14.25 7.5l.165.33a.809.809 0 0 1-1.086 1.085l-.604-.302a1.125 1.125 0 0 0-1.298.21.combined.l-.132.131c-.439.44-.439 1.152 0 1.591l.296.296c.256.257.622.374.98.314l1.17-.195c.323-.054.654.036.905.245l1.33 1.108c.32.267.46.694.358 1.1a8.7 8.7 0 0 1-2.288 4.04l-.723.724a1.125 1.125 0 0 1-1.298.21l-.153-.076a1.125 1.125 0 0 1-.622-1.006v-1.089c0-.298-.119-.585-.33-.796l-1.347-1.347a1.125 1.125 0 0 1-.21-1.298L9.75 12l-1.64-1.64a6 6 0 0 1-1.676-3.257l-.172-1.03Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Languages: {profile.languages}
+        </p>
+      )}
+      {profile.responseTime && (
+        <p className="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            className="w-4 h-4 text-secondary border border-secondary rounded-[50%]"
+          >
+            <path
+              fillRule="evenodd"
+              d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {profile.responseTime}
+        </p>
+      )}
+      {profile.pricing && (
+        <p className="flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            className="w-4 h-4 text-secondary border border-secondary rounded-[50%]"
+          >
+            <path
+              fillRule="evenodd"
+              d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM9 7.5A.75.75 0 0 0 9 9h1.5c.98 0 1.813.626 2.122 1.5H9A.75.75 0 0 0 9 12h3.622a2.251 2.251 0 0 1-2.122 1.5H9a.75.75 0 0 0-.53 1.28l3 3a.75.75 0 1 0 1.06-1.06L10.8 14.988A3.752 3.752 0 0 0 14.175 12H15a.75.75 0 0 0 0-1.5h-.825A3.733 3.733 0 0 0 13.5 9H15a.75.75 0 0 0 0-1.5H9Z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {profile.pricing}
+        </p>
+      )}
+    </div>
+    <button
+      onClick={handleShare}
+      className="fixed bottom-4 left-4 bg-secondary text-secondary-foreground p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
+      title="Share Profile"
+    >
+      <Share2 />
+      <span className="text-sm hidden sm:inline">Share</span>
+    </button>
+    <button
+      onClick={() => setIsModalOpen(true)}
+      className="fixed bottom-4 right-4 bg-primary text-primary-foreground p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50"
+      title="Ask a Question"
+    >
+      <MessageCircle />
+      <span className="text-sm hidden sm:inline">Ask Question</span>
+    </button>
+    {isShareMessageVisible && (
+      <div className="fixed bottom-16 left-4 bg-secondary text-secondary-foreground text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+        Profile URL copied to clipboard!
+      </div>
+    )}
+  </div>
+</aside>
 
           <section className="lg:col-span-2 space-y-4">
             {profile.about && (
