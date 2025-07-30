@@ -701,7 +701,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
                     placeholder="Enter phone number"
                     inputProps={{
                       id: "phone",
-                      className: `w-full p-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${
+                      className: `w-full p-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ml-8 ${
                         errors.phone ? "border-red-500" : ""
                       }`,
                       required: true,
