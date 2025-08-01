@@ -1499,10 +1499,10 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                 )}
               </div>
             </div>
-            <div className="fixed bottom-0 left-0 right-0 flex justify-between items-center bg-white shadow-t-lg z-50 lg:hidden m-0">
+            <div className="fixed bottom-0 left-0 right-0 flex justify-between items-center bg-opacity-10 backdrop-blur-md border-t  z-50 lg:hidden p-2">
               <button
                 onClick={handleShare}
-                className="flex-1 bg-secondary text-secondary-foreground py-3 rounded-none shadow-none hover:bg-opacity-90 transition-all flex items-center justify-center gap-2 mx-0 border-r border-gray-200"
+                className="flex-1 bg-gray-300 bg-opacity-20 backdrop-blur-md text-gray-800 py-3 px-4 rounded-lg shadow-md border border-white hover:bg-opacity-30 transition-all flex items-center justify-center gap-2 mx-1"
                 title="Share Profile"
               >
                 <Share2 className="w-5 h-5" />
@@ -1510,7 +1510,7 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
               </button>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="flex-1 bg-primary text-primary-foreground py-3 rounded-none shadow-none hover:bg-opacity-90 transition-all flex items-center justify-center gap-2 mx-0"
+                className="flex-1 bg-primary bg-opacity-20 backdrop-blur-md text-primary-foreground py-3 px-4 rounded-lg shadow-md border border-white hover:bg-opacity-30 transition-all flex items-center justify-center gap-2 mx-1"
                 title="Ask a Question"
               >
                 <MessageCircle className="w-5 h-5" />
@@ -1656,7 +1656,7 @@ export default function ClientProfilePage({ profile, sortedExperience }) {
                     />
                   </svg>
                 </summary>
-                <div className="px-5 pb-5 text-sm text-gray-700 leading-relaxed">
+                <div className="px-1 pb-5 text-sm text-gray-700 leading-relaxed">
                   <ul className="list-disc list-inside space-y-2">
                     {sortedExperience.map((exp, i) => (
                       <li key={i}>
