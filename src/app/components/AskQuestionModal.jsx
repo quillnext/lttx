@@ -2045,30 +2045,30 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-gray-900/30 to-black/30 flex items-center justify-center z-50">
-      <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-8 w-full max-w-lg relative border border-white/10">
+      <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-6 w-full max-w-lg relative border border-white/10 overflow-y-auto">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors text-xl font-bold"
         >
           ✕
         </button>
-        <h2 className="text-3xl font-bold bg-clip-text text-primary">
-          Ask {expert?.fullName || "Expert"} a Question
+        <h2 className="text-2xl font-bold bg-clip-text text-white">
+          Ask a Question to {expert?.fullName || "Expert"} 
         </h2>
         {success ? (
           <p className="text-green-400 text-center font-medium text-lg animate-pulse">
             Question submitted successfully! Closing...
           </p>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-sm font-semibold text-primary mb-2">
+              <label className="block text-sm font-semibold text-white mb-2">
                 Your Question
               </label>
               <textarea
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
+                className={`mt-0.5 p-2 w-full border rounded-xl bg-white/5 text-white placeholder-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
                   errors.question ? "border-red-500" : "border-white/20"
                 }`}
                 rows="5"
@@ -2089,7 +2089,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className={`p-4 w-full border rounded-xl bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-300 ${
+                    className={`p-2 w-full border rounded-xl bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-300 ${
                       errors.name ? "border-red-500" : "border-white/20"
                     }`}
                     placeholder="Enter your name"
@@ -2107,7 +2107,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className={`p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
+                    className={`p-2 w-full border rounded-xl bg-white/5 text-white placeholder-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
                       errors.email ? "border-red-500" : "border-white/20"
                     }`}
                     placeholder="Enter your email"
@@ -2128,7 +2128,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
                     placeholder="Enter phone number"
                     inputProps={{
                       id: "phone",
-                      className: `w-full p-4 border rounded-xl bg-white/5 text-primary placeholder-white/50 focus:ring-2 focus:ring-primary focus:border-transparent pl-12 transition-all duration-300 ${
+                      className: `w-full p-2 border rounded-xl bg-white/5 text-white placeholder-white/50 focus:ring-2 focus:ring-primary focus:border-transparent pl-12 transition-all duration-300 ${
                         errors.phone ? "border-red-500" : "border-white/20"
                       }`,
                       required: true,
@@ -2146,7 +2146,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
+              className={`w-full bg-gradient-to-r from-primary to-secondary text-white p-2 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 ${
                 loading ? "opacity-70 cursor-not-allowed" : ""
               }`}
             >
