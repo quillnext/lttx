@@ -127,12 +127,12 @@ export default function Home() {
           <div className="flex flex-wrap justify-center gap-2  ">
             <Link href="/" className=" p-2   ">Home</Link>
             <Link href="/about" className=" p-2  ">About</Link>
-            <Link href="/#why-us" className="p-2">Why us</Link>
+            <Link href="/about#why-us" className="p-2">Why us</Link>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link href="/#features" className="p-2">Features</Link>
-            <Link href="/#joining-process" className="  p-2 ">Joining Process</Link>
-            <Link href="/complete-profile" className="p-2">Join As Expert</Link>
+            <Link href="/about#features" className="p-2">Features</Link>
+            <Link href="/about#joining-process" className="  p-2 ">Joining Process</Link>
+            <Link href="/expert-login" className="p-2">Login</Link>
           </div>
         </nav>
       </header>
