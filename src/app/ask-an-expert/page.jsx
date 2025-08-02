@@ -5756,7 +5756,7 @@ export default function ExpertsDirectory() {
         <div className="mb-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
             <div className="flex-1 relative">
-              <FaGlobe className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground text-xs" />
+              <FaGlobe className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground text-xs hidden md:block" />
               <select
                 value={languageFilter}
                 onChange={(e) => setLanguageFilter(e.target.value)}
@@ -5771,7 +5771,7 @@ export default function ExpertsDirectory() {
               </select>
             </div>
             <div className="flex-1 relative">
-              <FaMapMarkerAlt className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground text-xs" />
+              <FaMapMarkerAlt className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground text-xs hidden md:block" />
               <select
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
@@ -5786,7 +5786,7 @@ export default function ExpertsDirectory() {
               </select>
             </div>
             <div className="flex-1 relative">
-              <FaUserTag className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground text-xs" />
+              <FaUserTag className="absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground text-xs hidden md:block" />
               <select
                 value={specializationFilter}
                 onChange={(e) => setSpecializationFilter(e.target.value)}

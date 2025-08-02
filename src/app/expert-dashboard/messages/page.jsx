@@ -286,59 +286,62 @@ export default function Messages() {
       )}
 
       {replyModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md relative">
-            <button
-              onClick={() => {
-                setReplyModal(null);
-                setReplyText("");
-                setReplyError(null);
-              }}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-              aria-label="Close reply modal"
-            >
-              ✕
-            </button>
-            <h2 className="text-2xl font-bold text-[#36013F] mb-4">
-              Reply to {replyModal.userName || "User"}
-            </h2>
-            <p className="mb-4">
-              <strong>Question:</strong> {replyModal.question || "N/A"}
-            </p>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleReply(replyModal);
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Your Reply
-                </label>
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  className="mt-1 p-2 w-full border rounded-md focus:ring-[#36013F] focus:border-[#36013F]"
-                  rows="4"
-                  required
-                />
-                {replyError && (
-                  <p className="text-red-500 text-sm">{replyError}</p>
-                )}
-              </div>
-              <button
-                type="submit"
-                disabled={replyLoading}
-                className={`w-full bg-[#36013F] text-white p-2 rounded-md hover:bg-[#4a0150] transition ${
-                  replyLoading ? "opacity-50 cursor-not-allowed" : ""
-                } focus:outline-none focus:ring-2 focus:ring-[#36013F]`}
-              >
-                {replyLoading ? "Sending..." : "Send Reply"}
-              </button>
-            </form>
-          </div>
-        </div>
+       <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-gray-900/30 to-black/30 flex items-center justify-center z-50">
+  <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-8 w-full max-w-lg relative border border-white/30">
+    <button
+      onClick={() => {
+        setReplyModal(null);
+        setReplyText("");
+        setReplyError(null);
+      }}
+      className="absolute top-4 right-4 text-primary  text-lg font-bold"
+      aria-label="Close reply modal"
+    >
+      ✕
+    </button>
+    <h2 className="text-3xl font-bold bg-clip-text text-primary mb-6">
+      Reply to {replyModal.userName || "User"}
+    </h2>
+    <p className="mb-6 text-primary">
+      <strong className="font-semibold">Question:</strong> {replyModal.question || "N/A"}
+    </p>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleReply(replyModal);
+      }}
+      className="space-y-6"
+    >
+      <div>
+        <label className="block text-sm font-semibold text-primary mb-2">
+          Your Reply
+        </label>
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
+            replyError ? "border-red-500" : "border-white/20"
+          }`}
+          rows="5"
+          required
+          placeholder="Type your reply here..."
+        />
+        {replyError && (
+          <p className="text-red-400 text-sm mt-2">{replyError}</p>
+        )}
+      </div>
+      <button
+        type="submit"
+        disabled={replyLoading}
+        className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg  transition-all duration-300 transform hover:scale-105 ${
+          replyLoading ? "opacity-70 cursor-not-allowed" : ""
+        }`}
+      >
+        {replyLoading ? "Sending..." : "Send Reply"}
+      </button>
+    </form>
+  </div>
+</div>
       )}
     </div>
   );
