@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
-import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle } from "lucide-react";
+import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock } from "lucide-react";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
@@ -162,6 +162,19 @@ export default function AdminLayout({ children }) {
     prefetch={true}
   >
     <HelpCircle /> Contact Us Messages
+  </Link>
+
+          <Link
+    href="/dashboard/scheduling"
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/dashboard/scheduling"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+  >
+    <CalendarClock />   Scheduling
+
   </Link>
           </nav>
         </div>

@@ -8,7 +8,7 @@ import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck } from "lucide-react";
 
 const auth = getAuth(app);
 
@@ -63,6 +63,7 @@ export default function UserLayout({ children }) {
         const profileSnap = await getDoc(profileRef);
 
         // Redirect /expert-dashboard to /expert-dashboard/messages
+        
         if (pathname === "/expert-dashboard") {
           router.push("/expert-dashboard/messages");
           return;
@@ -74,6 +75,8 @@ export default function UserLayout({ children }) {
             "/expert-dashboard/messages",
             "/expert-dashboard/change-password",
             "/expert-dashboard/contact-us",
+            "/expert-dashboard/availavility",
+            "/expert-dashboard/bookings"
           ];
           if (!allowedPaths.includes(pathname)) {
             router.push("/expert-dashboard/change-password");
@@ -269,6 +272,37 @@ export default function UserLayout({ children }) {
     <HelpCircle className="w-6 h-6" /> 
     <span className="hidden md:inline">Contact Us</span>
   </Link>
+
+
+    <Link
+    href="/expert-dashboard/availavility"
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/expert-dashboard/availavility"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="Contact Us"
+  >
+    <CalendarDays className="w-6 h-6" /> 
+    <span className="hidden md:inline">Availavility</span>
+  </Link>
+
+  
+    <Link
+    href="/expert-dashboard/bookings"
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/expert-dashboard/bookings"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="Contact Us"
+  >
+    <CalendarCheck className="w-6 h-6" /> 
+    <span className="hidden md:inline">Booking</span>
+  </Link>
+
           </nav>
         </div>
 
