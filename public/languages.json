@@ -1,9 +1,9 @@
 [
     { "code": "as", "name": "Assamese" },
-  { "code": "bn", "name": "Bengali" },
+  
   { "code": "brx", "name": "Bodo" },
   { "code": "doi", "name": "Dogri" },
-  { "code": "gu", "name": "Gujarati" },
+ 
   { "code": "hi", "name": "Hindi" },
   { "code": "kn", "name": "Kannada" },
   { "code": "ks", "name": "Kashmiri" },

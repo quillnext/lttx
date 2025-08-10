@@ -1,4 +1,5 @@
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+
+import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
 
@@ -63,6 +64,7 @@ export default async function ExpertProfilePage({ params }) {
   const db = getFirestore(app);
   const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
   let profile = null;
+  let weeklySchedule = {};
 
   try {
     const querySnapshot = await getDocs(q);
@@ -74,8 +76,18 @@ export default async function ExpertProfilePage({ params }) {
         id: doc.id,
         ...data,
         timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : null,
+        isOnline: data.isOnline !== false, 
       };
     });
+
+    if (profile) {
+        const recurringRef = doc(db, "ExpertRecurringAvailability", profile.id);
+        const recurringSnap = await getDoc(recurringRef);
+        if (recurringSnap.exists()) {
+            weeklySchedule = recurringSnap.data().schedule || {};
+        }
+    }
+
   } catch (error) {
     console.error("Error fetching profile:", error);
     return <div>Error loading profile</div>;
@@ -113,5 +125,5 @@ export default async function ExpertProfilePage({ params }) {
       return dateB - dateA;
     });
 
-  return <ClientProfilePage profile={profile} sortedExperience={sortedExperience} />;
+  return <ClientProfilePage profile={profile} sortedExperience={sortedExperience} weeklySchedule={weeklySchedule} />;
 }
