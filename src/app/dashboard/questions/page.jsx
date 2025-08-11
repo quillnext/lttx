@@ -1,9 +1,7 @@
-
 "use client";
 
-import React, { useState, useEffect } from "react"; 
-
-import { getFirestore, collection, getDocs, deleteDoc, doc } from "firebase/firestore";
+import React, { useState, useEffect } from "react";
+import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { ChevronDown, ChevronUp, CircleCheckBig, Loader } from "lucide-react";
 
@@ -63,6 +61,20 @@ export default function AdminQuestions() {
       setQuestions((prev) => prev.filter((question) => question.id !== id));
     } catch (error) {
       console.error("Error deleting question:", error.message);
+    }
+  };
+
+  const handleTogglePublic = async (id, currentIsPublic) => {
+    try {
+      const questionRef = doc(db, "Questions", id);
+      await updateDoc(questionRef, { isPublic: !currentIsPublic });
+      setQuestions((prev) =>
+        prev.map((question) =>
+          question.id === id ? { ...question, isPublic: !currentIsPublic } : question
+        )
+      );
+    } catch (error) {
+      console.error("Error toggling public status:", error.message);
     }
   };
 
@@ -132,6 +144,7 @@ export default function AdminQuestions() {
                 <th className="p-3 border">Phone</th>
                 <th className="p-3 border">Expert Name</th>
                 <th className="p-3 border">Status</th>
+                <th className="p-3 border">Public</th>
                 <th className="p-3 border">Actions</th>
                 <th className="p-3 border w-12"></th>
               </tr>
@@ -148,13 +161,29 @@ export default function AdminQuestions() {
                     <td className="p-3 border">
                       {q.status === "pending" ? (
                         <span className="bg-secondary text-[#36013F] font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
-                          <Loader className="animate-spin"/> Pending
+                          <Loader className="animate-spin" /> Pending
                         </span>
                       ) : (
                         <span className="bg-primary text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
-                        <CircleCheckBig />  Answered
+                          <CircleCheckBig /> Answered
                         </span>
                       )}
+                    </td>
+                    <td className="p-3 border">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={q.isPublic || false}
+                          onChange={() => handleTogglePublic(q.id, q.isPublic || false)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#36013F] transition-colors">
+                          <div className="w-5 h-5 bg-white rounded-full peer-checked:translate-x-5 transition-transform"></div>
+                        </div>
+                        <span className="ml-2 text-xs font-medium">
+                          {q.isPublic ? "Public" : "Private"}
+                        </span>
+                      </label>
                     </td>
                     <td className="p-3 border">
                       <button
@@ -171,20 +200,20 @@ export default function AdminQuestions() {
                         aria-expanded={expandedRows[q.id] || false}
                         aria-label={expandedRows[q.id] ? "Collapse question details" : "Expand question details"}
                       >
-                        {expandedRows[q.id] ? <ChevronUp /> :   <ChevronDown />}
+                        {expandedRows[q.id] ? <ChevronUp /> : <ChevronDown />}
                       </button>
                     </td>
                   </tr>
                   {expandedRows[q.id] && (
                     <tr key={`${q.id}-details`}>
-                      <td colSpan="8" className="p-3 border bg-gray-50">
+                      <td colSpan="9" className="p-3 border bg-gray-50">
                         <div className="flex flex-col md:flex-row gap-4 text-gray-700">
-                          <div className=" w-[30%] border-r">
+                          <div className="w-[30%] border-r">
                             <p>
                               <strong>Question:</strong> {q.question || "N/A"}
                             </p>
                           </div>
-                          <div className=" w-[70%]">
+                          <div className="w-[70%]">
                             <p>
                               <strong>Answer:</strong>{" "}
                               {q.status === "pending" ? "No reply yet" : q.reply || "No reply yet"}
