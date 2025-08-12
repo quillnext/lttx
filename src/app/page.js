@@ -204,6 +204,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
+import Footer from "./pages/Footer";
 
 const db = getFirestore(app);
 
@@ -516,7 +517,9 @@ export default function Home() {
                 </div>
               </aside>
             </main>
+           
           </div>
+           <Footer/>
         </div>
       </div>
       <ToastContainer position="top-right" autoClose={3000} />

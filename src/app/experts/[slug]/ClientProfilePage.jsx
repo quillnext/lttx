@@ -887,7 +887,7 @@ export default function ClientProfilePage({ profile, sortedExperience , weeklySc
                         className="group rounded-xl overflow-hidden border border-primary"
                       >
                         <summary className="flex items-center justify-between px-6 py-4 cursor-pointer font-semibold bg-white transition-colors ">
-                          <span className="text-lg">{q.question}</span>
+                          <span >{q.question}</span>
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"

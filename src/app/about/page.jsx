@@ -39,8 +39,9 @@ export default function Home() {
       <VideoBlogPage />
       <div className="px-4 md:px-8 lg:px-12">
         <JoinOrQueryForm />
-        <Footer />
+        
       </div>
+      <Footer />
     </>
   );
 }
