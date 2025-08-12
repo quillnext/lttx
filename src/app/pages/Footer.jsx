@@ -28,24 +28,24 @@ const Footer = () => {
           
            
           </div>
-          <div className="flex flex-col space-x-6 text-white text-md mb-4 gap-2 text-left">
-              <Link href="/" className="hover:underline">
-                Home
-              </Link>
-              <Link href="/#about" className="hover:underline">
-                About
-              </Link>
-              <Link href="/#why-us" className="hover:underline">
-                Why us
-              </Link>
-              <Link href="/#features" className="hover:underline">
-                Features
-              </Link>
-              <Link href="/#joining-process" className="hover:underline">
-                Joining Process
-              </Link>
-              
-            </div>
+         <div className="flex flex-row md:flex-col flex-wrap gap-2 text-white text-md mb-4 md:text-left text-center justify-center">
+            <Link href="/" className="hover:underline">
+              Home
+            </Link>
+            <Link href="/about/#about" className="hover:underline">
+              About
+            </Link>
+            <Link href="/about/#why-us" className="hover:underline">
+              Why us
+            </Link>
+            <Link href="/about/#features" className="hover:underline">
+              Features
+            </Link>
+            <Link href="/about/#joining-process" className="hover:underline">
+              Joining Process
+            </Link>
+          </div>
+
 
           
 
