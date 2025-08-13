@@ -347,13 +347,13 @@ export default function BookingOverviewPage() {
     const itemsPerPage = 10;
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            console.log("Auth state changed:", user ? { uid: user.uid, email: user.email } : "No user");
-            if (!user) {
-                console.error("User is not authenticated. Redirecting to login...");
-                window.location.href = "/login";
-            }
-        });
+        // const unsubscribe = onAuthStateChanged(auth, (user) => {
+        //     console.log("Auth state changed:", user ? { uid: user.uid, email: user.email } : "No user");
+        //     if (!user) {
+        //         console.error("User is not authenticated. Redirecting to login...");
+        //         window.location.href = "/login";
+        //     }
+        // });
 
         const fetchBookings = async () => {
             setLoading(true);
@@ -398,7 +398,7 @@ export default function BookingOverviewPage() {
         };
         fetchBookings();
 
-        return () => unsubscribe();
+       
     }, []);
 
     const filteredBookings = useMemo(() =>

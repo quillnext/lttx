@@ -61,7 +61,7 @@ const emailTemplate = ({
         <p><strong>Booking Details:</strong></p>
         <p>Date: ${bookingDate}</p>
         <p>Time: ${bookingTime}</p>
-        ${userMessage ? `<p><strong>Your Message:</strong><br/>"${userMessage}"</p>` : ""}
+        ${userMessage ? `<p><strong>Your Points to discuss:</strong><br/>"${userMessage}"</p>` : ""}
         <p>Thank you for booking with XMyTravel! You’ll receive further details soon.</p>
         <p>– XMyTravel Team</p>
       `
@@ -72,7 +72,7 @@ const emailTemplate = ({
         <p><strong>Booking Details:</strong></p>
         <p>Date: ${bookingDate}</p>
         <p>Time: ${bookingTime}</p>
-        ${userMessage ? `<p><strong>Message from User:</strong><br/>"${userMessage}"</p>` : ""}
+        ${userMessage ? `<p><strong>Points to discuss:</strong><br/>"${userMessage}"</p>` : ""}
         <p>To manage this booking, log in to your expert dashboard:</p>
         <a class="cta-button" href="${dashboardLink}" target="_blank">View Booking</a>
         <p style="font-size: 13px; margin-top: 16px;">

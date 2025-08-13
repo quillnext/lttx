@@ -14,6 +14,7 @@ export default function AdminQuestions() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState({});
+  const [toggling, setToggling] = useState({});
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -65,16 +66,26 @@ export default function AdminQuestions() {
   };
 
   const handleTogglePublic = async (id, currentIsPublic) => {
+    setToggling((prev) => ({ ...prev, [id]: true }));
     try {
-      const questionRef = doc(db, "Questions", id);
-      await updateDoc(questionRef, { isPublic: !currentIsPublic });
       setQuestions((prev) =>
         prev.map((question) =>
           question.id === id ? { ...question, isPublic: !currentIsPublic } : question
         )
       );
+      const questionRef = doc(db, "Questions", id);
+      await updateDoc(questionRef, { isPublic: !currentIsPublic });
+      console.log(`Toggled isPublic for question ${id} to ${!currentIsPublic}`);
     } catch (error) {
+      setQuestions((prev) =>
+        prev.map((question) =>
+          question.id === id ? { ...question, isPublic: currentIsPublic } : question
+        )
+      );
       console.error("Error toggling public status:", error.message);
+      alert("Failed to update public status. Please try again.");
+    } finally {
+      setToggling((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -176,12 +187,28 @@ export default function AdminQuestions() {
                           checked={q.isPublic || false}
                           onChange={() => handleTogglePublic(q.id, q.isPublic || false)}
                           className="sr-only peer"
+                          disabled={toggling[q.id]}
+                          aria-label={`Toggle public status for question ${q.id}`}
                         />
-                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[#36013F] transition-colors">
-                          <div className="w-5 h-5 bg-white rounded-full peer-checked:translate-x-5 transition-transform"></div>
+                        <div
+                          className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${
+                            q.isPublic ? "bg-[#36013F]" : "bg-gray-200"
+                          } ${toggling[q.id] ? "opacity-50" : ""}`}
+                        >
+                          <div
+                            className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                              q.isPublic ? "translate-x-5" : "translate-x-0"
+                            }`}
+                          ></div>
                         </div>
                         <span className="ml-2 text-xs font-medium">
-                          {q.isPublic ? "Public" : "Private"}
+                          {toggling[q.id] ? (
+                            <Loader className="animate-spin h-4 w-4" />
+                          ) : q.isPublic ? (
+                            "Public"
+                          ) : (
+                            "Private"
+                          )}
                         </span>
                       </label>
                     </td>
