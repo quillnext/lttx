@@ -140,7 +140,7 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
                     userMessage: message,
                     bookingDate: dateStr,
                     bookingTime: selectedSlot.startTime,
-                    status: "confirmed",
+                    status: "pending",
                     createdAt: Timestamp.now(),
                 });
             });
@@ -152,6 +152,21 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
 
             setIsSuccess(true);
             onBookingSuccess();
+
+            await fetch("/api/send-booking-emails", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    userEmail: email,
+    userName: name,
+    userPhone: phone,
+    userMessage: message,
+    expertEmail: expert.email, // Ensure expert email is available in expert object
+    expertName: expert.fullName,
+    bookingDate: selectedDate.toISOString().split("T")[0],
+    bookingTime: selectedSlot.startTime,
+  }),
+});
         } catch (err) {
             console.error("Booking failed:", err);
             setError(err.message || "Failed to book the appointment. Please try again.");
