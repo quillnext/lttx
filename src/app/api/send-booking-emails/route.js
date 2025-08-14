@@ -1,5 +1,15 @@
 import { NextResponse } from "next/server";
-import { sendEmail } from "@/lib/email";
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.zoho.in",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
 const emailTemplate = ({
   userName,
@@ -141,70 +151,62 @@ export async function POST(request) {
     const year = new Date().getFullYear();
     const dashboardLink = "https://xmytravel.com/expert-dashboard";
 
-    // Fire-and-forget emails
-    setTimeout(() => {
-      Promise.allSettled([
-        // Email to User
-        sendEmail({
-          to: userEmail,
-          subject: "Your Booking Confirmation with XMyTravel",
-          html: emailTemplate({
-            userName,
-            expertName,
-            bookingDate,
-            bookingTime,
-            userMessage,
-            year,
-            type: "user",
-            dashboardLink,
-          }),
-        }),
+    // Email to User
+    await transporter.sendMail({
+      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+      to: userEmail,
+      subject: "Your Booking Confirmation with XMyTravel",
+      html: emailTemplate({
+        userName,
+        expertName,
+        bookingDate,
+        bookingTime,
+        userMessage,
+        year,
+        type: "user",
+        dashboardLink,
+      }),
+    });
 
-        // Email to Expert (excluding user phone)
-        sendEmail({
-          to: expertEmail,
-          subject: "New Booking on XMyTravel",
-          html: emailTemplate({
-            userName,
-            expertName,
-            bookingDate,
-            bookingTime,
-            userMessage,
-            year,
-            type: "expert",
-            dashboardLink,
-          }),
-        }),
+    // Email to Expert
+    await transporter.sendMail({
+      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+      to: expertEmail,
+      subject: "New Booking on XMyTravel",
+      html: emailTemplate({
+        userName,
+        expertName,
+        bookingDate,
+        bookingTime,
+        userMessage,
+        year,
+        type: "expert",
+        dashboardLink,
+      }),
+    });
 
-        // Email to Admin (including user details)
-        sendEmail({
-          to: process.env.ADMIN_EMAIL,
-          subject: "New Booking Notification on XMyTravel",
-          html: emailTemplate({
-            userName,
-            expertName,
-            bookingDate,
-            bookingTime,
-            userEmail,
-            userPhone,
-            userMessage,
-            year,
-            type: "admin",
-            dashboardLink,
-          }),
-        }),
-      ]).then((results) => {
-        results.forEach((result, i) => {
-          if (result.status === "rejected") {
-            console.error(`Email #${i + 1} failed:`, result.reason);
-          }
-        });
-      });
-    }, 100); // Let response go first
+    // Email to Admin
+    await transporter.sendMail({
+      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+      to: process.env.ADMIN_EMAIL,
+      subject: "New Booking Notification on XMyTravel",
+      html: emailTemplate({
+        userName,
+        expertName,
+        bookingDate,
+        bookingTime,
+        userEmail,
+        userPhone,
+        userMessage,
+        year,
+        type: "admin",
+        dashboardLink,
+      }),
+    });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Error in /send-booking-emails:", error.message);
+    console.error("Error sending booking emails:", error.message, error.stack);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
