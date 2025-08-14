@@ -1,23 +1,9 @@
 
 // src/app/utils/sendApprovalNotificationEmail.js
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-   host: 'smtp.zoho.in',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-});
+import { sendEmail } from "@/lib/email";
 
 export async function sendApprovalNotificationEmail({ fullName, email, slug, generatedReferralCode, username, password }) {
-  console.log("Sending email with config:", {
-    user: process.env.EMAIL_USER,
-    
-    pass: process.env.EMAIL_PASS ? "****" : "undefined",
-  });
+  console.log("Preparing approval email for:", email);
 
   const profileUrl = `https://xmytravel.com/experts/${slug}`;
   const year = new Date().getFullYear();
@@ -120,16 +106,9 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
     </html>
   `;
 
-  try {
-    await transporter.sendMail({
-      from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Your Expert Profile Is Live on XmyTravel",
-      html,
-    });
-    console.log("Approval email sent successfully to:", email);
-  } catch (error) {
-    console.error("Failed to send approval email:", error);
-    throw new Error(`Failed to send approval email: ${error.message}`);
-  }
+  await sendEmail({
+    to: email,
+    subject: "Your Expert Profile Is Live on XmyTravel",
+    html,
+  });
 }

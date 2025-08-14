@@ -1,14 +1,5 @@
-import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-   host: 'smtp.zoho.in',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-});
+import { sendEmail } from "@/lib/email";
 
 const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isExpert }) => `
 <!DOCTYPE html>
@@ -114,25 +105,29 @@ export async function sendExpertFormEmails(formData) {
   const year = new Date().getFullYear();
   const isExpert = formData.purpose === "Join as an Expert";
 
-  // USER EMAIL
-  const userHTML = baseTemplate({ ...formData, year, isAdmin: false, isExpert });
-  await transporter.sendMail({
-    from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
-    to: formData.email,
-    subject: isExpert
-      ? "Complete Your Profile – XmyTravel Expert Invitation"
-      : "Thanks for contacting XmyTravel",
-    html: userHTML,
-  });
+  const emailPromises = [
+    // USER EMAIL
+    sendEmail({
+      to: formData.email,
+      subject: isExpert
+        ? "Complete Your Profile – XmyTravel Expert Invitation"
+        : "Thanks for contacting XmyTravel",
+      html: baseTemplate({ ...formData, year, isAdmin: false, isExpert }),
+    }),
+    // ADMIN EMAIL
+    sendEmail({
+      to: process.env.ADMIN_EMAIL,
+      cc: process.env.ADMIN_EMAIL_CC,
+      bcc: process.env.ADMIN_EMAIL_BCC,
+      subject: `📥 New Lead Submission: ${formData.purpose}`,
+      html: baseTemplate({ ...formData, year, isAdmin: true, isExpert }),
+    })
+  ];
 
-  // ADMIN EMAIL
-  const adminHTML = baseTemplate({ ...formData, year, isAdmin: true, isExpert });
-  await transporter.sendMail({
-    from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
-    to: process.env.ADMIN_EMAIL,
-    cc: process.env.ADMIN_EMAIL_CC,
-    bcc: process.env.ADMIN_EMAIL_BCC,
-    subject: `📥 New Lead Submission: ${formData.purpose}`,
-    html: adminHTML,
-  });
+  try {
+    await Promise.all(emailPromises);
+  } catch (error) {
+    console.error("Error sending expert form emails:", error);
+    throw new Error("Failed to send notification emails");
+  }
 }

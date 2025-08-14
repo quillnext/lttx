@@ -1,16 +1,6 @@
 
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.in',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-});
+import { sendEmail } from "@/lib/email";
 
 const emailTemplate = ({ userName, expertName, question, reply, year, type }) => `
 <!DOCTYPE html>
@@ -86,7 +76,6 @@ const emailTemplate = ({ userName, expertName, question, reply, year, type }) =>
 
 export async function POST(request) {
   try {
-
     const { userEmail, userName, expertName, question, reply } = await request.json();
 
     if (!userEmail || !userName || !expertName || !question || !reply) {
@@ -114,35 +103,35 @@ export async function POST(request) {
 
     const year = new Date().getFullYear();
 
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: userEmail,
-      subject: `Reply to Your Question from ${expertName} on XMyTravel`,
-      html: emailTemplate({
-        userName,
-        expertName,
-        question,
-        reply,
-        year,
-        type: "user",
+    const emailPromises = [
+      sendEmail({
+        to: userEmail,
+        subject: `Reply to Your Question from ${expertName} on XMyTravel`,
+        html: emailTemplate({
+          userName,
+          expertName,
+          question,
+          reply,
+          year,
+          type: "user",
+        }),
       }),
-    });
-
-    // Send the email to the admin
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL,
-      subject: "Expert Reply: Response to User Question on XMyTravel",
-      html: emailTemplate({
-        userName,
-        expertName,
-        question,
-        reply,
-        year,
-        type: "admin",
+      sendEmail({
+        to: process.env.ADMIN_EMAIL,
+        subject: "Expert Reply: Response to User Question on XMyTravel",
+        html: emailTemplate({
+          userName,
+          expertName,
+          question,
+          reply,
+          year,
+          type: "admin",
+        }),
       }),
-    });
+    ];
 
+    await Promise.all(emailPromises);
+    
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error sending reply email:", error.message);

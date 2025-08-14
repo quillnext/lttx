@@ -1,16 +1,7 @@
 
-import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.in',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-});
+import { NextResponse } from "next/server";
+import { sendEmail } from "@/lib/email";
 
 const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isExpert }) => `
 <!DOCTYPE html>
@@ -75,11 +66,11 @@ const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isE
   <div class="container">
     <img src="https://www.xmytravel.com/emailbanner.jpeg" style="width: 100%; display: block; border-radius: 16px 16px 0 0;" alt="Banner" />
     <div class="content">
-      ${
-        isAdmin
-          ? `
+      
+
+      ${isAdmin ? `
         <h2>📩 New Form Submission Received</h2>
-        <p>You’ve received a new lead via the XMyTravel platform. Here are the submission details:</p>
+        <p>You’ve received a new lead via the XmyTravel platform. Here are the submission details:</p>
         <table>
           <tr><td><strong>Name</strong></td><td>${name}</td></tr>
           <tr><td><strong>Email</strong></td><td>${email}</td></tr>
@@ -87,32 +78,23 @@ const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isE
           <tr><td><strong>Purpose</strong></td><td>${purpose}</td></tr>
           <tr><td><strong>Message</strong></td><td>${message}</td></tr>
         </table>
-        <p>Please review this submission in the Admin Dashboard. – XMyTravel Admin Notification</p>
-      `
-          : `
+      ` : `
         <h2>Hello ${name},</h2>
-        ${
-          isExpert
-            ? `
-          <p>Thank you for your interest in becoming a verified travel expert on <strong>XMyTravel</strong>.</p>
-          <p>We’re thrilled to have you consider joining our invite-only network of premium travel consultants.</p>
+        ${isExpert ? `
+          <p>Thank you for your interest in becoming a verified travel expert on <strong>XmyTravel</strong>. We’re thrilled to have you consider joining our invite-only network of premium travel consultants.</p>
           <p>To complete your application, click the button below:</p>
           <a class="cta-button" href="https://xmytravel.com/complete-profile" target="_blank">Complete Your Profile</a>
           <p style="font-size: 13px; margin-top: 16px;">Or copy and paste this link in your browser:<br><a href="https://xmytravel.com/complete-profile">https://xmytravel.com/complete-profile</a></p>
-          <p>Thank you for choosing XMyTravel! – XMyTravel Team</p>
-        `
-            : `
-          <p>Thank you for contacting <strong>XMyTravel</strong>. We've received your query and will get back to you shortly.</p>
+        ` : `
+          <p>Thank you for contacting <strong>XmyTravel</strong>. We've received your query and will get back to you shortly.</p>
           <p>We appreciate your time and interest in our platform.</p>
-          <p>Thank you for choosing XMyTravel! – XMyTravel Team</p>
-        `
-        }
-      `
-      }
-      ${!isAdmin ? `<p class="footer">This is an automated confirmation from XMyTravel. Please do not reply to this email.</p>` : ""}
+        `}
+      `}
+
+      ${!isAdmin ? `<p class="footer">This is an automated confirmation from XmyTravel. Please do not reply to this email.</p>` : ''}
       <p class="footer">
-        © ${year} XMyTravel. All rights reserved.<br />
-        <a href="https://xmytravel.com" target="_blank">www.xmytravel.com</a><br />
+        &copy; ${year} XmyTravel. All rights reserved.<br />
+        <a href="http://xmytravel.com" target="_blank">www.xmytravel.com</a><br />
         For support, email <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
       </p>
     </div>
@@ -153,28 +135,27 @@ export async function POST(request) {
     const year = new Date().getFullYear();
     const isExpert = purpose === "Join as an Expert";
 
-    // USER EMAIL
-    const userHTML = baseTemplate({ ...formData, year, isAdmin: false, isExpert });
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: isExpert
-        ? "Complete Your Profile – XMyTravel Expert Invitation"
-        : "Thanks for Contacting XMyTravel",
-      html: userHTML,
-    });
+    const emailPromises = [
+      // USER EMAIL
+      sendEmail({
+        to: email,
+        subject: isExpert
+          ? "Complete Your Profile – XmyTravel Expert Invitation"
+          : "Thanks for Contacting XmyTravel",
+        html: baseTemplate({ ...formData, year, isAdmin: false, isExpert }),
+      }),
+      // ADMIN EMAIL
+      sendEmail({
+        to: process.env.ADMIN_EMAIL,
+        cc: process.env.ADMIN_EMAIL_CC,
+        bcc: process.env.ADMIN_EMAIL_BCC,
+        subject: `📥 New Lead Submission: ${purpose}`,
+        html: baseTemplate({ ...formData, year, isAdmin: true, isExpert }),
+      })
+    ];
 
-    // ADMIN EMAIL
-    const adminHTML = baseTemplate({ ...formData, year, isAdmin: true, isExpert });
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL,
-      cc: process.env.ADMIN_EMAIL_CC,
-      bcc: process.env.ADMIN_EMAIL_BCC,
-      subject: `📥 New Lead Submission: ${purpose}`,
-      html: adminHTML,
-    });
-
+    await Promise.all(emailPromises);
+    
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error sending expert form emails:", error.message);

@@ -1,15 +1,6 @@
-import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.in',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+import { NextResponse } from "next/server";
+import { sendEmail } from "@/lib/email";
 
 const emailTemplate = ({ userName, subject, message, year, type }) => `
 <!DOCTYPE html>
@@ -111,33 +102,34 @@ export async function POST(request) {
 
     const year = new Date().getFullYear();
 
-    // Send email to user
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: userEmail,
-      subject: `Thank You for Contacting XMyTravel`,
-      html: emailTemplate({
-        userName,
-        subject,
-        message,
-        year,
-        type: "user",
+    const emailPromises = [
+      // Send email to user
+      sendEmail({
+        to: userEmail,
+        subject: `Thank You for Contacting XMyTravel`,
+        html: emailTemplate({
+          userName,
+          subject,
+          message,
+          year,
+          type: "user",
+        }),
       }),
-    });
-
-    // Send email to admin
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: process.env.ADMIN_EMAIL,
-      subject: `New Contact Message on XMyTravel: ${subject}`,
-      html: emailTemplate({
-        userName,
-        subject,
-        message,
-        year,
-        type: "admin",
-      }),
-    });
+      // Send email to admin
+      sendEmail({
+        to: process.env.ADMIN_EMAIL,
+        subject: `New Contact Message on XMyTravel: ${subject}`,
+        html: emailTemplate({
+          userName,
+          subject,
+          message,
+          year,
+          type: "admin",
+        }),
+      })
+    ];
+    
+    await Promise.all(emailPromises);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
