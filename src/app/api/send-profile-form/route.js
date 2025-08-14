@@ -1,5 +1,6 @@
 
 
+<<<<<<< HEAD
 // // import { NextResponse } from "next/server";
 // // import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 // // import { app } from "@/lib/firebase";
@@ -154,18 +155,10 @@
 
 
 
+=======
+>>>>>>> parent of 7c95c39 (change aemail api route)
 import { NextResponse } from "next/server";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { getFirestore, collection, addDoc, doc, updateDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { sendProfileSubmissionEmails } from "@/app/utils/sendProfileSubmissionEmails";
 
@@ -185,7 +178,7 @@ export async function POST(req) {
       fullName,
       email,
       phone,
-      dateOfBirth,
+      dateOfBirth, 
       tagline,
       location,
       languages,
@@ -203,11 +196,16 @@ export async function POST(req) {
       leadId,
     } = body;
 
+<<<<<<< HEAD
     // Step 1: Basic field validation before response
+=======
+  
+>>>>>>> parent of 7c95c39 (change aemail api route)
     if (!email || !fullName || !phone || (!profileId && !username)) {
       return NextResponse.json({ error: "Missing required fields: email, fullName, phone, username" }, { status: 400 });
     }
 
+<<<<<<< HEAD
     // Step 2: Immediately respond to frontend (accepted for processing)
     const response = NextResponse.json({ success: true, message: "Profile is being processed..." }, { status: 202 });
 
@@ -306,5 +304,107 @@ export async function POST(req) {
       { error: error.message || "Failed to process profile submission" },
       { status: 500 }
     );
+=======
+   
+    if (!profileId && !["Yes", "No"].includes(referred)) {
+      return NextResponse.json({ error: "Referred must be 'Yes' or 'No'" }, { status: 400 });
+    }
+
+    if (!profileId) {
+     
+      const profilesQuery = query(collection(db, 'Profiles'), where('username', '==', username));
+      const profileRequestsQuery = query(collection(db, 'ProfileRequests'), where('username', '==', username));
+      const [profilesSnap, profileRequestsSnap] = await Promise.all([
+        getDocs(profilesQuery),
+        getDocs(profileRequestsQuery),
+      ]);
+      if (!profilesSnap.empty || !profileRequestsSnap.empty) {
+        return NextResponse.json({ error: "Username is already taken" }, { status: 400 });
+      }
+
+     
+      if (!/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username)) {
+        return NextResponse.json({ error: "Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores" }, { status: 400 });
+      }
+
+     
+      const emailQuery = query(collection(db, 'Profiles'), where('email', '==', email));
+      const emailSnap = await getDocs(emailQuery);
+      if (!emailSnap.empty) {
+        return NextResponse.json({ error: "User already exists. No duplicate profile allowed." }, { status: 400 });
+      }
+
+     
+      if (referred === "Yes") {
+        if (!referralCode) {
+          return NextResponse.json({ error: "Referral code is required when referred is 'Yes'" }, { status: 400 });
+        }
+        const codeQuery = query(collection(db, 'Profiles'), where('generatedReferralCode', '==', referralCode));
+        const codeSnap = await getDocs(codeQuery);
+        if (codeSnap.empty) {
+          return NextResponse.json({ error: "Invalid referral code" }, { status: 400 });
+        }
+      }
+    }
+
+   
+    let generatedReferralCode = null;
+    if (!profileId) {
+      let isUnique = false;
+      while (!isUnique) {
+        generatedReferralCode = `REFX${generateRandomChars()}`;
+        const duplicateReferral = await getDocs(query(collection(db, 'Profiles'), where('generatedReferralCode', '==', generatedReferralCode)));
+        isUnique = duplicateReferral.empty;
+      }
+    }
+
+    const profileData = {
+      username,
+      fullName,
+      email,
+      phone,
+      dateOfBirth: dateOfBirth || '', 
+      tagline,
+      location,
+      languages,
+      responseTime,
+      pricing,
+      about,
+      services,
+      regions,
+      experience,
+      certifications,
+      referred: referred || 'No', 
+      referralCode: referred === 'Yes' ? referralCode : null, 
+      photo,
+      timestamp: serverTimestamp(),
+      generatedReferralCode: profileId ? undefined : generatedReferralCode,
+      leadId: leadId || null,
+    };
+
+    let savedProfileId = profileId;
+    if (profileId) {
+      delete profileData.username;
+      delete profileData.generatedReferralCode;
+      await updateDoc(doc(db, "Profiles", profileId), profileData);
+    } else {
+      const docRef = await addDoc(collection(db, "ProfileRequests"), profileData);
+      savedProfileId = docRef.id;
+    }
+
+    // Send emails to user and admin
+    await sendProfileSubmissionEmails({
+      ...profileData,
+      profileId: savedProfileId,
+      generatedReferralCode: generatedReferralCode || "N/A",
+    });
+
+    const slug = `${username.toLowerCase().replace(/\s+/g, '-')}`;
+
+    return NextResponse.json({ success: true, profileId: savedProfileId, slug }, { status: 200 });
+  } catch (error) {
+    console.error("Error in send-profile-form:", error);
+    return NextResponse.json({ error: error.message || "Failed to process profile submission" }, { status: 500 });
+>>>>>>> parent of 7c95c39 (change aemail api route)
   }
 }
