@@ -140,7 +140,7 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
                     userMessage: message,
                     bookingDate: dateStr,
                     bookingTime: selectedSlot.startTime,
-                    status: "pending",
+                    status: "confirmed",
                     createdAt: Timestamp.now(),
                 });
             });
@@ -152,21 +152,6 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
 
             setIsSuccess(true);
             onBookingSuccess();
-
-            await fetch("/api/send-booking-emails", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    userEmail: email,
-    userName: name,
-    userPhone: phone,
-    userMessage: message,
-    expertEmail: expert.email, // Ensure expert email is available in expert object
-    expertName: expert.fullName,
-    bookingDate: selectedDate.toISOString().split("T")[0],
-    bookingTime: selectedSlot.startTime,
-  }),
-});
         } catch (err) {
             console.error("Booking failed:", err);
             setError(err.message || "Failed to book the appointment. Please try again.");
@@ -217,7 +202,7 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
                         <PhoneInput country={"in"} value={phone} onChange={(p) => setPhone(`+${p}`)} inputProps={{ id: "phone", name: "phone", required: true, className: "w-full border rounded-lg focus:ring-2 focus:ring-[#36013F] focus:border-transparent pl-12 py-2" }} containerclassName="mt-1" disabled={!!user && !!user.phoneNumber} />
                     </div>
                      <div>
-                        <label htmlFor="message" className="block text-sm font-medium text-gray-700">Points to discuss </label>
+                        <label htmlFor="message" className="block text-sm font-medium text-gray-700">Message (Optional)</label>
                         <textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} rows="3" className="mt-1 w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#36013F] focus:border-transparent" placeholder="Anything you'd like the expert to know?"></textarea>
                     </div>
                     {error && <p className="text-red-500 text-sm">{error}</p>}
