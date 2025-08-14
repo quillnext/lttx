@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
 
@@ -141,9 +142,7 @@ export async function POST(request) {
     const year = new Date().getFullYear();
     const dashboardLink = "https://xmytravel.com/expert-dashboard";
 
-    // Fire-and-forget emails
-    setTimeout(() => {
-      Promise.allSettled([
+    const emailPromises = [
         // Email to User
         sendEmail({
           to: userEmail,
@@ -160,7 +159,7 @@ export async function POST(request) {
           }),
         }),
 
-        // Email to Expert (excluding user phone)
+        // Email to Expert
         sendEmail({
           to: expertEmail,
           subject: "New Booking on XMyTravel",
@@ -176,7 +175,7 @@ export async function POST(request) {
           }),
         }),
 
-        // Email to Admin (including user details)
+        // Email to Admin
         sendEmail({
           to: process.env.ADMIN_EMAIL,
           subject: "New Booking Notification on XMyTravel",
@@ -193,14 +192,18 @@ export async function POST(request) {
             dashboardLink,
           }),
         }),
-      ]).then((results) => {
-        results.forEach((result, i) => {
-          if (result.status === "rejected") {
+    ];
+    
+    const results = await Promise.allSettled(emailPromises);
+    results.forEach((result, i) => {
+        if (result.status === "rejected") {
             console.error(`Email #${i + 1} failed:`, result.reason);
-          }
-        });
-      });
-    }, 100); // Let response go first
+        }
+    });
+
+    if (results[0].status === 'rejected') {
+        throw new Error('Failed to send confirmation email to the user.');
+    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

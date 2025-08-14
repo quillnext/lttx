@@ -1,40 +1,40 @@
+
 import nodemailer from "nodemailer";
 
 export async function sendEmail({ to, cc, bcc, subject, text, html }) {
+  console.log(`Preparing to send email to: ${to}`);
+  console.log(`Using email user: ${process.env.EMAIL_USER ? process.env.EMAIL_USER : 'NOT SET'}`);
+
   try {
- 
-    // Create a transporter using Zoho
     const transporter = nodemailer.createTransport({
       host: 'smtp.zoho.in',
       port: 465,
-      secure: true,
+      secure: true, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      logger: true, // Enable logging for more details
+      debug: process.env.NODE_ENV === 'development', // More verbose logs in dev
     });
 
-    // Prepare email options
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"XmyTravel Team" <${process.env.EMAIL_USER}>`,
       to,
       cc,
       bcc,
       subject,
       text,
+      html,
     };
 
-    // Add HTML if provided
-    if (html) {
-      mailOptions.html = html;
-    }
+    const info = await transporter.sendMail(mailOptions);
 
-    // Send email
-    await transporter.sendMail(mailOptions);
-
-    console.log(`Email sent successfully to ${Array.isArray(to) ? to.join(", ") : to}`);
+    console.log(`Email sent successfully to ${Array.isArray(to) ? to.join(", ") : to}. Message ID: ${info.messageId}`);
+    return info;
   } catch (error) {
     console.error("Error sending email:", error);
+    console.error("Nodemailer error details:", JSON.stringify(error, null, 2));
     throw new Error(`Failed to send email: ${error.message}`);
   }
 }

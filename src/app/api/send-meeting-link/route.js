@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
 
@@ -154,9 +155,7 @@ export async function POST(request) {
     const year = new Date().getFullYear();
     const dashboardLink = "https://xmytravel.com/expert-dashboard";
 
-    // Fire-and-forget emails
-    setTimeout(() => {
-      Promise.allSettled([
+    const emailPromises = [
         // Email to User
         sendEmail({
           to: userEmail,
@@ -173,7 +172,7 @@ export async function POST(request) {
           }),
         }),
 
-        // Email to Expert (excluding user phone)
+        // Email to Expert
         sendEmail({
           to: expertEmail,
           subject: "Meeting Link for Your XMyTravel Booking",
@@ -189,7 +188,7 @@ export async function POST(request) {
           }),
         }),
 
-        // Email to Admin (including user details)
+        // Email to Admin
         sendEmail({
           to: process.env.ADMIN_EMAIL,
           subject: "New Meeting Link Assigned on XMyTravel",
@@ -206,15 +205,15 @@ export async function POST(request) {
             dashboardLink,
           }),
         }),
-      ]).then((results) => {
-        results.forEach((result, i) => {
-          if (result.status === "rejected") {
-            console.error(`Email #${i + 1} failed:`, result.reason);
-          }
-        });
-      });
-    }, 100); // Let response go first
+    ];
 
+    const results = await Promise.allSettled(emailPromises);
+    results.forEach((result, i) => {
+        if (result.status === "rejected") {
+            console.error(`Email #${i + 1} failed:`, result.reason);
+        }
+    });
+    
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Error in /send-meeting-link:", error.message);
