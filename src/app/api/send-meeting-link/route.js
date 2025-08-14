@@ -16,6 +16,7 @@ const emailTemplate = ({
   expertName,
   bookingDate,
   bookingTime,
+  meetingLink,
   year,
   type,
   dashboardLink,
@@ -67,21 +68,24 @@ const emailTemplate = ({
         type === "user"
           ? `
         <h2>Hello ${userName},</h2>
-        <p>Your booking with travel expert <strong>${expertName}</strong> has been confirmed!</p>
+        <p>Your meeting with travel expert <strong>${expertName}</strong> has been scheduled!</p>
         <p><strong>Booking Details:</strong></p>
         <p>Date: ${bookingDate}</p>
         <p>Time: ${bookingTime}</p>
+        <p>Join the meeting here: <a href="${meetingLink}">${meetingLink}</a></p>
         ${userMessage ? `<p><strong>Your Points to discuss:</strong><br/>"${userMessage}"</p>` : ""}
-        <p>Thank you for booking with XMyTravel! You’ll receive further details soon.</p>
+        <p>Thank you for using XMyTravel!</p>
         <p>– XMyTravel Team</p>
       `
           : type === "expert"
           ? `
         <h2>Hello ${expertName},</h2>
-        <p>You have a new booking on your XMyTravel profile.</p>
+        <p>You have a new meeting scheduled on XMyTravel.</p>
         <p><strong>Booking Details:</strong></p>
+        <p>Client: ${userName}</p>
         <p>Date: ${bookingDate}</p>
         <p>Time: ${bookingTime}</p>
+        <p>Join the meeting here: <a href="${meetingLink}">${meetingLink}</a></p>
         ${userMessage ? `<p><strong>Points to discuss:</strong><br/>"${userMessage}"</p>` : ""}
         <p>To manage this booking, log in to your expert dashboard:</p>
         <a class="cta-button" href="${dashboardLink}" target="_blank">View Booking</a>
@@ -89,12 +93,12 @@ const emailTemplate = ({
           Or copy and paste this link in your browser:<br/>
           <a href="${dashboardLink}">${dashboardLink}</a>
         </p>
-        <p>We look forward to your expert insights! – XMyTravel System</p>
+        <p>Please prepare for your session. – XMyTravel Team</p>
       `
           : type === "admin"
           ? `
         <h2>Hello Admin,</h2>
-        <p>A new booking has been made on XMyTravel.</p>
+        <p>A meeting link has been sent for a booking on XMyTravel.</p>
         <p><strong>Booking Details:</strong></p>
         <p><strong>User:</strong> ${userName}</p>
         <p><strong>Email:</strong> ${userEmail}</p>
@@ -102,6 +106,7 @@ const emailTemplate = ({
         <p><strong>Expert:</strong> ${expertName}</p>
         <p><strong>Date:</strong> ${bookingDate}</p>
         <p><strong>Time:</strong> ${bookingTime}</p>
+        <p><strong>Meeting Link:</strong> <a href="${meetingLink}">${meetingLink}</a></p>
         ${userMessage ? `<p><strong>User Message:</strong><br/>"${userMessage}"</p>` : ""}
         <p>Please review this booking in the Admin Dashboard. – XMyTravel Admin Notification</p>
       `
@@ -128,10 +133,11 @@ export async function POST(request) {
       expertName,
       bookingDate,
       bookingTime,
+      meetingLink,
     } = await request.json();
 
     // Validation
-    if (!userEmail || !userName || !userPhone || !expertEmail || !expertName || !bookingDate || !bookingTime) {
+    if (!userEmail || !userName || !userPhone || !expertEmail || !expertName || !bookingDate || !bookingTime || !meetingLink) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -142,6 +148,10 @@ export async function POST(request) {
 
     if (!/^\+?[1-9]\d{1,14}$/.test(userPhone)) {
       return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
+    }
+
+    if (!/^https?:\/\/(meet\.google\.com|zoom\.us)/.test(meetingLink)) {
+      return NextResponse.json({ error: "Invalid meeting link format. Must be a Google Meet or Zoom link." }, { status: 400 });
     }
 
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.ADMIN_EMAIL) {
@@ -156,13 +166,14 @@ export async function POST(request) {
       transporter.sendMail({
         from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
         to: userEmail,
-        subject: "Your Booking Confirmation with XMyTravel",
+        subject: "Your Meeting Link from XMyTravel",
         html: emailTemplate({
           userName,
           expertName,
           bookingDate,
           bookingTime,
           userMessage,
+          meetingLink,
           year,
           type: "user",
           dashboardLink,
@@ -173,13 +184,14 @@ export async function POST(request) {
       transporter.sendMail({
         from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
         to: expertEmail,
-        subject: "New Booking on XMyTravel",
+        subject: "New Meeting Link for Your XMyTravel Booking",
         html: emailTemplate({
           userName,
           expertName,
           bookingDate,
           bookingTime,
           userMessage,
+          meetingLink,
           year,
           type: "expert",
           dashboardLink,
@@ -190,7 +202,7 @@ export async function POST(request) {
       transporter.sendMail({
         from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
         to: process.env.ADMIN_EMAIL,
-        subject: "New Booking Notification on XMyTravel",
+        subject: "Meeting Link Sent for XMyTravel Booking",
         html: emailTemplate({
           userName,
           expertName,
@@ -199,6 +211,7 @@ export async function POST(request) {
           userEmail,
           userPhone,
           userMessage,
+          meetingLink,
           year,
           type: "admin",
           dashboardLink,
@@ -215,7 +228,7 @@ export async function POST(request) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Error sending booking emails:", error.message, error.stack);
+    console.error("Error sending meeting link emails:", error.message, error.stack);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

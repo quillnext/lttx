@@ -128,6 +128,7 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
           userEmail,
           userName: booking.userName,
           userPhone: booking.userPhone,
+          userMessage: booking.userMessage, // Added userMessage
           expertEmail,
           expertName: booking.expertName,
           bookingDate: booking.bookingDate,
@@ -169,17 +170,22 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
         <h2 className="text-2xl font-semibold text-[#36013F] mb-4">Send Meeting Link</h2>
         <div className="bg-gray-50 p-4 rounded-lg mb-4 border border-gray-200">
           <p>
-            <strong>Client:</strong> {booking.userName}
+            <strong>Client:</strong> {booking.userName || "N/A"}
           </p>
           <p>
-            <strong>Expert:</strong> {booking.expertName}
+            <strong>Expert:</strong> {booking.expertName || "N/A"}
           </p>
           <p>
-            <strong>Date:</strong> {booking.bookingDate}
+            <strong>Date:</strong> {booking.bookingDate || "N/A"}
           </p>
           <p>
-            <strong>Time:</strong> {booking.bookingTime}
+            <strong>Time:</strong> {booking.bookingTime || "N/A"}
           </p>
+          {booking.userMessage && (
+            <p>
+              <strong>Points to Discuss:</strong> {booking.userMessage}
+            </p>
+          )}
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
