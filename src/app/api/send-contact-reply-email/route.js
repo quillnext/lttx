@@ -1,15 +1,6 @@
-import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.in',
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+import { NextResponse } from "next/server";
+import { sendEmail } from "@/lib/email";
 
 const emailTemplate = ({ userName, subject, reply, year }) => `
 <!DOCTYPE html>
@@ -58,7 +49,7 @@ const emailTemplate = ({ userName, subject, reply, year }) => `
       </div>
       <p>If you have further questions, feel free to reply to this email or submit a new message. – XMyTravel Team</p>
       <p class="footer">
-        © ${year} XMyTravel • <a href="https://xmytravel.com">xmytravel.com</a><br/>
+        © ${year} XmyTravel • <a href="https://xmytravel.com">xmytravel.com</a><br/>
         For support: <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
       </p>
     </div>
@@ -96,8 +87,7 @@ export async function POST(request) {
 
     const year = new Date().getFullYear();
 
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+    await sendEmail({
       to: userEmail,
       subject: subject,
       html: emailTemplate({
