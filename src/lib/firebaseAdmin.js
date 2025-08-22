@@ -1,5 +1,3 @@
-
-
 // src/lib/firebaseAdmin.js
 import admin from "firebase-admin";
 
@@ -21,6 +19,7 @@ if (!admin.apps.length) {
   try {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
+      databaseURL: "https://xmytravel-ed995.firebaseio.com", // Included for consistency
     });
     console.log("Firebase Admin SDK initialized successfully");
   } catch (error) {
@@ -31,6 +30,7 @@ if (!admin.apps.length) {
 
 const adminAuth = admin.auth();
 const adminDb = admin.firestore();
+const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
 
 // Validate adminDb
 if (!(adminDb instanceof admin.firestore.Firestore)) {
@@ -39,4 +39,4 @@ if (!(adminDb instanceof admin.firestore.Firestore)) {
 }
 console.log("adminDb initialized:", true);
 
-export { adminAuth, adminDb };
+export { adminAuth, adminDb, serverTimestamp };
