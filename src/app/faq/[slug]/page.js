@@ -203,26 +203,7 @@ export default function FaqSlugPage() {
         />
       )}
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        {/* <header className="text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#36013F] mb-3">
-            Search Results
-          </h1>
-          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
-            Explore questions matching your search query answered by our community of insightful experts.
-          </p>
-          <form onSubmit={handleSearch} className="relative w-full max-w-2xl mx-auto mt-8">
-            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search questions, answers, or experts..."
-              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#36013F] focus:border-transparent transition"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              aria-label="Search FAQs"
-            />
-            <button type="submit" className="hidden">Search</button>
-          </form>
-        </header> */}
+      
 
         {featuredQuestion && (
           <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
