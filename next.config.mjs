@@ -25,6 +25,17 @@ const nextConfig = {
    
 
   }, 
+
+
+ async rewrites() {
+    return [
+      {
+        source: '/question-search',
+        destination: '/faq/:search*',
+        has: [{ type: 'query', key: 'search' }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
