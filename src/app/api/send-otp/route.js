@@ -7,8 +7,8 @@ const transporter = nodemailer.createTransport({
   port: 465,
   secure: true,
   auth: {
-    user: process.env.ZOHO_EMAIL,
-    pass: process.env.ZOHO_PASSWORD,
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -80,7 +80,7 @@ export async function POST(request) {
 
     // Send OTP email
     await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.ZOHO_EMAIL}>`,
+      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Your OTP for Email Verification - XMyTravel",
       html: otpEmailTemplate({ userName, otp, year: new Date().getFullYear() }),
