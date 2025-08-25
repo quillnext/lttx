@@ -1083,7 +1083,7 @@ export default function Home() {
             onClick={() => setShowFaq(true)}
             className="hover:underline font-semibold text-base"
           >
-            View Already Answered Questions (FAQ)
+            View Already Answered Questions (AAQ)
           </button>
         </footer>
       </div>
