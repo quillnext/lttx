@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -13,6 +12,7 @@ import "react-image-lightbox/style.css";
 import AskQuestionModal from "@/app/components/AskQuestionModal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import slugify from "slugify";
 
 const db = getFirestore(app);
 
@@ -22,19 +22,38 @@ const truncateByChars = (text, maxLength) => {
   return text;
 };
 
-// Helper function to convert search term to URL-friendly slug
+// Helper function to convert search term to URL-friendly slug using slugify
 const toSlug = (text) => {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-    .trim()
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-'); // Replace multiple hyphens with single hyphen
+  return slugify(text, {
+    lower: true,
+    strict: true, // Remove special characters
+    remove: /[*+~.()'"!:@]/g, // Remove additional special characters
+    trim: true,
+    replacement: '-', // Replace spaces with hyphens
+  }).substring(0, 100); // Limit slug length for URL safety
 };
 
 // Helper function to decode slug back to search term
 const fromSlug = (slug) => {
   return decodeURIComponent(slug.replace(/-+/g, ' '));
+};
+
+// Simple Levenshtein distance for better matching
+const levenshteinDistance = (a, b) => {
+  const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
+  for (let i = 0; i <= a.length; i++) matrix[0][i] = i;
+  for (let j = 0; j <= b.length; j++) matrix[j][0] = j;
+  for (let j = 1; j <= b.length; j++) {
+    for (let i = 1; i <= a.length; i++) {
+      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[j][i] = Math.min(
+        matrix[j][i - 1] + 1, // deletion
+        matrix[j - 1][i] + 1, // insertion
+        matrix[j - 1][i - 1] + indicator // substitution
+      );
+    }
+  }
+  return matrix[b.length][a.length];
 };
 
 export default function FaqSlugPage() {
@@ -141,19 +160,40 @@ export default function FaqSlugPage() {
     fetchQuestionsAndUsernames();
   }, []);
 
+  // Enhanced filtering to prioritize exact or near-exact question matches
   const filteredQuestions = searchTerm
-    ? questions.filter(
-        (question) =>
-          question.question?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          question.reply?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          question.expertName?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
+    ? questions
+        .map((question) => {
+          const questionText = question.question?.toLowerCase() || '';
+          const replyText = question.reply?.toLowerCase() || '';
+          const expertName = question.expertName?.toLowerCase() || '';
+          const searchLower = searchTerm.toLowerCase();
+
+          // Check for exact or near-exact match in question
+          const isExactMatch = questionText === searchLower;
+          const levenshteinScore = levenshteinDistance(questionText, searchLower);
+          const questionMatch = questionText.includes(searchLower);
+          const replyMatch = replyText.includes(searchLower);
+          const expertMatch = expertName.includes(searchLower);
+
+          // Prioritize exact match, then Levenshtein distance, then partial matches
+          let score = 0;
+          if (isExactMatch) score += 100; // High score for exact match
+          score += (100 - Math.min(levenshteinScore, 100)) / 2; // Weighted Levenshtein score
+          if (questionMatch && !isExactMatch) score += 30; // Partial question match
+          if (replyMatch) score += 20; // Reply match
+          if (expertMatch) score += 10; // Expert name match
+
+          return { ...question, score };
+        })
+        .filter((question) => question.score > 0)
+        .sort((a, b) => b.score - a.score || b.rawTimestamp - a.rawTimestamp) // Sort by score, then recency
     : [];
 
   const featuredQuestion = filteredQuestions.length > 0 ? filteredQuestions[0] : null;
   const allQuestions = featuredQuestion
-    ? questions.filter((q) => q.id !== featuredQuestion.id)
-    : questions;
+    ? filteredQuestions.filter((q) => q.id !== featuredQuestion.id)
+    : filteredQuestions;
 
   const totalPages = Math.ceil(allQuestions.length / itemsPerPage) || 1;
   const paginatedQuestions = allQuestions.slice(
@@ -203,9 +243,28 @@ export default function FaqSlugPage() {
         />
       )}
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-      
+        <header className="text-center mb-12 hidden">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-[#36013F] mb-3">
+            Search Results
+          </h1>
+          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            Explore questions matching your search query answered by our community of insightful experts.
+          </p>
+          <form onSubmit={handleSearch} className="relative w-full max-w-2xl mx-auto mt-8">
+            <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search questions, answers, or experts..."
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-full bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#36013F] focus:border-transparent transition"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              aria-label="Search FAQs"
+            />
+            <button type="submit" className="hidden">Search</button>
+          </form>
+        </header>
 
-        {featuredQuestion && (
+        {featuredQuestion ? (
           <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
             <div className="p-5">
               <p className="text-3xl text-gray-700 mb-4">{featuredQuestion.question}</p>
@@ -255,6 +314,13 @@ export default function FaqSlugPage() {
               </div>
             </div>
           </section>
+        ) : (
+          !loading && (
+            <div className="text-center bg-white p-8 rounded-lg shadow-sm border mb-8">
+              <p className="text-lg font-medium text-gray-700">No matching questions found.</p>
+              <p className="text-gray-500">Try adjusting your search query.</p>
+            </div>
+          )
         )}
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
@@ -272,10 +338,10 @@ export default function FaqSlugPage() {
                 </svg>
                 <span className="text-lg font-medium">Loading Insights...</span>
               </div>
-            ) : allQuestions.length === 0 ? (
+            ) : allQuestions.length === 0 && filteredQuestions.length > 0 ? (
               <div className="text-center bg-white p-8 rounded-lg shadow-sm border">
-                <p className="text-lg font-medium text-gray-700">No questions found.</p>
-                <p className="text-gray-500">Try checking back later.</p>
+                <p className="text-lg font-medium text-gray-700">No additional questions found.</p>
+                <p className="text-gray-500">The featured question above is the only match.</p>
               </div>
             ) : (
               <div>
