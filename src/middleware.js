@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import slugify from 'slugify';
 
 export function middleware(request) {
   const { pathname, searchParams } = request.nextUrl;
@@ -16,14 +17,14 @@ export function middleware(request) {
     const slug = pathname.replace('/faq/', '');
     // Check if the slug contains % or is not already clean
     if (slug.includes('%') || /[^a-z0-9-]/.test(decodeURIComponent(slug))) {
-      // Convert % encoded or unclean slug to hyphenated form
-      const cleanSlug = decodeURIComponent(slug)
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '') // Remove special characters (matches toSlug in page.js)
-        .trim()
-        .replace(/\s+/g, '-') // Replace spaces with hyphens
-        .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-        .substring(0, 100); // Limit slug length for URL safety
+      // Convert to hyphenated slug using slugify
+      const cleanSlug = slugify(decodeURIComponent(slug), {
+        lower: true,
+        strict: true, // Remove special characters
+        remove: /[*+~.()'"!:@]/g, // Remove additional special characters
+        trim: true,
+        replacement: '-', // Replace spaces with hyphens
+      }).substring(0, 100); // Limit slug length
 
       // Preserve query parameters if any
       const newUrl = new URL(`/faq/${cleanSlug}`, request.url);

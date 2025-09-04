@@ -75,7 +75,7 @@ export default function UserLayout({ children }) {
             "/expert-dashboard/messages",
             "/expert-dashboard/change-password",
             "/expert-dashboard/contact-us",
-            "/expert-dashboard/availavility",
+            "/expert-dashboard/availability",
             "/expert-dashboard/bookings"
           ];
           if (!allowedPaths.includes(pathname)) {
@@ -275,9 +275,9 @@ export default function UserLayout({ children }) {
 
 
     <Link
-    href="/expert-dashboard/availavility"
+    href="/expert-dashboard/availability"
     className={`flex items-center gap-2 p-2 ${
-      pathname === "/expert-dashboard/availavility"
+      pathname === "/expert-dashboard/availability"
         ? "bg-[#F4D35E] rounded-3xl text-black"
         : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
     }`}
@@ -285,7 +285,7 @@ export default function UserLayout({ children }) {
     aria-label="Contact Us"
   >
     <CalendarDays className="w-6 h-6" /> 
-    <span className="hidden md:inline">Availavility</span>
+    <span className="hidden md:inline">Availability</span>
   </Link>
 
   
