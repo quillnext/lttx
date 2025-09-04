@@ -13,6 +13,8 @@ import AskQuestionModal from "@/app/components/AskQuestionModal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import slugify from "slugify";
+import Navbar from "@/app/components/Navbar";
+import Footer from "@/app/pages/Footer";
 
 const db = getFirestore(app);
 
@@ -227,6 +229,7 @@ export default function FaqSlugPage() {
 
   return (
     <div className="bg-gray-100 min-h-screen font-sans">
+      <Navbar/>
       <ToastContainer position="top-right" autoClose={3000} />
       {isLightboxOpen && (
         <Lightbox
@@ -242,7 +245,7 @@ export default function FaqSlugPage() {
           initialQuestion=""
         />
       )}
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 mt-12">
         <header className="text-center mb-12 hidden">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-[#36013F] mb-3">
             Search Results
@@ -502,6 +505,7 @@ export default function FaqSlugPage() {
           </Link>
         </div>
       </div>
+      <Footer/>
     </div>
   );
 }
