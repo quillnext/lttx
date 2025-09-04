@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -21,7 +23,7 @@ export default function ExpertsDirectory() {
   const [languageFilter, setLanguageFilter] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [specializationFilter, setSpecializationFilter] = useState("");
-  const [modalExpert, setModalExpert] = useState(null); // Initially null, will be set to open modal
+  const [modalExpert, setModalExpert] = useState(null); // Initially null, only set on button click
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState("");
   const [lastDoc, setLastDoc] = useState(null);
@@ -162,19 +164,9 @@ export default function ExpertsDirectory() {
     setIsLightboxOpen(true);
   };
 
-  // Open modal with the first expert or a placeholder on component mount
-  useEffect(() => {
-    if (experts.length > 0) {
-      setModalExpert(experts[0]); // Open modal with the first expert
-    } else {
-      // Placeholder expert object if no experts are loaded yet
-      setModalExpert({
-        fullName: "Select an Expert",
-        username: "",
-        photo: "/default.jpg",
-      });
-    }
-  }, [experts]);
+  // Remove the useEffect that automatically opens the modal
+  // Previously, this useEffect set modalExpert on mount, causing the modal to open
+  // Now, modalExpert is only set when the "Ask Question" button is clicked
 
   useEffect(() => {
     if (keywords.length > 0) {
@@ -273,7 +265,7 @@ export default function ExpertsDirectory() {
         })
         .filter(({ expert, similarityScore, matchesFilters }) => {
           const passes = matchesFilters && (searchTerms.length === 0 || similarityScore >= 10);
-          console.log(`Expert ${expert.fullName} passes: ${passes}, Score: ${similarityScore}%`); // Fixed ReferenceError
+          console.log(`Expert ${expert.fullName} passes: ${passes}, Score: ${similarityScore}%`);
           return passes;
         })
         .sort((a, b) => b.similarityScore - a.similarityScore)
