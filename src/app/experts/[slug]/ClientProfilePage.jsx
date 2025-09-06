@@ -913,9 +913,9 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
             <div className="fixed bottom-0 left-0 right-0 flex justify-between items-center bg-opacity-10 backdrop-blur-md border-t z-50 lg:hidden p-2">
               {isAgency ? (
                 <>
-                  <Link href="/ask-an-expert" className="flex-1 bg-gray-300 bg-opacity-20 backdrop-blur-md text-gray-800 py-3 px-4 rounded-lg shadow-md border border-white hover:bg-opacity-30 transition-all flex items-center justify-center gap-2 mx-1" title="Find Other Experts">
+                  <Link href="/ask-an-expert" className="flex-1 bg-gray-300 bg-opacity-20 backdrop-blur-md text-gray-800 py-3 px-4 rounded-lg shadow-md border border-white hover:bg-opacity-30 transition-all flex items-center justify-center gap-2 mx-1" title="Find Experts">
                     <Users className="w-5 h-5" />
-                    <span className="text-sm">Find Other Experts</span>
+                    <span className="text-sm">Find Experts</span>
                   </Link>
                   <button onClick={() => setIsModalOpen(true)} className="flex-1 bg-primary bg-opacity-20 backdrop-blur-md text-primary-foreground py-3 px-4 rounded-lg shadow-md border border-white hover:bg-opacity-30 transition-all flex items-center justify-center gap-2 mx-1" title="Request a Quote">
                     <MessageCircle className="w-5 h-5" />
@@ -938,9 +938,9 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
 
             {isAgency ? (
               <>
-                 <Link href="/ask-an-expert" className="fixed bottom-4 left-4 bg-secondary text-secondary-foreground p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50 hidden lg:flex" title="Find Other Experts">
+                 <Link href="/ask-an-expert" className="fixed bottom-4 left-4 bg-secondary text-secondary-foreground p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50 hidden lg:flex" title="Find Experts">
                    <Users />
-                   <span className="text-sm hidden sm:inline">Find Other Experts</span>
+                   <span className="text-sm hidden sm:inline">Find Experts</span>
                  </Link>
                  <button onClick={() => setIsModalOpen(true)} className="fixed bottom-4 right-4 bg-primary text-primary-foreground p-3 rounded-full shadow-lg hover:bg-opacity-90 transition-all flex items-center gap-2 z-50 hidden lg:flex" title="Request a Quote">
                    <MessageCircle />
