@@ -18,7 +18,7 @@ const db = getFirestore(app);
 
 const generateReferralCode = () => {
   const timestamp = Date.now().toString().slice(-4);
-  const rand = Math.random().toString(36).substring(2, 4).toUpperCase(); // Increased to 2 chars for more uniqueness
+  const rand = Math.random().toString(36).substring(2, 4).toUpperCase();
   return `REFX${timestamp}${rand}`;
 };
 
@@ -46,28 +46,73 @@ export async function POST(req) {
       profileId,
       photo,
       leadId,
+      profileType,
+      yearsActive,
+      licenseNumber,
     } = body;
 
-    // Basic field validation
     if (!email || !fullName || !phone || (!profileId && !username)) {
       return NextResponse.json({ error: "Missing required fields: email, fullName, phone, username" }, { status: 400 });
     }
 
     let savedProfileId = profileId;
-    const profileData = {
-        username, fullName, email, phone, dateOfBirth: dateOfBirth || '', tagline, location,
-        languages, responseTime, pricing, about, services, regions, experience, certifications,
-        referred: referred || 'No', referralCode: referred === 'Yes' ? referralCode : null, photo,
-        timestamp: serverTimestamp(), leadId: leadId || null,
+
+    // Build profile data with common fields
+    const commonProfileData = {
+      username,
+      fullName,
+      email,
+      phone,
+      tagline,
+      location,
+      languages,
+      responseTime,
+      pricing,
+      about,
+      services,
+      regions,
+      expertise: body.expertise || [],
+      photo,
+      referred: referred || 'No',
+      referralCode: referred === 'Yes' ? referralCode : null,
+      timestamp: serverTimestamp(),
+      leadId: leadId || null,
     };
+
+    let profileData;
+
+    if (profileType === 'agency') {
+      profileData = {
+        ...commonProfileData,
+        profileType: 'agency',
+        yearsActive: yearsActive || '',
+        licenseNumber: licenseNumber || '',
+        // Explicitly clear expert-specific fields
+        dateOfBirth: '',
+        experience: [],
+        certifications: '',
+      };
+    } else { // Default to 'expert'
+      profileData = {
+        ...commonProfileData,
+        profileType: 'expert',
+        dateOfBirth: dateOfBirth || '',
+        experience: experience || [],
+        certifications: certifications || '',
+        // Explicitly clear agency-specific fields
+        yearsActive: '',
+        licenseNumber: '',
+      };
+    }
     
     if (profileId) {
-      // This is an update
-      delete profileData.username; // Do not allow username change on update through this route
-      delete profileData.generatedReferralCode;
-      await updateDoc(doc(db, "Profiles", profileId), profileData);
+      // This is an update to an existing profile in the 'Profiles' collection
+      const updateData = { ...profileData };
+      delete updateData.username; // Username cannot be changed
+      delete updateData.generatedReferralCode; // This should not be updated
+      await updateDoc(doc(db, "Profiles", profileId), updateData);
     } else {
-      // This is a new request
+      // This is a new profile request for the 'ProfileRequests' collection
       if (!["Yes", "No"].includes(referred)) throw new Error("Referred must be 'Yes' or 'No'");
 
       const [profilesSnap, profileRequestsSnap, emailSnap] = await Promise.all([
@@ -94,18 +139,17 @@ export async function POST(req) {
       savedProfileId = docRef.id;
     }
 
-    // Await email sending
     await sendProfileSubmissionEmails({
       ...profileData,
       profileId: savedProfileId,
     });
 
-    const slug = `${(username || initialData.username).toLowerCase().replace(/\s+/g, '-')}`;
+    const slug = `${(username || '').toLowerCase().replace(/\s+/g, '-')}`;
 
     return NextResponse.json({ success: true, profileId: savedProfileId, slug }, { status: 200 });
 
   } catch (error) {
-    console.error("Error in send-profile-form:", error.message);
+    console.error("Error in send-profile-form:", error.message, error.stack);
     return NextResponse.json(
       { error: error.message || "Failed to process profile submission" },
       { status: 500 }

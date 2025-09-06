@@ -1,4 +1,5 @@
 
+
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
@@ -75,6 +76,7 @@ export default async function ExpertProfilePage({ params }) {
       profile = {
         id: doc.id,
         ...data,
+        profileType: data.profileType || 'expert', // Get profileType, default to 'expert'
         timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : null,
         isOnline: data.isOnline !== false, 
       };

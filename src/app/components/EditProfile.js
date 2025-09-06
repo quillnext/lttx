@@ -1,3 +1,4 @@
+
 // app/components/EditProfile.js
 "use client";
 
@@ -83,20 +84,26 @@ export default function EditProfile({ id }) { // Accept id as a prop
         return `${year}-${month}-${day}`;
       };
 
-      const { photo, ...dataToSave } = updatedData;
-      await updateDoc(doc(db, "Profiles", id), {
-        ...dataToSave,
+      const dataForFirestore = {
+        ...updatedData,
         photo: newPhotoURL,
-        dateOfBirth: updatedData.dateOfBirth ? formatDate(updatedData.dateOfBirth, "YYYY-MM-DD") : "",
         services: updatedData.services.filter(s => typeof s === "string" && s.trim()),
-        expertise: updatedData.expertise,
-        experience: updatedData.experience.map((exp) => ({
+        
+        // Conditionally set fields based on profileType
+        dateOfBirth: updatedData.profileType === 'expert' && updatedData.dateOfBirth ? formatDate(updatedData.dateOfBirth, "YYYY-MM-DD") : "",
+        yearsActive: updatedData.profileType === 'agency' ? updatedData.yearsActive : "",
+        experience: updatedData.profileType === 'expert' ? updatedData.experience.map((exp) => ({
           title: exp.title || "",
           company: exp.company || "",
           startDate: exp.startDate ? formatDate(exp.startDate, "YYYY-MM") : "",
           endDate: exp.endDate === "Present" ? "Present" : exp.endDate ? formatDate(exp.endDate, "YYYY-MM") : "",
-        })),
-      });
+        })) : [],
+        certifications: updatedData.profileType === 'expert' ? updatedData.certifications : "",
+        licenseNumber: updatedData.profileType === 'agency' ? updatedData.licenseNumber : "",
+      };
+
+
+      await updateDoc(doc(db, "Profiles", id), dataForFirestore);
 
       router.push(`/experts/${updatedData.username}`);
     } catch (error) {

@@ -40,23 +40,10 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      // Fetch expertEmail from Profiles collection if not in booking
       let expertEmail = booking.expertEmail;
       if (!expertEmail && booking.expertId) {
-        console.log("Fetching expert email for expertId:", booking.expertId);
         const profileRef = doc(db, "Profiles", booking.expertId);
-        const profileSnap = await getDoc(profileRef).catch((err) => {
-          console.error("Error fetching Profiles document:", {
-            code: err.code,
-            message: err.message,
-            stack: err.stack,
-          });
-          throw err;
-        });
-        console.log("Profile snapshot:", {
-          exists: profileSnap.exists(),
-          data: profileSnap.exists() ? profileSnap.data() : null,
-        });
+        const profileSnap = await getDoc(profileRef);
         if (!profileSnap.exists()) {
           setError("Expert document not found in Profiles collection.");
           return;
@@ -68,23 +55,10 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
         }
       }
 
-      // Fetch userEmail from Users collection if not in booking
       let userEmail = booking.userEmail;
       if (!userEmail && booking.userId) {
-        console.log("Fetching user email for userId:", booking.userId);
         const userRef = doc(db, "Users", booking.userId);
-        const userSnap = await getDoc(userRef).catch((err) => {
-          console.error("Error fetching Users document:", {
-            code: err.code,
-            message: err.message,
-            stack: err.stack,
-          });
-          throw err;
-        });
-        console.log("User snapshot:", {
-          exists: userSnap.exists(),
-          data: userSnap.exists() ? userSnap.data() : null,
-        });
+        const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
           setError("User document not found in Users collection.");
           return;
@@ -96,31 +70,19 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
         }
       }
 
-      // Validate emails
       if (!userEmail || !expertEmail) {
         setError("No expert email found or no user email available.");
         return;
       }
 
-      // Update Firestore with the meeting link and status
-      console.log("Updating booking with ID:", booking.id);
       const bookingRef = doc(db, "Bookings", booking.id);
       await updateDoc(bookingRef, {
         meetingLink,
         status: "confirmed",
         userEmail,
         expertEmail,
-      }).catch((err) => {
-        console.error("Error updating Bookings document:", {
-          code: err.code,
-          message: err.message,
-          stack: err.stack,
-        });
-        throw err;
       });
 
-      // Send emails via API
-      console.log("Sending meeting link email:", { userEmail, expertEmail });
       const response = await fetch("/api/send-meeting-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,12 +90,13 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
           userEmail,
           userName: booking.userName,
           userPhone: booking.userPhone,
-          userMessage: booking.userMessage, // Added userMessage
+          userMessage: booking.userMessage,
           expertEmail,
           expertName: booking.expertName,
           bookingDate: booking.bookingDate,
           bookingTime: booking.bookingTime,
           meetingLink,
+          referredByAgencyName: booking.referredByAgencyName,
         }),
       });
 
@@ -147,11 +110,6 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
       alert("Meeting link sent successfully!");
       onClose();
     } catch (err) {
-      console.error("Error in handleSubmit:", {
-        code: err.code,
-        message: err.message,
-        stack: err.stack,
-      });
       setError(err.message || "Failed to send meeting link. Please try again.");
     } finally {
       setLoading(false);
@@ -174,6 +132,9 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
           </p>
           <p>
             <strong>Expert:</strong> {booking.expertName || "N/A"}
+          </p>
+          <p>
+            <strong>Refered By Agency:</strong> {booking.referredByAgencyName || "N/A"}
           </p>
           <p>
             <strong>Date:</strong> {booking.bookingDate || "N/A"}
@@ -229,43 +190,27 @@ export default function BookingOverviewPage() {
     const fetchBookings = async () => {
       setLoading(true);
       try {
-        console.log("Fetching bookings from Firestore...");
         const q = query(collection(db, "Bookings"), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q).catch((err) => {
-          console.error("Error fetching Bookings:", {
-            code: err.code,
-            message: err.message,
-            stack: err.stack,
-          });
-          throw err;
-        });
+        const querySnapshot = await getDocs(q);
         const data = await Promise.all(
           querySnapshot.docs.map(async (docSnap) => {
             const data = docSnap.data();
             let userEmail = data.userEmail;
             let expertEmail = data.expertEmail;
 
-            // Fetch userEmail if userId exists and userEmail is missing
             if (!userEmail && data.userId) {
-              console.log("Fetching user email for userId:", data.userId);
               const userRef = doc(db, "Users", data.userId);
               const userSnap = await getDoc(userRef);
               if (userSnap.exists()) {
                 userEmail = userSnap.data().email;
-              } else {
-                console.warn(`User document not found for userId: ${data.userId}`);
               }
             }
 
-            // Fetch expertEmail if expertId exists and expertEmail is missing
             if (!expertEmail && data.expertId) {
-              console.log("Fetching expert email for expertId:", data.expertId);
               const profileRef = doc(db, "Profiles", data.expertId);
               const profileSnap = await getDoc(profileRef);
               if (profileSnap.exists()) {
                 expertEmail = profileSnap.data().email;
-              } else {
-                console.warn(`Profile document not found for expertId: ${data.expertId}`);
               }
             }
 
@@ -277,10 +222,8 @@ export default function BookingOverviewPage() {
             };
           })
         );
-        console.log("Fetched bookings:", data.length, "data:", data);
         setBookings(data);
 
-        // Calculate stats
         const now = new Date();
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const upcoming = data.filter((b) => {
@@ -299,11 +242,7 @@ export default function BookingOverviewPage() {
           today: todayBookings,
         });
       } catch (error) {
-        console.error("Error fetching all bookings:", {
-          code: error.code,
-          message: error.message,
-          stack: error.stack,
-        });
+        console.error("Error fetching bookings:", error);
       } finally {
         setLoading(false);
       }
@@ -330,7 +269,6 @@ export default function BookingOverviewPage() {
   const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
 
   const handleSendMeetingLink = (booking) => {
-    console.log("Selected booking for meeting link:", booking);
     setSelectedBooking(booking);
   };
 
@@ -397,8 +335,10 @@ export default function BookingOverviewPage() {
                     <th className="p-3 font-semibold">Client</th>
                     <th className="p-3 font-semibold">Expert</th>
                     <th className="p-3 font-semibold">Appointment</th>
+                    <th className="p-3 font-semibold">Refered By Agency</th>
                     <th className="p-3 font-semibold">Status</th>
                     <th className="p-3 font-semibold">Action</th>
+                    
                   </tr>
                 </thead>
                 <tbody>
@@ -413,6 +353,9 @@ export default function BookingOverviewPage() {
                       <td className="p-4">
                         <p className="font-medium text-gray-800">{b.bookingDate || "N/A"}</p>
                         <p className="text-gray-500">{b.bookingTime || "N/A"}</p>
+                      </td>
+                      <td className="p-4">
+                        <p className="font-medium text-gray-800">{b.referredByAgencyName || "N/A"}</p>
                       </td>
                       <td className="p-4">
                         <span
