@@ -5,7 +5,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { getFirestore, collection, getDocs, query, limit, startAfter } from "firebase/firestore";
+import { getFirestore, collection, getDocs, query, limit, startAfter, where } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { FaSearch, FaGlobe, FaMapMarkerAlt, FaUserTag, FaRupeeSign, FaClock, FaTimes, FaLanguage, FaCheckCircle } from "react-icons/fa";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -181,10 +181,10 @@ export default function ExpertsDirectory() {
     if (loading || !hasMore) return;
     setLoading(true);
     try {
-      const profilesQuery = lastDoc
-        ? query(collection(db, "Profiles"), limit(9), startAfter(lastDoc))
-        : query(collection(db, "Profiles"), limit(9));
-      const querySnapshot = await getDocs(profilesQuery);
+      const q = lastDoc
+        ? query(collection(db, "Profiles"), where("isPublic", "==", true), limit(9), startAfter(lastDoc))
+        : query(collection(db, "Profiles"), where("isPublic", "==", true), limit(9));
+      const querySnapshot = await getDocs(q);
       const expertsData = querySnapshot.docs.map((doc) => {
         const data = doc.data();
         return {
