@@ -1,39 +1,39 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFirestore, collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import '@/app/globals.css';
 import Link from 'next/link';
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import Footer from '../pages/Footer';
 import Navbar from '../components/Navbar';
-import Cropper from 'react-easy-crop';
 import getCroppedImg from './getCroppedImg';
+import Step1_BasicInfo from './components/Step1_BasicInfo';
+import Step2_Services from './components/Step2_Services';
+import Step3_Experience from './components/Step3_Experience';
 
-// Dynamically import react-select and creatable-select with SSR disabled
-const Select = dynamic(() => import('react-select'), { ssr: false });
-const CreatableSelect = dynamic(() => import('react-select/creatable'), { ssr: false });
+// Dynamically import components with error handling
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn().catch((err) => {
+        console.error(`Failed to load ${name}:`, err);
+        return () => <div>Error loading ${name} component.</div>;
+      }),
+    {
+      ssr: false,
+      loading: () => <div>Loading ${name}...</div>,
+    }
+  );
+
+const Cropper = loadComponent(() => import('react-easy-crop'), 'Cropper');
 
 const storage = getStorage(app);
 const db = getFirestore(app);
-
-const expertiseOptions = [
-  { value: 'Visa and Documentation Services', label: 'Visa and Documentation Services' },
-  { value: 'Air/Flight Ticketing and Management', label: 'Air/Flight Ticketing and Management' },
-  { value: 'Transfer and Car Rentals', label: 'Transfer and Car Rentals' },
-  { value: 'Holiday Packages', label: 'Holiday Packages' },
-  { value: 'Hotel Bookings', label: 'Hotel Bookings' },
-  { value: 'MICE Logistics Arrangements', label: 'MICE Logistics Arrangements' },
-  { value: 'FRRO Assistance', label: 'FRRO Assistance' },
-  { value: 'Luxury Cruise Trip Planning', label: 'Luxury Cruise Trip Planning' },
-];
 
 export default function CompleteProfile() {
   const router = useRouter();
@@ -44,11 +44,13 @@ export default function CompleteProfile() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [savedProfileId, setSavedProfileId] = useState(null);
   const [formData, setFormData] = useState({
+    profileType: 'expert',
     username: '',
     fullName: '',
     email: '',
     phone: '',
     dateOfBirth: null,
+    yearsActive: '',
     tagline: '',
     location: '',
     languages: [],
@@ -61,7 +63,8 @@ export default function CompleteProfile() {
     expertise: [],
     experience: [{ title: '', company: '', startDate: null, endDate: null }],
     certifications: '',
-    referred: '',
+    licenseNumber: '',
+    referred: 'No',
     referralCode: '',
   });
   const [originalProfile, setOriginalProfile] = useState(null);
@@ -80,6 +83,38 @@ export default function CompleteProfile() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  useEffect(() => {
+    const loadCSS = (href, fallback) => {
+      const link = document.createElement("link");
+      link.href = href;
+      link.rel = "stylesheet";
+      link.onerror = () => {
+        console.warn(`Failed to load local CSS: ${href}. Loading fallback: ${fallback}`);
+        const fallbackLink = document.createElement("link");
+        fallbackLink.href = fallback;
+        fallbackLink.rel = "stylesheet";
+        document.head.appendChild(fallbackLink);
+      };
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+        const fallbackElement = document.querySelector(`link[href="${fallback}"]`);
+        if (fallbackElement) {
+          document.head.removeChild(fallbackElement);
+        }
+      };
+    };
+
+    const cssFiles = [
+      { local: "/css/react-phone-input-2.css", fallback: "https://unpkg.com/react-phone-input-2@2.15.1/lib/style.css" },
+      { local: "/css/react-datepicker.css", fallback: "https://unpkg.com/react-datepicker@4.8.0/dist/react-datepicker.css" },
+      { local: "/css/react-easy-crop.css", fallback: "https://unpkg.com/react-easy-crop@5.0.7/react-easy-crop.css" }
+    ];
+
+    const cleanups = cssFiles.map(({ local, fallback }) => loadCSS(local, fallback));
+    return () => cleanups.forEach(cleanup => cleanup());
+  }, []);
 
   const formatDate = (date, format = 'YYYY-MM-DD') => {
     if (!date) return '';
@@ -106,66 +141,43 @@ export default function CompleteProfile() {
     const fetchCities = async () => {
       try {
         const response = await fetch('/api/cities');
-        if (!response.ok) {
-          if (response.status === 405) {
-            throw new Error('Method Not Allowed: Ensure the API supports GET requests');
-          }
-          throw new Error(`Failed to fetch cities: ${response.status}`);
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response format from cities API');
-        }
+        if (!response.ok) throw new Error(`Failed to fetch cities: ${response.status}`);
         const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        const sortedCities = data.sort((a, b) => {
-          const isAIndia = a.country === 'India';
-          const isBIndia = b.country === 'India';
-          if (isAIndia && !isBIndia) return -1;
-          if (!isAIndia && isBIndia) return 1;
-          if (isAIndia && isBIndia) {
-            const cityA = a.label.replace(', India', '');
-            const cityB = b.label.replace(', India', '');
-            return cityA.localeCompare(cityB);
-          }
-          return a.label.localeCompare(b.label);
-        });
+        if (data.error) throw new Error(data.error);
+        if (data.length === 0) throw new Error("No city data returned.");
+        const sortedCities = [...data].sort((a, b) => a.label.localeCompare(b.label));
         setCityOptions(sortedCities);
       } catch (error) {
         console.error('Error fetching cities:', error);
-        setApiError(`Failed to load city options: ${error.message}. Please try again later.`);
+        setApiError(`Failed to load city options: ${error.message}. Using fallback options.`);
+        setCityOptions([{ value: 'Unknown', label: 'Unknown' }]);
       }
     };
 
     const fetchLanguages = async () => {
       try {
         const response = await fetch('/api/languages');
-        if (!response.ok) {
-          if (response.status === 405) {
-            throw new Error('Method Not Allowed: Ensure the API supports GET requests');
-          }
-          throw new Error(`Failed to fetch languages: ${response.status}`);
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response format from languages API');
-        }
+        if (!response.ok) throw new Error(`Failed to fetch languages: ${response.status}`);
         const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
+        if (data.error) throw new Error(data.error);
+        if (data.length === 0) throw new Error("No language data returned.");
         setLanguageOptions(data);
       } catch (error) {
         console.error('Error fetching languages:', error);
-        setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
+        setApiError(`Failed to load language options: ${error.message}. Using fallback options.`);
+        setLanguageOptions([{ value: 'English', label: 'English' }]);
       }
     };
 
     fetchCities();
     fetchLanguages();
   }, []);
+  
+  useEffect(() => {
+    if (formData.location && cityOptions.length > 0 && !cityOptions.some(option => option.value === formData.location)) {
+      setCityOptions(prevOptions => [{ value: formData.location, label: formData.location }, ...prevOptions]);
+    }
+  }, [formData.location, cityOptions]);
 
   useEffect(() => {
     if (profileId) {
@@ -177,11 +189,13 @@ export default function CompleteProfile() {
             const data = profileSnap.data();
             setOriginalProfile({ id: profileSnap.id, ...data });
             setFormData({
+              profileType: data.profileType || 'expert',
               username: data.username || '',
               fullName: data.fullName || '',
               email: data.email || '',
               phone: data.phone || '',
               dateOfBirth: data.dateOfBirth ? parseDate(data.dateOfBirth, 'YYYY-MM-DD') : null,
+              yearsActive: data.yearsActive || '',
               tagline: data.tagline || '',
               location: data.location || '',
               languages: Array.isArray(data.languages) ? data.languages : [],
@@ -189,10 +203,10 @@ export default function CompleteProfile() {
               pricing: data.pricing || '',
               about: data.about || '',
               photo: null,
-              services: data.services?.length ? data.services : [''],
-              regions: data.regions?.length ? data.regions : [],
+              services: Array.isArray(data.services) && data.services.length > 0 ? data.services : [''],
+              regions: Array.isArray(data.regions) ? data.regions : [],
               expertise: Array.isArray(data.expertise) ? data.expertise : [],
-              experience: data.experience?.length
+              experience: Array.isArray(data.experience) && data.experience.length > 0
                 ? data.experience.map(exp => ({
                     title: exp.title || '',
                     company: exp.company || '',
@@ -201,11 +215,14 @@ export default function CompleteProfile() {
                   }))
                 : [{ title: '', company: '', startDate: null, endDate: null }],
               certifications: data.certifications || '',
-              referred: data.referred || '',
+              licenseNumber: data.licenseNumber || '',
+              referred: data.referred || 'No',
               referralCode: data.referralCode || '',
             });
             setImagePreview(data.photo || null);
             setAgreed(true);
+          } else {
+            setApiError(`Profile with ID "${profileId}" not found.`);
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -222,20 +239,16 @@ export default function CompleteProfile() {
 
   const handleCropConfirm = useCallback(async () => {
     try {
-      const croppedImage = await getCroppedImg(imagePreview, croppedAreaPixels);
-      const blob = await (await fetch(croppedImage)).blob();
-      const file = new File([blob], `cropped_${formData.photo.name}`, { type: blob.type });
-      setFormData(prev => ({ ...prev, photo: file })); // Fixed typo: 'photo od' to 'photo'
-      setImagePreview(croppedImage);
+      if (!imagePreview || !croppedAreaPixels) return;
+      const croppedImageFile = await getCroppedImg(imagePreview, croppedAreaPixels, formData.photo?.name || 'profile.jpg');
+      setFormData(prev => ({ ...prev, photo: croppedImageFile }));
+      setImagePreview(URL.createObjectURL(croppedImageFile));
       setShowCropModal(false);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setCroppedAreaPixels(null);
     } catch (error) {
       console.error('Error cropping image:', error);
       setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
     }
-  }, [imagePreview, croppedAreaPixels]);
+  }, [imagePreview, croppedAreaPixels, formData.photo]);
 
   const handleFile = e => {
     const file = e.target.files[0];
@@ -458,12 +471,22 @@ export default function CompleteProfile() {
 
   const validateStep = () => {
     const newErrors = {};
+    const { profileType } = formData;
 
     if (currentStep === 0) {
       ['username', 'fullName', 'email', 'phone', 'responseTime', 'pricing'].forEach(field => {
         if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
       });
-      if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+
+      if (profileType === 'expert') {
+        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+        if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
+          newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old and not in the future.';
+        }
+      } else { // agency
+        if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
+      }
+
       if (!formData.location) newErrors.location = 'Location is required';
       if (!formData.languages.length) newErrors.languages = 'At least one language is required';
       if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
@@ -472,9 +495,6 @@ export default function CompleteProfile() {
         newErrors.username = 'Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores';
       }
       if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
-      if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
-        newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old and not in the future.';
-      }
     }
 
     if (currentStep === 1) {
@@ -487,12 +507,15 @@ export default function CompleteProfile() {
     }
 
     if (currentStep === 2) {
-      if (!formData.experience.length || formData.experience.some(exp => !exp.title.trim() || !exp.company.trim())) {
-        newErrors.experience = 'All experience fields (title, company) are required';
+      if (profileType === 'expert') {
+        if (!formData.experience.length || formData.experience.some(exp => !exp.title.trim() || !exp.company.trim())) {
+          newErrors.experience = 'All experience fields (title, company) are required';
+        }
+        const dateError = validateExperienceDates(formData.experience);
+        if (dateError) newErrors.experience = dateError;
+        if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
       }
-      const dateError = validateExperienceDates(formData.experience);
-      if (dateError) newErrors.experience = dateError;
-      if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
+      
       if (!formData.tagline?.trim()) newErrors.tagline = 'This field is required';
       if (!formData.about?.trim()) newErrors.about = 'This field is required';
       if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
@@ -521,11 +544,13 @@ export default function CompleteProfile() {
 
   const resetForm = () => {
     setFormData({
+      profileType: 'expert',
       username: '',
       fullName: '',
       email: '',
       phone: '',
       dateOfBirth: null,
+      yearsActive: '',
       tagline: '',
       location: '',
       languages: [],
@@ -538,7 +563,8 @@ export default function CompleteProfile() {
       expertise: [],
       experience: [{ title: '', company: '', startDate: null, endDate: null }],
       certifications: '',
-      referred: '',
+      licenseNumber: '',
+      referred: 'No',
       referralCode: '',
     });
     setImagePreview(null);
@@ -564,24 +590,26 @@ export default function CompleteProfile() {
     setIsSubmitting(true);
 
     try {
-      let photoURL = profileId ? (await getDoc(doc(db, 'Profiles', profileId))).data().photo : '';
-      if (formData.photo && formData.fullName) {
-        const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-        const timestamp = Date.now();
-        const fileExtension = formData.photo.name.split('.').pop();
-        const fileName = `profile_${timestamp}.${fileExtension}`;
-        const storageRef = ref(storage, `Profiles/${sanitizedFullName}/${fileName}`);
+      let photoURL = profileId && originalProfile ? originalProfile.photo : '';
+      if (formData.photo && typeof formData.photo !== 'string') {
+          const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+          const timestamp = Date.now();
+          const fileExtension = formData.photo.name.split('.').pop();
+          const fileName = `profile_${sanitizedFullName}_${timestamp}.${fileExtension}`;
+          const storageRef = ref(storage, `Profiles/${fileName}`);
 
-        await uploadBytes(storageRef, formData.photo);
-        photoURL = await getDownloadURL(storageRef);
+          await uploadBytes(storageRef, formData.photo);
+          photoURL = await getDownloadURL(storageRef);
       }
 
       const profileData = {
+        profileType: formData.profileType,
         username: formData.username,
         fullName: formData.fullName,
         email: formData.email,
         phone: formData.phone,
-        dateOfBirth: formData.dateOfBirth ? formatDate(formData.dateOfBirth, 'YYYY-MM-DD') : '',
+        dateOfBirth: formData.profileType === 'expert' && formData.dateOfBirth ? formatDate(formData.dateOfBirth, 'YYYY-MM-DD') : '',
+        yearsActive: formData.profileType === 'agency' ? formData.yearsActive : '',
         tagline: formData.tagline,
         location: formData.location,
         languages: formData.languages,
@@ -589,42 +617,31 @@ export default function CompleteProfile() {
         pricing: formData.pricing,
         about: formData.about,
         photo: photoURL,
-        services: formData.services,
+        services: formData.services.filter(s => s.trim()),
         regions: formData.regions,
         expertise: formData.expertise,
-        experience: formData.experience.map(exp => ({
+        experience: formData.profileType === 'expert' ? formData.experience.map(exp => ({
           title: exp.title,
           company: exp.company,
           startDate: exp.startDate ? formatDate(exp.startDate, 'YYYY-MM') : '',
           endDate: exp.endDate === 'Present' ? 'Present' : exp.endDate ? formatDate(exp.endDate, 'YYYY-MM') : '',
-        })),
-        certifications: formData.certifications,
+        })) : [],
+        certifications: formData.profileType === 'expert' ? formData.certifications : '',
+        licenseNumber: formData.profileType === 'agency' ? formData.licenseNumber : '',
         referred: formData.referred || 'No',
         referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
-        timestamp: serverTimestamp(),
       };
 
-      let localProfileId = profileId;
       const response = await fetch('/api/send-profile-form', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...profileData, profileId: localProfileId }),
+        body: JSON.stringify({ ...profileData, profileId }),
       });
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Invalid response format from profile submission API');
-      }
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit profile');
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to submit profile');
 
       setSavedProfileId(result.profileId);
-
-      const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-
       setShowSuccessModal(true);
       setTimeout(() => {
         setShowSuccessModal(false);
@@ -723,7 +740,7 @@ export default function CompleteProfile() {
                     className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
                     onClick={() => {
                       setShowCropModal(false);
-                      setImagePreview(null);
+                      setImagePreview(originalProfile?.photo || null);
                       setFormData(prev => ({ ...prev, photo: null }));
                     }}
                   >
@@ -746,536 +763,60 @@ export default function CompleteProfile() {
                 {apiError}
               </div>
             )}
+            
             {currentStep === 0 && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <PhoneInput
-                      country={"in"}
-                      value={formData.phone}
-                      onChange={phone => {
-                        setFormData(prev => ({ ...prev, phone }));
-                        fetchLeadByPhone(phone);
-                      }}
-                      placeholder="Enter phone number (e.g., +91 9876543210)"
-                      inputProps={{
-                        id: 'phone',
-                        className: `w-full p-3 px-12 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
-                        required: true,
-                        autoFocus: false,
-                      }}
-                    />
-                    {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input
-                      type="text"
-                      name="username"
-                      placeholder="Enter username (e.g., travelwithjohn)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.username ? 'border-red-500' : ''}`}
-                      value={formData.username}
-                      onChange={handleChange}
-                      disabled={!!profileId}
-                    />
-                    {usernameStatus && (
-                      <p className={`text-sm mt-1 ${usernameStatus.includes('available') ? 'text-green-600' : 'text-red-600'}`}>
-                        {usernameStatus}
-                      </p>
-                    )}
-                    {errors.username && errors.username !== 'Username is already taken' && (
-                      <p className="text-sm text-red-600 mt-1">{errors.username}</p>
-                    )}
-                    <p className="text-sm text-gray-500 mt-1">e.g., travelwithjohn</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                    <input
-                      type="text"
-                      name="fullName"
-                      placeholder="Enter full name (e.g., John Doe)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.fullName ? 'border-red-500' : ''}`}
-                      value={formData.fullName}
-                      onChange={handleChange}
-                    />
-                    {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
-                    <p className="text-sm text-gray-500 mt-1">e.g., John Doe</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="Enter email (e.g., john@example.com)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.email ? 'border-red-500' : ''}`}
-                      value={formData.email}
-                      onChange={handleChange}
-                    />
-                    {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
-                    <p className="text-sm text-gray-500 mt-1">e.g., john@example.com</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <DatePicker
-                      selected={formData.dateOfBirth}
-                      onChange={date => {
-                        setFormData(prev => ({ ...prev, dateOfBirth: date }));
-                        setErrors(prev => ({ ...prev, dateOfBirth: '' }));
-                      }}
-                      dateFormat="yyyy-MM-dd"
-                      placeholderText="Select date of birth (YYYY-MM-DD)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.dateOfBirth ? 'border-red-500' : ''}`}
-                      maxDate={new Date()}
-                      showYearDropdown
-                      yearDropdownItemNumber={100}
-                      scrollableYearDropdown
-                    />
-                    {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
-                    <p className="text-sm text-gray-500 mt-1">e.g., 1990-01-01</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <Select
-                      instanceId="location-select"
-                      options={cityOptions}
-                      value={cityOptions.find(option => option.value === formData.location) || null}
-                      onChange={selected => handleSingleChange(selected, 'location')}
-                      placeholder="Select a location (e.g., Mumbai, India)"
-                      className={`w-full ${errors.location ? 'border-red-500' : ''}`}
-                      classNamePrefix="react-select"
-                      isDisabled={cityOptions.length === 0}
-                      isSearchable={true}
-                      onInputChange={inputValue => {
-                        if (inputValue) {
-                          fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
-                            .then(res => {
-                              if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
-                              return res.json();
-                            })
-                            .then(data => {
-                              const sortedCities = data.sort((a, b) => {
-                                const isAIndia = a.country === 'India';
-                                const isBIndia = b.country === 'India';
-                                if (isAIndia && !isBIndia) return -1;
-                                if (!isAIndia && isBIndia) return 1;
-                                if (isAIndia && isBIndia) {
-                                  const cityA = a.label.replace(', India', '');
-                                  const cityB = b.label.replace(', India', '');
-                                  return cityA.localeCompare(cityB);
-                                }
-                                return a.label.localeCompare(b.label);
-                              });
-                              setCityOptions(sortedCities);
-                            })
-                            .catch(err => {
-                              console.error('Error fetching cities:', err);
-                              setApiError('Failed to fetch city options. Please try again.');
-                            });
-                        }
-                      }}
-                    />
-                    {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
-                    <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
-                    <Select
-                      instanceId="language-select"
-                      isMulti
-                      options={languageOptions}
-                      value={languageOptions.filter(option => formData.languages.includes(option.value))}
-                      onChange={selected => handleMultiChange(selected, 'languages')}
-                      placeholder="Select up to 5 languages (e.g., English, Hindi)"
-                      className={`w-full ${errors.languages ? 'border-red-500' : ''}`}
-                      classNamePrefix="react-select"
-                      isDisabled={languageOptions.length === 0}
-                    />
-                    {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
-                    <p className="text-sm text-gray-500 mt-1">Select up to 5 languages (e.g., English, Hindi)</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
-                    <input
-                      type="text"
-                      name="responseTime"
-                      placeholder="Enter response time (e.g., Within 12 hours)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.responseTime ? 'border-red-500' : ''}`}
-                      value={formData.responseTime}
-                      onChange={handleChange}
-                    />
-                    {errors.responseTime && <p className="text-sm text-red-600 mt-1">{errors.responseTime}</p>}
-                    <p className="text-sm text-gray-500 mt-1">e.g., Within 12 hours</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Pricing</label>
-                    <input
-                      type="text"
-                      name="pricing"
-                      placeholder="Enter pricing (e.g., ₹2000/session)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.pricing ? 'border-red-500' : ''}`}
-                      value={formData.pricing}
-                      onChange={handleChange}
-                    />
-                    {errors.pricing && <p className="text-sm text-red-600 mt-1">{errors.pricing}</p>}
-                    <p className="text-sm text-gray-500 mt-1">e.g., ₹2000/session or $30/consult</p>
-                  </div>
-                </div>
-              </div>
+              <Step1_BasicInfo
+                formData={formData}
+                errors={errors}
+                handleChange={handleChange}
+                handleSingleChange={handleSingleChange}
+                handleMultiChange={handleMultiChange}
+                cityOptions={cityOptions}
+                setCityOptions={setCityOptions}
+                languageOptions={languageOptions}
+                usernameStatus={usernameStatus}
+                profileId={profileId}
+                fetchLeadByPhone={fetchLeadByPhone}
+                setFormData={setFormData}
+                setErrors={setErrors}
+                setApiError={setApiError}
+              />
             )}
 
             {currentStep === 1 && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-semibold text-[var(--primary)]">🎯 Services, Expertise & Regions</h2>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">What I Can Help You With</label>
-                  {formData.services.map((service, index) => (
-                    <div key={index} className="flex gap-2 items-center mb-2">
-                      <input
-                        type="text"
-                        className={`w-full px-4 py-2 border rounded-xl ${errors.services ? 'border-red-500' : ''}`}
-                        placeholder="Enter service (e.g., Visa Documentation)"
-                        value={service}
-                        onChange={e => handleArrayChange(index, 'services', e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="text-red-500 text-sm hover:text-red-700"
-                        onClick={() => removeField('services', index)}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addField('services')}
-                    className="text-sm text-[var(--primary)] hover:underline mt-2"
-                  >
-                    + Add More
-                  </button>
-                  {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
-                  <p className="text-sm text-gray-500 mt-1">e.g., Visa Documentation, Itinerary Planning</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
-                  <div className="flex gap-2 mb-2">
-                    <CreatableSelect
-                      instanceId="expertise-select"
-                      options={expertiseOptions}
-                      value={selectedExpertise}
-                      onChange={handleExpertiseChange}
-                      onKeyDown={handleExpertiseKeyDown}
-                      placeholder="Select or type expertise (e.g., Adventure Travel)"
-                      className={`w-full ${errors.expertise ? 'border-red-500' : ''}`}
-                      classNamePrefix="react-select"
-                      formatCreateLabel={inputValue => `Add "${inputValue}"`}
-                    />
-                    <button
-                      type="button"
-                      className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer"
-                      onClick={addExpertise}
-                      disabled={!selectedExpertise}
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {formData.expertise.map(exp => (
-                      <span
-                        key={exp}
-                        className="bg-[var(--primary)] text-white px-2 py-1 rounded-full text-sm flex items-center"
-                      >
-                        {exp}
-                        <button type="button" className="ml-2 text-white" onClick={() => removeExpertise(exp)}>
-                          ✕
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
-                  <p className="text-sm text-gray-500 mt-1">Select or type up to 5 expertise areas (e.g., Visa Documentation, Adventure Travel). Press Enter or click Add.</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Regions You Specialize In</label>
-                  <select
-                    multiple
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.regions ? 'border-red-500' : ''}`}
-                    onChange={e => {
-                      const options = Array.from(e.target.selectedOptions).map(o => o.value);
-                      if (options.length > 5) {
-                        setErrors(prev => ({ ...prev, regions: 'You can select up to 5 regions.' }));
-                        return;
-                      }
-                      setFormData(prev => ({ ...prev, regions: options }));
-                      setErrors(prev => ({ ...prev, regions: '' }));
-                    }}
-                    value={formData.regions}
-                  >
-                    <option value="south-asia">South Asia</option>
-                    <option value="southeast-asia">Southeast Asia</option>
-                    <option value="east-asia">East Asia</option>
-                    <option value="central-asia">Central Asia</option>
-                    <option value="west-asia">West Asia</option>
-                    <option value="north-africa">North Africa</option>
-                    <option value="west-africa">West Africa</option>
-                    <option value="east-africa">East Africa</option>
-                    <option value="central-africa">Central Africa</option>
-                    <option value="southern-africa">Southern Africa</option>
-                    <option value="north-america">North America</option>
-                    <option value="central-america">Central America</option>
-                    <option value="caribbean">Caribbean</option>
-                    <option value="south-america">South America</option>
-                    <option value="western-europe">Western Europe</option>
-                    <option value="eastern-europe">Eastern Europe</option>
-                    <option value="northern-europe">Northern Europe</option>
-                    <option value="southern-europe">Southern Europe</option>
-                    <option value="australia-nz">Australia & New Zealand</option>
-                    <option value="pacific-islands">Pacific Islands</option>
-                    <option value="mena">MENA</option>
-                    <option value="emea">EMEA</option>
-                    <option value="apac">APAC</option>
-                    <option value="latam">LATAM</option>
-                  </select>
-                  <p className="text-sm text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select up to 5 regions</p>
-                  {errors.regions && <p className="text-sm text-red-600 mt-1">{errors.regions}</p>}
-                </div>
-              </div>
+              <Step2_Services
+                formData={formData}
+                errors={errors}
+                setFormData={setFormData}
+                setErrors={setErrors}
+                handleArrayChange={handleArrayChange}
+                removeField={removeField}
+                addField={addField}
+                selectedExpertise={selectedExpertise}
+                setSelectedExpertise={setSelectedExpertise}
+                handleExpertiseChange={handleExpertiseChange}
+                handleExpertiseKeyDown={handleExpertiseKeyDown}
+                addExpertise={addExpertise}
+                removeExpertise={removeExpertise}
+              />
             )}
 
             {currentStep === 2 && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-semibold text-[var(--primary)]">📚 Experience & Credentials</h2>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
-                  {formData.experience.map((exp, index) => (
-                    <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="Enter job title (e.g., Travel Consultant)"
-                            className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                            value={exp.title}
-                            onChange={e => handleExperienceChange(index, 'title', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="Enter company (e.g., MakeMyTrip)"
-                            className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                            value={exp.company}
-                            onChange={e => handleExperienceChange(index, 'company', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <DatePicker
-                            selected={exp.startDate}
-                            onChange={date => handleExperienceChange(index, 'startDate', date)}
-                            dateFormat="yyyy-MM"
-                            placeholderText="Select start date (YYYY-MM)"
-                            className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                            maxDate={new Date()}
-                            showMonthYearPicker
-                          />
-                          <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <DatePicker
-                            selected={exp.endDate !== 'Present' ? exp.endDate : null}
-                            onChange={date => handleExperienceChange(index, 'endDate', date)}
-                            dateFormat="yyyy-MM"
-                            placeholderText="Select end date (YYYY-MM)"
-                            className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                            maxDate={new Date()}
-                            showMonthYearPicker
-                            disabled={exp.endDate === 'Present'}
-                          />
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={exp.endDate === 'Present'}
-                              onChange={e => handleExperienceChange(index, 'endDate', e.target.checked ? 'Present' : null)}
-                            />
-                            Present
-                          </label>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className="text-red-500 text-sm hover:text-red-700"
-                        onClick={() => removeExperience(index)}
-                      >
-                        ✕ Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addExperience}
-                    className="text-sm text-[var(--primary)] hover:underline mt-2"
-                  >
-                    + Add Experience
-                  </button>
-                  {errors.experience && <p className="text-sm text-red-600 mt-1">{errors.experience}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
-                  <input
-                    type="text"
-                    name="certifications"
-                    className={`w-full px-4 py-2 border rounded-xl ${errors.certifications ? 'border-red-500' : ''}`}
-                    placeholder="Enter certifications (e.g., Aussie Specialist, VisitBritain)"
-                    value={formData.certifications}
-                    onChange={handleChange}
-                  />
-                  {errors.certifications && <p className="text-sm text-red-600 mt-1">{errors.certifications}</p>}
-                  <p className="text-sm text-gray-500 mt-1">e.g., Aussie Specialist, VisitBritain, Fremden Visa Coach</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
-                  <input
-                    type="text"
-                    name="tagline"
-                    placeholder="Enter tagline (e.g., Europe Travel Expert)"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.tagline ? 'border-red-500' : ''}`}
-                    value={formData.tagline}
-                    onChange={handleChange}
-                    maxLength={150}
-                  />
-                  <p className="text-sm text-gray-500 mt-1">e.g., Europe Travel Expert (max 150 characters)</p>
-                  {errors.tagline && <p className="text-sm text-red-600 mt-1">{errors.tagline}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">About Me</label>
-                  <textarea
-                    placeholder="Enter about me (e.g., 10+ years guiding travellers across Europe)"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.about ? 'border-red-500' : ''}`}
-                    rows="4"
-                    name="about"
-                    value={formData.about}
-                    onChange={handleChange}
-                  ></textarea>
-                  {errors.about && <p className="text-sm text-red-600 mt-1">{errors.about}</p>}
-                  <p className="text-sm text-gray-500 mt-1">Provide a brief overview of your expertise and experience</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Upload Profile Photo</label>
-                  <input
-                    type="file"
-                    className={`w-full border rounded-xl px-4 py-2 ${errors.photo ? 'border-red-500' : ''}`}
-                    onChange={handleFile}
-                    accept="image/jpeg,image/png"
-                  />
-                  {errors.photo && <p className="text-sm text-red-600 mt-1">{errors.photo}</p>}
-                  <p className="text-sm text-gray-500 mt-1">Upload a professional photo (JPG, PNG)</p>
-                  {imagePreview && (
-                    <div className="mt-4">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Image Preview</p>
-                      <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--primary)]">
-                        <img
-                          src={imagePreview}
-                          alt="Profile photo preview"
-                          className="object-cover w-full h-full"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="mt-2 text-sm text-[var(--primary)] hover:underline"
-                        onClick={() => setShowCropModal(true)}
-                      >
-                        Edit Crop
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="pt-4 border-t">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Referral Information</label>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">Were you referred by someone?</label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="referred"
-                          value="Yes"
-                          checked={formData.referred === 'Yes'}
-                          onChange={handleChange}
-                          className={`${errors.referred ? 'ring-2 ring-red-500' : ''}`}
-                        />
-                        Yes
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="referred"
-                          value="No"
-                          checked={formData.referred === 'No'}
-                          onChange={handleChange}
-                          className={`${errors.referred ? 'ring-2 ring-red-500' : ''}`}
-                        />
-                        No
-                      </label>
-                    </div>
-                    {errors.referred && <p className="text-sm text-red-600 mt-1">{errors.referred}</p>}
-                  </div>
-                  {formData.referred === 'Yes' && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Referral Code</label>
-                      <input
-                        type="text"
-                        name="referralCode"
-                        placeholder="Enter referral code"
-                        className={`w-full px-4 py-2 border rounded-xl ${errors.referralCode ? 'border-red-500' : ''}`}
-                        value={formData.referralCode}
-                        onChange={handleChange}
-                      />
-                      {referralCodeStatus && (
-                        <p className={`text-sm mt-1 ${referralCodeStatus.includes('Referred by') ? 'text-green-600' : 'text-red-600'}`}>
-                          {referralCodeStatus}
-                        </p>
-                      )}
-                      <p className="text-sm text-gray-500 mt-1">
-                        A verification call might be made to your referrer to confirm your recommendation.
-                      </p>
-                      {errors.referralCode && errors.referralCode !== 'Invalid referral code' && (
-                        <p className="text-sm text-red-600 mt-1">{errors.referralCode}</p>
-                      )}
-                    </div>
-                  )}
-                  {formData.referred === 'No' && (
-                    <p className="text-sm text-gray-700 mt-2">
-                      Your profile approval may take a little longer. A short interview might be scheduled before activation.
-                    </p>
-                  )}
-                </div>
-                <div className="pt-4 border-t">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Final Declaration</label>
-                  <label className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      className={`mt-1 ${errors.agreed ? 'ring-2 ring-red-500' : ''}`}
-                      checked={agreed}
-                      onChange={() => setAgreed(!agreed)}
-                    />
-                    <span>
-                      I confirm that the information provided is accurate and complies with{' '}
-                      <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{' '}
-                      <Link
-                        href="/privacy-policy"
-                        className="text-blue-600 underline hover:text-blue-800"
-                        target="_blank"
-                      >
-                        Privacy Policy
-                      </Link>
-                      .
-                    </span>
-                  </label>
-                  {errors.agreed && <p className="text-sm text-red-600 mt-1">{errors.agreed}</p>}
-                </div>
-              </div>
+              <Step3_Experience
+                formData={formData}
+                errors={errors}
+                handleExperienceChange={handleExperienceChange}
+                removeExperience={removeExperience}
+                addExperience={addExperience}
+                handleChange={handleChange}
+                handleFile={handleFile}
+                imagePreview={imagePreview}
+                agreed={agreed}
+                setAgreed={setAgreed}
+                referralCodeStatus={referralCodeStatus}
+                profileId={profileId}
+                setShowCropModal={setShowCropModal}
+              />
             )}
 
             <div className="flex justify-between pt-6">

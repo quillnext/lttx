@@ -1,11 +1,11 @@
 
-export default async function getCroppedImg(imageSrc, pixelCrop) {
+export default async function getCroppedImg(imageSrc, pixelCrop, fileName = 'cropped.jpg') {
   const image = new Image();
-  image.crossOrigin = "anonymous"; // Set crossOrigin to handle CORS
+  image.crossOrigin = "anonymous";
   image.src = imageSrc;
   await new Promise((resolve, reject) => {
     image.onload = resolve;
-    image.onerror = () => reject(new Error("Failed to load image"));
+    image.onerror = (err) => reject(new Error("Failed to load image for cropping." + err));
   });
 
   const canvas = document.createElement('canvas');
@@ -30,11 +30,11 @@ export default async function getCroppedImg(imageSrc, pixelCrop) {
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          reject(new Error("Failed to create blob"));
+          reject(new Error("Canvas is empty"));
           return;
         }
-        const url = URL.createObjectURL(blob);
-        resolve(url);
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
+        resolve(file);
       },
       'image/jpeg',
       1

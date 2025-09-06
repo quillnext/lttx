@@ -23,6 +23,7 @@ const emailTemplate = ({
   userEmail,
   userPhone,
   userMessage,
+  referredByAgencyName,
 }) => `
 <!DOCTYPE html>
 <html>
@@ -74,6 +75,7 @@ const emailTemplate = ({
         <p>Time: ${bookingTime}</p>
         <p>Join the meeting here: <a href="${meetingLink}">${meetingLink}</a></p>
         ${userMessage ? `<p><strong>Your Points to discuss:</strong><br/>"${userMessage}"</p>` : ""}
+        ${referredByAgencyName ? `<p><strong>Referred by:</strong> ${referredByAgencyName}</p>` : ""}
         <p>Thank you for using XMyTravel!</p>
         <p>– XMyTravel Team</p>
       `
@@ -87,6 +89,7 @@ const emailTemplate = ({
         <p>Time: ${bookingTime}</p>
         <p>Join the meeting here: <a href="${meetingLink}">${meetingLink}</a></p>
         ${userMessage ? `<p><strong>Points to discuss:</strong><br/>"${userMessage}"</p>` : ""}
+        ${referredByAgencyName ? `<p><strong>Referred by:</strong> ${referredByAgencyName}</p>` : ""}
         <p>To manage this booking, log in to your expert dashboard:</p>
         <a class="cta-button" href="${dashboardLink}" target="_blank">View Booking</a>
         <p style="font-size: 13px; margin-top: 16px;">
@@ -108,6 +111,7 @@ const emailTemplate = ({
         <p><strong>Time:</strong> ${bookingTime}</p>
         <p><strong>Meeting Link:</strong> <a href="${meetingLink}">${meetingLink}</a></p>
         ${userMessage ? `<p><strong>User Message:</strong><br/>"${userMessage}"</p>` : ""}
+        ${referredByAgencyName ? `<p><strong>Referred by Agency:</strong> ${referredByAgencyName}</p>` : ""}
         <p>Please review this booking in the Admin Dashboard. – XMyTravel Admin Notification</p>
       `
           : ""
@@ -134,6 +138,7 @@ export async function POST(request) {
       bookingDate,
       bookingTime,
       meetingLink,
+      referredByAgencyName,
     } = await request.json();
 
     // Validation
@@ -177,6 +182,7 @@ export async function POST(request) {
           year,
           type: "user",
           dashboardLink,
+          referredByAgencyName,
         }),
       }),
 
@@ -195,6 +201,7 @@ export async function POST(request) {
           year,
           type: "expert",
           dashboardLink,
+          referredByAgencyName,
         }),
       }),
 
@@ -215,6 +222,7 @@ export async function POST(request) {
           year,
           type: "admin",
           dashboardLink,
+          referredByAgencyName,
         }),
       }),
     ];

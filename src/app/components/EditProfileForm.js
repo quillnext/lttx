@@ -1,25 +1,39 @@
-
-
 'use client';
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getFirestore, query, collection, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import _ from "lodash";
-import Cropper from 'react-easy-crop';
 import getCroppedImg from '../complete-profile/getCroppedImg';
 
-// Dynamically import react-select and creatable-select with SSR disabled
-const Select = dynamic(() => import("react-select"), { ssr: false });
-const CreatableSelect = dynamic(() => import("react-select/creatable"), { ssr: false });
+// Reusable helper for dynamic imports with error and loading states
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn()
+        .then((mod) => mod.default || mod)
+        .catch((err) => {
+          console.error(`Failed to load ${name}:`, err);
+          return { default: () => <div className="text-red-500 text-center p-4">Error loading {name}.</div> };
+        }),
+    {
+      ssr: false,
+      loading: () => <div className="text-center p-4">Loading...</div>,
+    }
+  );
+
+// Dynamically import heavy components
+const Select = loadComponent(() => import("react-select"), "Select");
+const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
+const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInput");
+const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
+const Cropper = loadComponent(() => import('react-easy-crop'), "Cropper");
 
 const db = getFirestore(app);
 
@@ -36,11 +50,13 @@ const expertiseOptions = [
 
 export default function EditProfileForm({ initialData, onSave }) {
   const [formData, setFormData] = useState({
+    profileType: initialData.profileType || "expert",
     username: initialData.username || "",
     fullName: initialData.fullName || "",
     email: initialData.email || "",
     phone: initialData.phone || "",
     dateOfBirth: initialData.dateOfBirth || null,
+    yearsActive: initialData.yearsActive || "",
     tagline: initialData.tagline || "",
     location: initialData.location || "",
     languages: Array.isArray(initialData.languages) ? initialData.languages : [],
@@ -55,6 +71,7 @@ export default function EditProfileForm({ initialData, onSave }) {
       ? initialData.experience
       : [{ title: "", company: "", startDate: null, endDate: null }],
     certifications: initialData.certifications || "",
+    licenseNumber: initialData.licenseNumber || "",
     referred: initialData.referred || "No",
     referralCode: initialData.referralCode || "",
     generatedReferralCode: initialData.generatedReferralCode || "",
@@ -120,7 +137,8 @@ export default function EditProfileForm({ initialData, onSave }) {
         if (data.error) {
           throw new Error(data.error);
         }
-        setLanguageOptions(data);
+        const uniqueLanguages = Array.from(new Map(data.map(item => [item.value, item])).values());
+        setLanguageOptions(uniqueLanguages);
       } catch (error) {
         console.error("Error fetching languages:", error);
         setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
@@ -398,45 +416,37 @@ export default function EditProfileForm({ initialData, onSave }) {
 
   const validateForm = () => {
     const newErrors = {};
-    ["username", "fullName", "email", "phone", "tagline", "location", "responseTime", "pricing", "about", "certifications"].forEach(
-      (field) => {
-        if (!formData[field]?.trim()) newErrors[field] = "This field is required";
-      }
-    );
-    if (!formData.dateOfBirth) newErrors.dateOfBirth = "Date of birth is required";
-    if (!formData.languages.length) newErrors.languages = "At least one language is required";
-    if (formData.email && !validateEmail(formData.email)) newErrors.email = "Invalid email address";
-    if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = "Invalid phone number";
-    if (formData.username && !validateUsername(formData.username)) {
-      newErrors.username = "Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores";
+    const { profileType } = formData;
+
+    ['username', 'fullName', 'email', 'phone', 'responseTime', 'pricing', 'about', 'tagline'].forEach(field => {
+        if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
+      });
+
+    if (profileType === 'expert') {
+        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+        if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) newErrors.dateOfBirth = 'Invalid date. Must be at least 18.';
+        if (!formData.certifications?.trim()) newErrors.certifications = 'This field is required';
+        if (!formData.experience.length || formData.experience.some(exp => !exp.title?.trim() || !exp.company?.trim())) newErrors.experience = 'Title and company are required.';
+        const dateError = validateExperienceDates(formData.experience);
+        if (dateError) newErrors.experience = dateError;
+    } else { // agency
+        if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
     }
-    if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
-      newErrors.dateOfBirth = "Invalid date of birth. Must be at least 18 years old and not in the future.";
-    }
-    if (!formData.services.length || formData.services.some((s) => s == null || typeof s !== "string" || !s.trim())) {
-      newErrors.services = "At least one valid service is required";
-    }
-    if (!formData.regions.length) newErrors.regions = "At least one region is required";
-    if (!formData.expertise.length) newErrors.expertise = "At least one expertise area is required";
-    if (formData.expertise.length > 5) newErrors.expertise = "You can add up to 5 expertise areas";
-    if (
-      !formData.experience.length ||
-      formData.experience.some((exp) => !exp.title?.trim() || !exp.company?.trim())
-    ) {
-      newErrors.experience = "Title and company are required for each experience";
-    }
-    const dateError = validateExperienceDates(formData.experience);
-    if (dateError) newErrors.experience = dateError;
-    if (formData.referred === "Yes" && !formData.referralCode?.trim()) {
-      newErrors.referralCode = "Referral code is required if referred";
-    }
-    if (formData.referred === "Yes" && referrerName === "Invalid Referral Code") {
-      newErrors.referralCode = "Invalid referral code";
-    }
-    if (formData.username !== initialData.username && usernameStatus !== "Username is available") {
-      newErrors.username = "Please choose an available username";
-    }
+
+    if (!formData.location) newErrors.location = 'Location is required';
+    if (!formData.languages.length) newErrors.languages = 'At least one language is required';
+    if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
+    if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
+    if (formData.username && !validateUsername(formData.username)) newErrors.username = 'Invalid username format.';
+    if (!formData.services.length || formData.services.some(s => !s?.trim())) newErrors.services = 'At least one service is required.';
+    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
+    if (!formData.expertise.length) newErrors.expertise = 'At least one expertise is required';
+    if (formData.expertise.length > 5) newErrors.expertise = 'Max 5 expertise areas.';
+    if (formData.referred === 'Yes' && !formData.referralCode?.trim()) newErrors.referralCode = 'Referral code is required.';
+    if (formData.referred === 'Yes' && referrerName === "Invalid Referral Code") newErrors.referralCode = 'Invalid referral code';
+    if (formData.username !== initialData.username && usernameStatus !== "Username is available") newErrors.username = "Username not available.";
     if (!agreed) newErrors.agreed = "You must agree to the terms";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -555,6 +565,16 @@ export default function EditProfileForm({ initialData, onSave }) {
               {apiError}
             </div>
           )}
+          
+            {/* Profile Type Display */}
+          <div className="space-y-4">
+             <h2 className="text-2xl font-semibold text-[var(--primary)]">⚙️ Profile Type</h2>
+             <div className="px-4 py-3 bg-gray-100 rounded-xl text-gray-800 font-medium">
+                {formData.profileType === 'agency' ? 'Travel Agency' : 'Individual Expert'}
+            </div>
+           </div>
+
+
           {/* Basic Information */}
           <div className="space-y-4">
             <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
@@ -578,46 +598,45 @@ export default function EditProfileForm({ initialData, onSave }) {
                 <p className="text-sm text-gray-500 mt-1">e.g., travelwithjohn</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Agency Name' : 'Full Name'}</label>
                 <input
                   type="text"
                   name="fullName"
-                  placeholder="Enter full name (e.g., John Doe)"
+                  placeholder={formData.profileType === 'agency' ? 'Enter agency name' : 'Enter full name (e.g., John Doe)'}
                   className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.fullName ? "border-red-500" : ""}`}
                   value={formData.fullName}
                   onChange={handleChange}
                 />
-                <p className="text-sm text-gray-500 mt-1">e.g., John Doe</p>
                 {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
               </div>
-              <div className="row-span-2 flex flex-col items-center justify-center">
-                {imagePreview && (
-                  <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--primary)] mb-2">
-                    <img
-                      src={imagePreview}
-                      alt="Profile photo preview"
-                      className="object-cover w-full h-full"
-                    />
-                  </div>
-                )}
-                <input
+               <div className="row-span-2 flex flex-col items-center justify-center">
+                 {imagePreview && (
+                   <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--primary)] mb-2">
+                     <img
+                       src={imagePreview}
+                       alt="Profile photo preview"
+                       className="object-cover w-full h-full"
+                     />
+                   </div>
+                 )}
+                 <input
                   type="file"
                   className={`w-full border rounded-xl px-2 py-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.photo ? "border-red-500" : ""}`}
                   onChange={handleFileChange}
                   accept="image/jpeg,image/png"
                 />
-                <p className="text-sm text-gray-500 mt-1">Upload a professional photo (JPG, PNG)</p>
-                {imagePreview && (
-                  <button
+                 <p className="text-sm text-gray-500 mt-1">Upload a professional photo or logo (JPG, PNG)</p>
+                 {imagePreview && (
+                   <button
                     type="button"
                     className="mt-2 text-sm text-[var(--primary)] hover:underline"
                     onClick={() => setShowCropModal(true)}
                   >
-                    {/* Edit Crop */}
+                    Edit Crop
                   </button>
-                )}
-                {errors.photo && <p className="text-sm text-red-600 mt-1">{errors.photo}</p>}
-              </div>
+                 )}
+                 {errors.photo && <p className="text-sm text-red-600 mt-1">{errors.photo}</p>}
+               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
@@ -629,7 +648,6 @@ export default function EditProfileForm({ initialData, onSave }) {
                   onChange={handleChange}
                   disabled
                 />
-                <p className="text-sm text-gray-500 mt-1">e.g., john@example.com</p>
                 {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
               </div>
               <div>
@@ -647,39 +665,41 @@ export default function EditProfileForm({ initialData, onSave }) {
                 />
                 {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                <DatePicker
-                  selected={formData.dateOfBirth}
-                  onChange={(date) => {
-                    setFormData((prev) => ({ ...prev, dateOfBirth: date }));
-                    setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
-                  }}
-                  dateFormat="yyyy-MM-dd"
-                  placeholderText="Select date of birth (YYYY-MM-DD)"
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.dateOfBirth ? "border-red-500" : ""}`}
-                  maxDate={new Date()}
-                  showYearDropdown
-                  yearDropdownItemNumber={100}
-                  scrollableYearDropdown
-                />
-                <p className="text-sm text-gray-500 mt-1">e.g., 1990-01-01</p>
-                {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
-                <input
-                  type="text"
-                  name="tagline"
-                  placeholder="Enter tagline (e.g., Europe Travel Expert)"
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.tagline ? "border-red-500" : ""}`}
-                  value={formData.tagline}
-                  onChange={handleChange}
-                  maxLength={150}
-                />
-                <p className="text-sm text-gray-500 mt-1">e.g., Europe Travel Expert (max 150 characters)</p>
-                {errors.tagline && <p className="text-sm text-red-600 mt-1">{errors.tagline}</p>}
-              </div>
+
+               {formData.profileType === 'expert' ? (
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                   <DatePicker
+                     selected={formData.dateOfBirth}
+                     onChange={(date) => {
+                       setFormData((prev) => ({ ...prev, dateOfBirth: date }));
+                       setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                     }}
+                     dateFormat="yyyy-MM-dd"
+                     placeholderText="Select date of birth (YYYY-MM-DD)"
+                     className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.dateOfBirth ? "border-red-500" : ""}`}
+                     maxDate={new Date()}
+                     showYearDropdown
+                     yearDropdownItemNumber={100}
+                     scrollableYearDropdown
+                   />
+                   {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
+                 </div>
+               ) : (
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Years Active</label>
+                   <input
+                     type="text"
+                     name="yearsActive"
+                     placeholder="e.g., 5+ years"
+                     className={`w-full px-4 py-3 border rounded-xl ${errors.yearsActive ? 'border-red-500' : ''}`}
+                     value={formData.yearsActive}
+                     onChange={handleChange}
+                   />
+                   {errors.yearsActive && <p className="text-sm text-red-600 mt-1">{errors.yearsActive}</p>}
+                 </div>
+               )}
+               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <Select
@@ -714,7 +734,6 @@ export default function EditProfileForm({ initialData, onSave }) {
                   }}
                 />
                 {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
-                <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
@@ -730,7 +749,6 @@ export default function EditProfileForm({ initialData, onSave }) {
                   isDisabled={languageOptions.length === 0}
                 />
                 {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
-                <p className="text-sm text-gray-500 mt-1">Select up to 5 languages (e.g., English, Hindi)</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
@@ -742,7 +760,6 @@ export default function EditProfileForm({ initialData, onSave }) {
                   value={formData.responseTime}
                   onChange={handleChange}
                 />
-                <p className="text-sm text-gray-500 mt-1">e.g., Within 12 hours</p>
                 {errors.responseTime && <p className="text-sm text-red-600 mt-1">{errors.responseTime}</p>}
               </div>
               <div>
@@ -755,30 +772,41 @@ export default function EditProfileForm({ initialData, onSave }) {
                   value={formData.pricing}
                   onChange={handleChange}
                 />
-                <p className="text-sm text-gray-500 mt-1">e.g., ₹2000/session or $30/consult</p>
                 {errors.pricing && <p className="text-sm text-red-600 mt-1">{errors.pricing}</p>}
+              </div>
+               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
+                <input
+                  type="text"
+                  name="tagline"
+                  placeholder={formData.profileType === 'agency' ? 'e.g., Crafting Unforgettable Journeys' : 'e.g., Europe Travel Expert'}
+                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.tagline ? "border-red-500" : ""}`}
+                  value={formData.tagline}
+                  onChange={handleChange}
+                  maxLength={150}
+                />
+                {errors.tagline && <p className="text-sm text-red-600 mt-1">{errors.tagline}</p>}
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">About Me</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'About Us' : 'About Me'}</label>
               <textarea
                 name="about"
-                placeholder="Enter about me (e.g., 10+ years guiding travellers across Europe)"
+                placeholder={formData.profileType === 'agency' ? 'e.g., We are a boutique travel agency...' : 'e.g., 10+ years guiding travellers...'}
                 className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.about ? "border-red-500" : ""}`}
                 rows="4"
                 value={formData.about}
                 onChange={handleChange}
               ></textarea>
-              <p className="text-sm text-gray-500 mt-1">Provide a brief overview of your expertise and experience</p>
               {errors.about && <p className="text-sm text-red-600 mt-1">{errors.about}</p>}
             </div>
           </div>
 
           {/* Services & Regions */}
           <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">🎯 Services, Expertise & Regions</h2>
+            <h2 className="text-2xl font-semibold text-[var(--primary)]">{formData.profileType === 'agency' ? '🎯 Services & Specialisations' : '🎯 Services, Expertise & Regions'}</h2>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">What I Can Help You With</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Services Offered' : 'What I Can Help You With'}</label>
               {formData.services.map((service, index) => (
                 <div key={index} className="flex gap-2 items-center mb-2">
                   <input
@@ -807,10 +835,9 @@ export default function EditProfileForm({ initialData, onSave }) {
                 + Add More
               </button>
               {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
-              <p className="text-sm text-gray-500 mt-1">e.g., Visa Documentation, Itinerary Planning</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Specialisations (Up to 5)' : 'Expertise Areas (Up to 5)'}</label>
               <div className="flex gap-2 mb-2">
                 <CreatableSelect
                   instanceId="expertise-select"
@@ -850,10 +877,9 @@ export default function EditProfileForm({ initialData, onSave }) {
                 ))}
               </div>
               {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
-              <p className="text-sm text-gray-500 mt-1">Select or type up to 5 expertise areas (e.g., Visa Documentation, Adventure Travel). Press Enter or click Add.</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Regions You Specialize In</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Destination Specialisations' : 'Regions You Specialize In'}</label>
               <select
                 multiple
                 className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.regions ? "border-red-500" : ""}`}
@@ -900,96 +926,112 @@ export default function EditProfileForm({ initialData, onSave }) {
 
           {/* Experience & Credentials */}
           <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">📚 Experience & Credentials</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
-              {formData.experience.map((exp, index) => (
-                <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl bg-gray-50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Enter job title (e.g., Travel Consultant)"
-                        className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                        value={exp.title}
-                        onChange={(e) => handleExperienceChange(index, "title", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Enter company (e.g., MakeMyTrip)"
-                        className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                        value={exp.company}
-                        onChange={(e) => handleExperienceChange(index, "company", e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <DatePicker
-                        selected={exp.startDate}
-                        onChange={(date) => handleExperienceChange(index, "startDate", date)}
-                        dateFormat="yyyy-MM"
-                        placeholderText="Select start date (YYYY-MM)"
-                        className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                        maxDate={new Date()}
-                        showMonthYearPicker
-                      />
-                      <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DatePicker
-                        selected={exp.endDate !== "Present" ? exp.endDate : null}
-                        onChange={(date) => handleExperienceChange(index, "endDate", date)}
-                        dateFormat="yyyy-MM"
-                        placeholderText="Select end date (YYYY-MM)"
-                        className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                        maxDate={new Date()}
-                        showMonthYearPicker
-                        disabled={exp.endDate === "Present"}
-                      />
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={exp.endDate === "Present"}
-                          onChange={(e) => handleExperienceChange(index, "endDate", e.target.checked ? "Present" : null)}
-                        />
-                        Present
-                      </label>
-                    </div>
-                  </div>
-                  {formData.experience.length > 1 && (
-                    <button
-                      type="button"
-                      className="text-red-500 text-sm hover:text-red-700"
-                      onClick={() => removeExperience(index)}
-                    >
-                      ✕ Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={addExperience}
-                className="text-sm text-[var(--primary)] hover:underline mt-2"
-              >
-                + Add Experience
-              </button>
-              {errors.experience && <p className="text-sm text-red-600 mt-1">{errors.experience}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
-              <input
-                type="text"
-                name="certifications"
-                placeholder="Enter certifications (e.g., Aussie Specialist, VisitBritain)"
-                className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.certifications ? "border-red-500" : ""}`}
-                value={formData.certifications}
-                onChange={handleChange}
-              />
-              <p className="text-sm text-gray-500 mt-1">e.g., Aussie Specialist, VisitBritain, Fremden Visa Coach</p>
-              {errors.certifications && <p className="text-sm text-red-600 mt-1">{errors.certifications}</p>}
-            </div>
+            <h2 className="text-2xl font-semibold text-[var(--primary)]">{formData.profileType === 'agency' ? '🏢 Trust & Credentials' : '📚 Experience & Credentials'}</h2>
+               {formData.profileType === 'expert' ? (
+                 <>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
+                   {formData.experience.map((exp, index) => (
+                     <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl bg-gray-50">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                           <input
+                             type="text"
+                             placeholder="Enter job title (e.g., Travel Consultant)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             value={exp.title}
+                             onChange={(e) => handleExperienceChange(index, "title", e.target.value)}
+                           />
+                         </div>
+                         <div>
+                           <input
+                             type="text"
+                             placeholder="Enter company (e.g., MakeMyTrip)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             value={exp.company}
+                             onChange={(e) => handleExperienceChange(index, "company", e.target.value)}
+                           />
+                         </div>
+                         <div>
+                           <DatePicker
+                             selected={exp.startDate}
+                             onChange={(date) => handleExperienceChange(index, "startDate", date)}
+                             dateFormat="yyyy-MM"
+                             placeholderText="Select start date (YYYY-MM)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             maxDate={new Date()}
+                             showMonthYearPicker
+                           />
+                           <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <DatePicker
+                             selected={exp.endDate !== "Present" ? exp.endDate : null}
+                             onChange={(date) => handleExperienceChange(index, "endDate", date)}
+                             dateFormat="yyyy-MM"
+                             placeholderText="Select end date (YYYY-MM)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             maxDate={new Date()}
+                             showMonthYearPicker
+                             disabled={exp.endDate === "Present"}
+                           />
+                           <label className="flex items-center gap-2 text-sm">
+                             <input
+                               type="checkbox"
+                               checked={exp.endDate === "Present"}
+                               onChange={(e) => handleExperienceChange(index, "endDate", e.target.checked ? "Present" : null)}
+                             />
+                             Present
+                           </label>
+                         </div>
+                       </div>
+                       {formData.experience.length > 1 && (
+                         <button
+                           type="button"
+                           className="text-red-500 text-sm hover:text-red-700"
+                           onClick={() => removeExperience(index)}
+                         >
+                           ✕ Remove
+                         </button>
+                       )}
+                     </div>
+                   ))}
+                   <button
+                     type="button"
+                     onClick={addExperience}
+                     className="text-sm text-[var(--primary)] hover:underline mt-2"
+                   >
+                     + Add Experience
+                   </button>
+                   {errors.experience && <p className="text-sm text-red-600 mt-1">{errors.experience}</p>}
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
+                   <input
+                     type="text"
+                     name="certifications"
+                     placeholder="Enter certifications (e.g., Aussie Specialist, VisitBritain)"
+                     className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.certifications ? "border-red-500" : ""}`}
+                     value={formData.certifications}
+                     onChange={handleChange}
+                   />
+                   {errors.certifications && <p className="text-sm text-red-600 mt-1">{errors.certifications}</p>}
+                 </div>
+                 </>
+               ) : (
+                 <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Licence / IATA / GST No. (if any)</label>
+                     <input
+                         type="text"
+                         name="licenseNumber"
+                         className={`w-full px-4 py-2 border rounded-xl ${errors.licenseNumber ? 'border-red-500' : ''}`}
+                         placeholder="Enter your agency's registration number"
+                         value={formData.licenseNumber}
+                         onChange={handleChange}
+                     />
+                     {errors.licenseNumber && <p className="text-sm text-red-600 mt-1">{errors.licenseNumber}</p>}
+                 </div>
+               )}
           </div>
 
           {/* Referral Information */}

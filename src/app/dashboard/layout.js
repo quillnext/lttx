@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
-import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock } from "lucide-react";
+import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, CalendarDays } from "lucide-react";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
@@ -41,14 +41,12 @@ export default function AdminLayout({ children }) {
     const handleStart = () => setNavLoading(true);
     const handleComplete = () => setNavLoading(false);
 
-    router.events?.on("routeChangeStart", handleStart);
-    router.events?.on("routeChangeComplete", handleComplete);
-    router.events?.on("routeChangeError", handleComplete);
+    // Next.js 13+ App Router doesn't have router.events.
+    // This effect might not work as intended without a custom solution.
+    // For now, we'll keep it for potential compatibility.
 
     return () => {
-      router.events?.off("routeChangeStart", handleStart);
-      router.events?.off("routeChangeComplete", handleComplete);
-      router.events?.off("routeChangeError", handleComplete);
+      // Cleanup if needed
     };
   }, [router]);
 
@@ -106,7 +104,6 @@ export default function AdminLayout({ children }) {
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
-              prefetch={true}
             >
               <UserCog /> Manage Profiles
             </Link>
@@ -118,7 +115,6 @@ export default function AdminLayout({ children }) {
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
-              prefetch={true}
             >
               <GitPullRequestArrow /> Manage Requests
             </Link>
@@ -130,7 +126,6 @@ export default function AdminLayout({ children }) {
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
-              prefetch={true}
             >
               <BookText /> Form Leads
             </Link>
@@ -142,7 +137,6 @@ export default function AdminLayout({ children }) {
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
-              prefetch={true}
             >
               <FileQuestion /> Ask Question
               {pendingQuestionsCount > 0 && (
@@ -153,29 +147,27 @@ export default function AdminLayout({ children }) {
               )}
             </Link>
             <Link
-    href="/dashboard/contact-us-messages"
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/dashboard/contact-us-messages"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-  >
-    <HelpCircle /> Contact Us Messages
-  </Link>
+              href="/dashboard/contact-us-messages"
+              className={`flex items-center gap-2 p-2 ${
+                pathname === "/dashboard/contact-us-messages"
+                  ? "bg-[#F4D35E] rounded-3xl text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+              }`}
+            >
+              <HelpCircle /> Contact Us Messages
+            </Link>
 
-          <Link
-    href="/dashboard/scheduling"
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/dashboard/scheduling"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-  >
-    <CalendarClock />   Scheduling
+            <Link
+              href="/dashboard/scheduling"
+              className={`flex items-center gap-2 p-2 ${
+                pathname === "/dashboard/scheduling"
+                  ? "bg-[#F4D35E] rounded-3xl text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+              }`}
+            >
+              <CalendarClock /> Scheduling
+            </Link>
 
-  </Link>
           </nav>
         </div>
 

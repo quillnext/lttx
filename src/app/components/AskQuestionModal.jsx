@@ -1,15 +1,14 @@
-
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, getFirestore } from "firebase/firestore";
+import { collection, addDoc, getFirestore, query, where, getDocs } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Select from "react-select";
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -27,54 +26,56 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
   const [user, setUser] = useState(null);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [referredByAgency, setReferredByAgency] = useState("No");
+  const [agencies, setAgencies] = useState([]);
+  const [selectedAgency, setSelectedAgency] = useState(null);
 
-  // Load user details
+  const isAgency = expert?.profileType === 'agency';
+
   useEffect(() => {
     const savedData = localStorage.getItem("userFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      console.log("AskQuestionModal: Loaded from localStorage:", parsedData);
       setName(parsedData.name || "");
       setEmail(parsedData.email || "");
       setPhone(parsedData.phone || "");
       setHasSubmitted(true);
-      setIsEmailVerified(true); // Assume verified if previously submitted
+      setIsEmailVerified(true);
     }
+
+    const fetchAgencies = async () => {
+        try {
+            const agenciesQuery = query(collection(db, "Profiles"), where("profileType", "==", "agency"));
+            const querySnapshot = await getDocs(agenciesQuery);
+            if (!querySnapshot.empty) {
+                const agencyData = querySnapshot.docs.map(doc => ({ value: doc.id, label: doc.data().fullName }));
+                setAgencies(agencyData);
+            }
+        } catch (error) {
+            console.error("Failed to fetch agencies:", error);
+            toast.error("Could not load agency list.");
+        }
+    };
+    fetchAgencies();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        console.log("AskQuestionModal: Auth user:", currentUser);
         setUser(currentUser);
         setName(currentUser.displayName || "");
         setEmail(currentUser.email || "");
         setPhone(currentUser.phoneNumber || "");
         setHasSubmitted(true);
-        setIsEmailVerified(true); // Authenticated users skip OTP
+        setIsEmailVerified(true);
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Update question
   useEffect(() => {
-    console.log("AskQuestionModal: initialQuestion updated:", initialQuestion);
     setQuestion(initialQuestion || "");
   }, [initialQuestion]);
-
-  // Clear on close
-  useEffect(() => {
-    return () => {
-      console.log("AskQuestionModal: Cleaning up on close");
-      setQuestion("");
-      setOtp("");
-      setErrors({});
-      setIsOtpSent(false);
-      setIsEmailVerified(false);
-    };
-  }, []);
-
-  // Reset OTP states on email change
+  
   useEffect(() => {
     setIsOtpSent(false);
     setIsEmailVerified(false);
@@ -92,15 +93,10 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
       if (!phone.trim()) newErrors.phone = "Phone number is required.";
       else if (!/^\+?[1-9]\d{1,14}$/.test(phone)) newErrors.phone = "Invalid phone number.";
     }
+    if (referredByAgency === "Yes" && !selectedAgency) newErrors.agency = "Please select an agency.";
     if (!expert?.id) newErrors.form = "Expert profile ID is missing.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const validateEmailPayload = (payload) => {
-    const requiredFields = ["userEmail", "userName", "expertEmail", "expertName", "question", "userPhone"];
-    const missingFields = requiredFields.filter((field) => !payload[field] || payload[field].trim() === "");
-    return missingFields.length === 0 ? null : `Missing or empty fields: ${missingFields.join(", ")}`;
   };
 
   const handleSendOtp = async () => {
@@ -123,7 +119,6 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
         toast.error(errorData.error || "Failed to send OTP.");
       }
     } catch (error) {
-      console.error("Error sending OTP:", error);
       toast.error("Error sending OTP.");
     } finally {
       setLoading(false);
@@ -150,7 +145,6 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
         toast.error(data.error || "Invalid or expired OTP.");
       }
     } catch (error) {
-      console.error("Error verifying OTP:", error);
       toast.error("Error verifying OTP.");
     } finally {
       setLoading(false);
@@ -159,7 +153,6 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("AskQuestionModal: handleSubmit called:", { question, name, email, phone, expert });
     if (!validateForm()) {
       toast.error("Please fill out all required fields correctly.");
       return;
@@ -167,44 +160,44 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
 
     setLoading(true);
     try {
-      const docRef = await addDoc(collection(db, "Questions"), {
-        expertId: expert.id,
-        expertName: expert.fullName || "Unknown Expert",
-        expertEmail: expert.email || "no-email@placeholder.com",
-        question,
-        userName: name,
-        userEmail: email,
-        userPhone: phone,
-        status: "pending",
-        isPublic: false,
-        createdAt: new Date().toISOString(),
-        reply: null,
-      });
+        const questionData = {
+            expertId: expert.id,
+            expertName: expert.fullName || "Unknown Expert",
+            expertEmail: expert.email || "no-email@placeholder.com",
+            question,
+            userName: name,
+            userEmail: email,
+            userPhone: phone,
+            status: "pending",
+            isPublic: false,
+            createdAt: new Date().toISOString(),
+            reply: null,
+        };
+      
+        if (referredByAgency === 'Yes' && selectedAgency) {
+            questionData.referredByAgencyId = selectedAgency.value;
+            questionData.referredByAgencyName = selectedAgency.label;
+        }
+
+      await addDoc(collection(db, "Questions"), questionData);
 
       if (!hasSubmitted && !user) {
         const userData = { name, email, phone, purpose: "General Query" };
-        console.log("AskQuestionModal: Saving user data to localStorage:", userData);
         localStorage.setItem("userFormData", JSON.stringify(userData));
         setHasSubmitted(true);
       }
 
-      if (expert.email && expert.email.trim() && /\S+@\S+\.\S+/.test(expert.email)) {
-        const emailPayload = {
-          userEmail: email,
-          userName: name,
-          expertEmail: expert.email,
-          expertName: expert.fullName || "Unknown Expert",
-          question,
-          userPhone: phone,
-        };
+      const emailPayload = {
+        userEmail: email,
+        userName: name,
+        expertEmail: expert.email,
+        expertName: expert.fullName || "Unknown Expert",
+        question,
+        userPhone: phone,
+        referredByAgencyName: referredByAgency === 'Yes' && selectedAgency ? selectedAgency.label : null,
+      };
 
-        console.log("AskQuestionModal: Email payload:", emailPayload);
-
-        const validationError = validateEmailPayload(emailPayload);
-        if (validationError) {
-          throw new Error(validationError);
-        }
-
+      if (emailPayload.expertEmail && /\S+@\S+\.\S+/.test(emailPayload.expertEmail)) {
         const response = await fetch("/api/send-question-emails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -216,27 +209,13 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
           throw new Error(`Failed to send emails: ${errorData.error || "Unknown error"}`);
         }
       } else {
-        console.warn("AskQuestionModal: Skipping email sending due to missing or invalid expert.email:", expert.email);
-        toast.warn("Question submitted, but expert email is missing or invalid. Notification not sent to expert.");
+        console.warn("Skipping email due to missing or invalid expert email:", expert.email);
+        toast.warn("Question submitted, but expert email notification could not be sent.");
       }
-
-      setQuestion("");
-      if (!hasSubmitted && !user) {
-        setName("");
-        setEmail("");
-        setPhone("");
-        setOtp("");
-        setIsOtpSent(false);
-        setIsEmailVerified(false);
-      }
-      setErrors({});
 
       setSuccess(true);
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      setTimeout(() => onClose(), 2000);
     } catch (error) {
-      console.error("AskQuestionModal: Error submitting question:", error.message);
       toast.error(`Failed to submit question: ${error.message}`);
     } finally {
       setLoading(false);
@@ -253,7 +232,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
           ✕
         </button>
         <h2 className="text-2xl font-bold bg-clip-text text-white">
-          Ask a Question to {expert?.fullName || "Expert"}
+          {isAgency ? `Request a Quote from ${expert?.fullName}` : `Ask a Question to ${expert?.fullName || "Expert"}`}
         </h2>
         {success ? (
           <p className="text-green-400 text-center font-medium text-lg animate-pulse">
@@ -263,7 +242,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
-                Your Question
+                {isAgency ? 'Your Request' : 'Your Question'}
               </label>
               <textarea
                 value={question}
@@ -272,7 +251,7 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
                   errors.question ? "border-red-500" : "border-white/20"
                 }`}
                 rows="5"
-                placeholder="Type your question here..."
+                placeholder={isAgency ? "Please describe your travel plans, including destination, number of travelers, duration, and estimated budget." : "Type your question here..."}
                 required
               />
               {errors.question && (
@@ -370,6 +349,42 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
                 </div>
               </>
             )}
+            <div className="pt-2">
+              <label className="block text-sm font-semibold text-white/90 mb-2">Referred by an agency?</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-white">
+                  <input type="radio" name="referredByAgency" value="Yes" checked={referredByAgency === 'Yes'} onChange={(e) => setReferredByAgency(e.target.value)} />
+                  Yes
+                </label>
+                <label className="flex items-center gap-2 text-white">
+                  <input type="radio" name="referredByAgency" value="No" checked={referredByAgency === 'No'} onChange={(e) => setReferredByAgency(e.target.value)} />
+                  No
+                </label>
+              </div>
+            </div>
+            {referredByAgency === 'Yes' && (
+              <div>
+                <label className="block text-sm font-semibold text-white/90 mb-2">Select Agency</label>
+                <Select
+                  options={agencies}
+                  value={selectedAgency}
+                  onChange={setSelectedAgency}
+                  placeholder="Select an agency..."
+                  styles={{
+                      control: (base) => ({
+                        ...base,
+                        background: "rgba(255, 255, 255, 0.05)",
+                        borderColor: "rgba(255, 255, 255, 0.2)",
+                      }),
+                      singleValue: (base) => ({ ...base, color: "white" }),
+                      input: (base) => ({...base, color: "white"}),
+                      menu: (base) => ({...base, color: "black"}),
+                  }}
+                  classNamePrefix="react-select"
+                />
+                {errors.agency && <p className="text-red-400 text-sm mt-2">{errors.agency}</p>}
+              </div>
+            )}
             {errors.form && (
               <p className="text-red-400 text-sm mt-2">{errors.form}</p>
             )}
@@ -388,4 +403,4 @@ export default function AskQuestionModal({ expert, onClose, initialQuestion }) {
       <ToastContainer position="top-right" autoClose={3000} theme="dark" />
     </div>
   );
-}  
+}
