@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -8,18 +10,31 @@ import { getFirestore, collection, addDoc, doc, getDoc, updateDoc, serverTimesta
 import { app } from '@/lib/firebase';
 import '@/app/globals.css';
 import Link from 'next/link';
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import Footer from '../pages/Footer';
 import Navbar from '../components/Navbar';
-import Cropper from 'react-easy-crop';
-import getCroppedImg from './getCroppedImg';
 
-// Dynamically import react-select and creatable-select with SSR disabled
-const Select = dynamic(() => import('react-select'), { ssr: false });
-const CreatableSelect = dynamic(() => import('react-select/creatable'), { ssr: false });
+// Dynamically import components with error handling
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn().then((mod) => {
+        console.log(`Loaded ${name}:`, mod);
+        return mod.default || mod;
+      }).catch((err) => {
+        console.error(`Failed to load ${name}:`, err);
+        return () => <div>Error loading {name} component</div>;
+      }),
+    {
+      ssr: false,
+      loading: () => <div>Loading {name}...</div>,
+    }
+  );
+
+const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInput");
+const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
+const Select = loadComponent(() => import("react-select"), "Select");
+const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
+const Cropper = loadComponent(() => import("react-easy-crop"), "Cropper");
 
 const storage = getStorage(app);
 const db = getFirestore(app);
@@ -61,8 +76,9 @@ export default function CompleteProfile() {
     expertise: [],
     experience: [{ title: '', company: '', startDate: null, endDate: null }],
     certifications: '',
-    referred: '',
+    referred: 'No',
     referralCode: '',
+    generatedReferralCode: '',
   });
   const [originalProfile, setOriginalProfile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -80,6 +96,38 @@ export default function CompleteProfile() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  // Load CSS with CDN fallback
+  useEffect(() => {
+    const loadCSS = (href, fallback) => {
+      const link = document.createElement("link");
+      link.href = href;
+      link.rel = "stylesheet";
+      link.onerror = () => {
+        console.error(`Failed to load CSS: ${href}, trying fallback: ${fallback}`);
+        const fallbackLink = document.createElement("link");
+        fallbackLink.href = fallback;
+        fallbackLink.rel = "stylesheet";
+        document.head.appendChild(fallbackLink);
+      };
+      document.head.appendChild(link);
+      return () => document.head.removeChild(link);
+    };
+
+    const cssFiles = [
+      {
+        local: "/css/react-phone-input-2.css",
+        fallback: "https://unpkg.com/react-phone-input-2@2.x.x/lib/style.css",
+      },
+      {
+        local: "/css/react-datepicker.css",
+        fallback: "https://unpkg.com/react-datepicker@4.x.x/dist/react-datepicker.css",
+      },
+    ];
+
+    const cleanups = cssFiles.map(({ local, fallback }) => loadCSS(local, fallback));
+    return () => cleanups.forEach(cleanup => cleanup());
+  }, []);
 
   const formatDate = (date, format = 'YYYY-MM-DD') => {
     if (!date) return '';
@@ -117,9 +165,7 @@ export default function CompleteProfile() {
           throw new Error('Invalid response format from cities API');
         }
         const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
+        if (data.error) throw new Error(data.error);
         const sortedCities = data.sort((a, b) => {
           const isAIndia = a.country === 'India';
           const isBIndia = b.country === 'India';
@@ -132,10 +178,11 @@ export default function CompleteProfile() {
           }
           return a.label.localeCompare(b.label);
         });
-        setCityOptions(sortedCities);
+        setCityOptions(sortedCities.length > 0 ? sortedCities : [{ value: 'Unknown', label: 'Unknown' }]);
       } catch (error) {
         console.error('Error fetching cities:', error);
-        setApiError(`Failed to load city options: ${error.message}. Please try again later.`);
+        setApiError(`Failed to load city options: ${error.message}. Using fallback options.`);
+        setCityOptions([{ value: formData.location || 'Unknown', label: formData.location || 'Unknown' }]);
       }
     };
 
@@ -153,19 +200,18 @@ export default function CompleteProfile() {
           throw new Error('Invalid response format from languages API');
         }
         const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        setLanguageOptions(data);
+        if (data.error) throw new Error(data.error);
+        setLanguageOptions(data.length > 0 ? data : [{ value: 'English', label: 'English' }]);
       } catch (error) {
         console.error('Error fetching languages:', error);
-        setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
+        setApiError(`Failed to load language options: ${error.message}. Using fallback options.`);
+        setLanguageOptions([{ value: 'English', label: 'English' }]);
       }
     };
 
     fetchCities();
     fetchLanguages();
-  }, []);
+  }, [formData.location]);
 
   useEffect(() => {
     if (profileId) {
@@ -189,10 +235,10 @@ export default function CompleteProfile() {
               pricing: data.pricing || '',
               about: data.about || '',
               photo: null,
-              services: data.services?.length ? data.services : [''],
-              regions: data.regions?.length ? data.regions : [],
+              services: Array.isArray(data.services) && data.services.length ? data.services : [''],
+              regions: Array.isArray(data.regions) && data.regions.length ? data.regions : [],
               expertise: Array.isArray(data.expertise) ? data.expertise : [],
-              experience: data.experience?.length
+              experience: Array.isArray(data.experience) && data.experience.length
                 ? data.experience.map(exp => ({
                     title: exp.title || '',
                     company: exp.company || '',
@@ -201,15 +247,18 @@ export default function CompleteProfile() {
                   }))
                 : [{ title: '', company: '', startDate: null, endDate: null }],
               certifications: data.certifications || '',
-              referred: data.referred || '',
+              referred: data.referred || 'No',
               referralCode: data.referralCode || '',
+              generatedReferralCode: data.generatedReferralCode || '',
             });
             setImagePreview(data.photo || null);
             setAgreed(true);
+          } else {
+            setErrors(prev => ({ ...prev, fetch: 'Profile not found.' }));
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
-          setErrors(prev => ({ ...prev, fetch: 'Failed to load profile data.' }));
+          setErrors(prev => ({ ...prev, fetch: `Failed to load profile data: ${error.message}` }));
         }
       };
       fetchProfile();
@@ -222,10 +271,11 @@ export default function CompleteProfile() {
 
   const handleCropConfirm = useCallback(async () => {
     try {
+      const { default: getCroppedImg } = await import('./getCroppedImg');
       const croppedImage = await getCroppedImg(imagePreview, croppedAreaPixels);
       const blob = await (await fetch(croppedImage)).blob();
-      const file = new File([blob], `cropped_${formData.photo.name}`, { type: blob.type });
-      setFormData(prev => ({ ...prev, photo: file })); // Fixed typo: 'photo od' to 'photo'
+      const file = new File([blob], `cropped_${formData.photo?.name || 'image.jpg'}`, { type: blob.type });
+      setFormData(prev => ({ ...prev, photo: file }));
       setImagePreview(croppedImage);
       setShowCropModal(false);
       setCrop({ x: 0, y: 0 });
@@ -233,7 +283,7 @@ export default function CompleteProfile() {
       setCroppedAreaPixels(null);
     } catch (error) {
       console.error('Error cropping image:', error);
-      setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
+      setErrors(prev => ({ ...prev, photo: `Failed to crop image: ${error.message}` }));
     }
   }, [imagePreview, croppedAreaPixels]);
 
@@ -269,7 +319,7 @@ export default function CompleteProfile() {
       }
     } catch (error) {
       console.error('Error fetching lead by phone:', error);
-      setErrors(prev => ({ ...prev, phone: 'Failed to fetch lead data.' }));
+      setErrors(prev => ({ ...prev, phone: `Failed to fetch lead data: ${error.message}` }));
     }
   };
 
@@ -289,6 +339,7 @@ export default function CompleteProfile() {
     } catch (error) {
       console.error('Error checking usernames:', error);
       setUsernameStatus('Error checking username');
+      setErrors(prev => ({ ...prev, username: 'Error checking username' }));
     }
   };
 
@@ -332,7 +383,7 @@ export default function CompleteProfile() {
     }
     if (name === 'referralCode') checkReferralCode(value);
     if (name === 'referred' && value === 'No') {
-      setFormData(prev => ({ ...prev, referralCode: '' }));
+      setFormData(prev => ({ ...prev, referralCode: '', referred: 'No' }));
       setErrors(prev => ({ ...prev, referralCode: '' }));
       setReferralCodeStatus('');
       setReferrerUsername('');
@@ -538,8 +589,9 @@ export default function CompleteProfile() {
       expertise: [],
       experience: [{ title: '', company: '', startDate: null, endDate: null }],
       certifications: '',
-      referred: '',
+      referred: 'No',
       referralCode: '',
+      generatedReferralCode: '',
     });
     setImagePreview(null);
     setShowCropModal(false);
@@ -601,6 +653,7 @@ export default function CompleteProfile() {
         certifications: formData.certifications,
         referred: formData.referred || 'No',
         referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
+        generatedReferralCode: formData.generatedReferralCode || `REF${Math.floor(100 + Math.random() * 900)}`,
         timestamp: serverTimestamp(),
       };
 
@@ -629,11 +682,10 @@ export default function CompleteProfile() {
       setTimeout(() => {
         setShowSuccessModal(false);
         resetForm();
-        router.push('/');
+        router.push(`/experts/${slug}`);
       }, 3000);
     } catch (error) {
       console.error('Submission error:', error);
-      alert(error.message || 'Failed to submit profile. Please try again.');
       setErrors(prev => ({ ...prev, submit: error.message || 'Failed to submit profile.' }));
     } finally {
       setIsSubmitting(false);
@@ -641,6 +693,14 @@ export default function CompleteProfile() {
   };
 
   const progress = Math.round(((currentStep + 1) / 3) * 100);
+
+  // Log formData for debugging
+  useEffect(() => {
+    console.log("FormData:", formData);
+    console.log("ImagePreview:", imagePreview);
+    console.log("CityOptions:", cityOptions);
+    console.log("LanguageOptions:", languageOptions);
+  }, [formData, imagePreview, cityOptions, languageOptions]);
 
   return (
     <>
@@ -685,7 +745,7 @@ export default function CompleteProfile() {
               </div>
             </div>
           )}
-          {showCropModal && (
+          {showCropModal && imagePreview && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
                 <h3 className="text-lg font-semibold text-[var(--primary)] mb-4">Crop Your Photo</h3>
@@ -723,7 +783,7 @@ export default function CompleteProfile() {
                     className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
                     onClick={() => {
                       setShowCropModal(false);
-                      setImagePreview(null);
+                      setImagePreview(originalProfile?.photo || null);
                       setFormData(prev => ({ ...prev, photo: null }));
                     }}
                   >
@@ -746,27 +806,36 @@ export default function CompleteProfile() {
                 {apiError}
               </div>
             )}
+            {errors.fetch && (
+              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
+                {errors.fetch}
+              </div>
+            )}
             {currentStep === 0 && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                    <PhoneInput
-                      country={"in"}
-                      value={formData.phone}
-                      onChange={phone => {
-                        setFormData(prev => ({ ...prev, phone }));
-                        fetchLeadByPhone(phone);
-                      }}
-                      placeholder="Enter phone number (e.g., +91 9876543210)"
-                      inputProps={{
-                        id: 'phone',
-                        className: `w-full p-3 px-12 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
-                        required: true,
-                        autoFocus: false,
-                      }}
-                    />
+                    {PhoneInput ? (
+                      <PhoneInput
+                        country={"in"}
+                        value={formData.phone}
+                        onChange={phone => {
+                          setFormData(prev => ({ ...prev, phone }));
+                          fetchLeadByPhone(phone);
+                        }}
+                        placeholder="Enter phone number (e.g., +91 9876543210)"
+                        inputProps={{
+                          id: 'phone',
+                          className: `w-full p-3 px-12 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
+                          required: true,
+                          autoFocus: false,
+                        }}
+                      />
+                    ) : (
+                      <div>Error loading PhoneInput component</div>
+                    )}
                     {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
                   </div>
                   <div>
@@ -818,80 +887,92 @@ export default function CompleteProfile() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                    <DatePicker
-                      selected={formData.dateOfBirth}
-                      onChange={date => {
-                        setFormData(prev => ({ ...prev, dateOfBirth: date }));
-                        setErrors(prev => ({ ...prev, dateOfBirth: '' }));
-                      }}
-                      dateFormat="yyyy-MM-dd"
-                      placeholderText="Select date of birth (YYYY-MM-DD)"
-                      className={`w-full px-4 py-3 border rounded-xl ${errors.dateOfBirth ? 'border-red-500' : ''}`}
-                      maxDate={new Date()}
-                      showYearDropdown
-                      yearDropdownItemNumber={100}
-                      scrollableYearDropdown
-                    />
+                    {DatePicker ? (
+                      <DatePicker
+                        selected={formData.dateOfBirth}
+                        onChange={date => {
+                          setFormData(prev => ({ ...prev, dateOfBirth: date }));
+                          setErrors(prev => ({ ...prev, dateOfBirth: '' }));
+                        }}
+                        dateFormat="yyyy-MM-dd"
+                        placeholderText="Select date of birth (YYYY-MM-DD)"
+                        className={`w-full px-4 py-3 border rounded-xl ${errors.dateOfBirth ? 'border-red-500' : ''}`}
+                        maxDate={new Date()}
+                        showYearDropdown
+                        yearDropdownItemNumber={100}
+                        scrollableYearDropdown
+                      />
+                    ) : (
+                      <div>Error loading DatePicker component</div>
+                    )}
                     {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
                     <p className="text-sm text-gray-500 mt-1">e.g., 1990-01-01</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                    <Select
-                      instanceId="location-select"
-                      options={cityOptions}
-                      value={cityOptions.find(option => option.value === formData.location) || null}
-                      onChange={selected => handleSingleChange(selected, 'location')}
-                      placeholder="Select a location (e.g., Mumbai, India)"
-                      className={`w-full ${errors.location ? 'border-red-500' : ''}`}
-                      classNamePrefix="react-select"
-                      isDisabled={cityOptions.length === 0}
-                      isSearchable={true}
-                      onInputChange={inputValue => {
-                        if (inputValue) {
-                          fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
-                            .then(res => {
-                              if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
-                              return res.json();
-                            })
-                            .then(data => {
-                              const sortedCities = data.sort((a, b) => {
-                                const isAIndia = a.country === 'India';
-                                const isBIndia = b.country === 'India';
-                                if (isAIndia && !isBIndia) return -1;
-                                if (!isAIndia && isBIndia) return 1;
-                                if (isAIndia && isBIndia) {
-                                  const cityA = a.label.replace(', India', '');
-                                  const cityB = b.label.replace(', India', '');
-                                  return cityA.localeCompare(cityB);
-                                }
-                                return a.label.localeCompare(b.label);
+                    {cityOptions.length > 0 && Select ? (
+                      <Select
+                        instanceId="location-select"
+                        options={cityOptions}
+                        value={cityOptions.find(option => option.value === formData.location) || null}
+                        onChange={selected => handleSingleChange(selected, 'location')}
+                        placeholder="Select a location (e.g., Mumbai, India)"
+                        className={`w-full ${errors.location ? 'border-red-500' : ''}`}
+                        classNamePrefix="react-select"
+                        isDisabled={cityOptions.length === 0}
+                        isSearchable={true}
+                        onInputChange={inputValue => {
+                          if (inputValue) {
+                            fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
+                              .then(res => {
+                                if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
+                                return res.json();
+                              })
+                              .then(data => {
+                                const sortedCities = Array.isArray(data) ? data.sort((a, b) => {
+                                  const isAIndia = a.country === 'India';
+                                  const isBIndia = b.country === 'India';
+                                  if (isAIndia && !isBIndia) return -1;
+                                  if (!isAIndia && isBIndia) return 1;
+                                  if (isAIndia && isBIndia) {
+                                    const cityA = a.label.replace(', India', '');
+                                    const cityB = b.label.replace(', India', '');
+                                    return cityA.localeCompare(cityB);
+                                  }
+                                  return a.label.localeCompare(b.label);
+                                }) : [];
+                                setCityOptions(sortedCities.length > 0 ? sortedCities : [{ value: formData.location || 'Unknown', label: formData.location || 'Unknown' }]);
+                              })
+                              .catch(err => {
+                                console.error('Error fetching cities:', err);
+                                setApiError(`Failed to fetch city options: ${err.message}`);
                               });
-                              setCityOptions(sortedCities);
-                            })
-                            .catch(err => {
-                              console.error('Error fetching cities:', err);
-                              setApiError('Failed to fetch city options. Please try again.');
-                            });
-                        }
-                      }}
-                    />
+                          }
+                        }}
+                      />
+                    ) : (
+                      <div>Loading location options...</div>
+                    )}
                     {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
                     <p className="text-sm text-gray-500 mt-1">Select a location (e.g., Mumbai, India)</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
-                    <Select
-                      instanceId="language-select"
-                      isMulti
-                      options={languageOptions}
-                      value={languageOptions.filter(option => formData.languages.includes(option.value))}
-                      onChange={selected => handleMultiChange(selected, 'languages')}
-                      placeholder="Select up to 5 languages (e.g., English, Hindi)"
-                      className={`w-full ${errors.languages ? 'border-red-500' : ''}`}
-                      classNamePrefix="react-select"
-                      isDisabled={languageOptions.length === 0}
-                    />
+                    {languageOptions.length > 0 && Select ? (
+                      <Select
+                        instanceId="language-select"
+                        isMulti
+                        options={languageOptions}
+                        value={languageOptions.filter(option => formData.languages.includes(option.value))}
+                        onChange={selected => handleMultiChange(selected, 'languages')}
+                        placeholder="Select up to 5 languages (e.g., English, Hindi)"
+                        className={`w-full ${errors.languages ? 'border-red-500' : ''}`}
+                        classNamePrefix="react-select"
+                        isDisabled={languageOptions.length === 0}
+                      />
+                    ) : (
+                      <div>Loading language options...</div>
+                    )}
                     {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
                     <p className="text-sm text-gray-500 mt-1">Select up to 5 languages (e.g., English, Hindi)</p>
                   </div>
@@ -939,13 +1020,15 @@ export default function CompleteProfile() {
                         value={service}
                         onChange={e => handleArrayChange(index, 'services', e.target.value)}
                       />
-                      <button
-                        type="button"
-                        className="text-red-500 text-sm hover:text-red-700"
-                        onClick={() => removeField('services', index)}
-                      >
-                        ✕
-                      </button>
+                      {formData.services.length > 1 && (
+                        <button
+                          type="button"
+                          className="text-red-500 text-sm hover:text-red-700"
+                          onClick={() => removeField('services', index)}
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   ))}
                   <button
@@ -961,17 +1044,21 @@ export default function CompleteProfile() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Expertise Areas (Up to 5)</label>
                   <div className="flex gap-2 mb-2">
-                    <CreatableSelect
-                      instanceId="expertise-select"
-                      options={expertiseOptions}
-                      value={selectedExpertise}
-                      onChange={handleExpertiseChange}
-                      onKeyDown={handleExpertiseKeyDown}
-                      placeholder="Select or type expertise (e.g., Adventure Travel)"
-                      className={`w-full ${errors.expertise ? 'border-red-500' : ''}`}
-                      classNamePrefix="react-select"
-                      formatCreateLabel={inputValue => `Add "${inputValue}"`}
-                    />
+                    {CreatableSelect ? (
+                      <CreatableSelect
+                        instanceId="expertise-select"
+                        options={expertiseOptions}
+                        value={selectedExpertise}
+                        onChange={handleExpertiseChange}
+                        onKeyDown={handleExpertiseKeyDown}
+                        placeholder="Select or type expertise (e.g., Adventure Travel)"
+                        className={`w-full ${errors.expertise ? 'border-red-500' : ''}`}
+                        classNamePrefix="react-select"
+                        formatCreateLabel={inputValue => `Add "${inputValue}"`}
+                      />
+                    ) : (
+                      <div>Error loading CreatableSelect component</div>
+                    )}
                     <button
                       type="button"
                       className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer"
@@ -1071,28 +1158,36 @@ export default function CompleteProfile() {
                           />
                         </div>
                         <div>
-                          <DatePicker
-                            selected={exp.startDate}
-                            onChange={date => handleExperienceChange(index, 'startDate', date)}
-                            dateFormat="yyyy-MM"
-                            placeholderText="Select start date (YYYY-MM)"
-                            className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                            maxDate={new Date()}
-                            showMonthYearPicker
-                          />
+                          {DatePicker ? (
+                            <DatePicker
+                              selected={exp.startDate}
+                              onChange={date => handleExperienceChange(index, 'startDate', date)}
+                              dateFormat="yyyy-MM"
+                              placeholderText="Select start date (YYYY-MM)"
+                              className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
+                              maxDate={new Date()}
+                              showMonthYearPicker
+                            />
+                          ) : (
+                            <div>Error loading DatePicker component</div>
+                          )}
                           <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <DatePicker
-                            selected={exp.endDate !== 'Present' ? exp.endDate : null}
-                            onChange={date => handleExperienceChange(index, 'endDate', date)}
-                            dateFormat="yyyy-MM"
-                            placeholderText="Select end date (YYYY-MM)"
-                            className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
-                            maxDate={new Date()}
-                            showMonthYearPicker
-                            disabled={exp.endDate === 'Present'}
-                          />
+                          {DatePicker ? (
+                            <DatePicker
+                              selected={exp.endDate !== 'Present' ? exp.endDate : null}
+                              onChange={date => handleExperienceChange(index, 'endDate', date)}
+                              dateFormat="yyyy-MM"
+                              placeholderText="Select end date (YYYY-MM)"
+                              className={`w-full px-4 py-2 border rounded-xl ${errors.experience ? 'border-red-500' : ''}`}
+                              maxDate={new Date()}
+                              showMonthYearPicker
+                              disabled={exp.endDate === 'Present'}
+                            />
+                          ) : (
+                            <div>Error loading DatePicker component</div>
+                          )}
                           <label className="flex items-center gap-2 text-sm">
                             <input
                               type="checkbox"
@@ -1103,13 +1198,15 @@ export default function CompleteProfile() {
                           </label>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="text-red-500 text-sm hover:text-red-700"
-                        onClick={() => removeExperience(index)}
-                      >
-                        ✕ Remove
-                      </button>
+                      {formData.experience.length > 1 && (
+                        <button
+                          type="button"
+                          className="text-red-500 text-sm hover:text-red-700"
+                          onClick={() => removeExperience(index)}
+                        >
+                          ✕ Remove
+                        </button>
+                      )}
                     </div>
                   ))}
                   <button
@@ -1179,6 +1276,7 @@ export default function CompleteProfile() {
                           src={imagePreview}
                           alt="Profile photo preview"
                           className="object-cover w-full h-full"
+                          onError={(e) => console.error("Image load error:", e)}
                         />
                       </div>
                       <button

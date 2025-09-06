@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -164,9 +162,7 @@ export default function ExpertsDirectory() {
     setIsLightboxOpen(true);
   };
 
-  // Remove the useEffect that automatically opens the modal
-  // Previously, this useEffect set modalExpert on mount, causing the modal to open
-  // Now, modalExpert is only set when the "Ask Question" button is clicked
+
 
   useEffect(() => {
     if (keywords.length > 0) {
@@ -174,7 +170,7 @@ export default function ExpertsDirectory() {
     } else {
       setSearchTerm("");
     }
-    console.log("Keywords from URL:", keywords); // Debugging
+    console.log("Keywords from URL:", keywords); 
   }, [keywords]);
 
   const fetchExperts = async () => {
