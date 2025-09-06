@@ -1,11 +1,15 @@
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import { Loader2, CalendarClock, Search, Calendar, Clock, BarChart, Link2 } from "lucide-react";
+import { Loader2, CalendarClock, Search, Calendar, Clock, Link2 } from "lucide-react";
+import ManageAvailability from "./ManageAvailability";
 
 const db = getFirestore(app);
+
+// --- HELPER COMPONENTS ---
 
 const StatCard = ({ title, value, icon, loading }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border flex items-center gap-4">
@@ -177,243 +181,166 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
   );
 };
 
-export default function BookingOverviewPage() {
-  const [bookings, setBookings] = useState([]);
-  const [stats, setStats] = useState({ total: 0, upcoming: 0, today: 0 });
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedBooking, setSelectedBooking] = useState(null);
-  const itemsPerPage = 10;
+// --- TAB COMPONENTS ---
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      setLoading(true);
-      try {
-        const q = query(collection(db, "Bookings"), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
-        const data = await Promise.all(
-          querySnapshot.docs.map(async (docSnap) => {
-            const data = docSnap.data();
-            let userEmail = data.userEmail;
-            let expertEmail = data.expertEmail;
+function BookingOverview() {
+    const [bookings, setBookings] = useState([]);
+    const [stats, setStats] = useState({ total: 0, upcoming: 0, today: 0 });
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedBooking, setSelectedBooking] = useState(null);
+    const itemsPerPage = 10;
 
-            if (!userEmail && data.userId) {
-              const userRef = doc(db, "Users", data.userId);
-              const userSnap = await getDoc(userRef);
-              if (userSnap.exists()) {
-                userEmail = userSnap.data().email;
-              }
+    useEffect(() => {
+        const fetchBookings = async () => {
+            setLoading(true);
+            try {
+                const q = query(collection(db, "Bookings"), orderBy("createdAt", "desc"));
+                const querySnapshot = await getDocs(q);
+                const data = await Promise.all(
+                    querySnapshot.docs.map(async (docSnap) => {
+                        const data = docSnap.data();
+                        let userEmail = data.userEmail;
+                        let expertEmail = data.expertEmail;
+
+                        if (!userEmail && data.userId) {
+                            const userRef = doc(db, "Users", data.userId);
+                            const userSnap = await getDoc(userRef);
+                            if (userSnap.exists()) userEmail = userSnap.data().email;
+                        }
+
+                        if (!expertEmail && data.expertId) {
+                            const profileRef = doc(db, "Profiles", data.expertId);
+                            const profileSnap = await getDoc(profileRef);
+                            if (profileSnap.exists()) expertEmail = profileSnap.data().email;
+                        }
+
+                        return { id: docSnap.id, ...data, userEmail, expertEmail };
+                    })
+                );
+                setBookings(data);
+
+                const now = new Date();
+                const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const upcoming = data.filter(b => b.bookingDate && b.bookingTime && new Date(`${b.bookingDate}T${b.bookingTime}`) >= todayStart).length;
+                const todayBookings = data.filter(b => b.createdAt && (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) >= todayStart).length;
+                setStats({ total: data.length, upcoming, today: todayBookings });
+            } catch (error) {
+                console.error("Error fetching bookings:", error);
+            } finally {
+                setLoading(false);
             }
+        };
+        fetchBookings();
+    }, []);
 
-            if (!expertEmail && data.expertId) {
-              const profileRef = doc(db, "Profiles", data.expertId);
-              const profileSnap = await getDoc(profileRef);
-              if (profileSnap.exists()) {
-                expertEmail = profileSnap.data().email;
-              }
-            }
-
-            return {
-              id: docSnap.id,
-              ...data,
-              userEmail,
-              expertEmail,
-            };
-          })
-        );
-        setBookings(data);
-
-        const now = new Date();
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const upcoming = data.filter((b) => {
-          if (!b.bookingDate || !b.bookingTime) return false;
-          return new Date(`${b.bookingDate}T${b.bookingTime}`) >= todayStart;
-        }).length;
-        const todayBookings = data.filter((b) => {
-          if (!b.createdAt) return false;
-          const createdAt = b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
-          return createdAt >= todayStart;
-        }).length;
-
-        setStats({
-          total: data.length,
-          upcoming,
-          today: todayBookings,
-        });
-      } catch (error) {
-        console.error("Error fetching bookings:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBookings();
-  }, []);
-
-  const filteredBookings = useMemo(
-    () =>
-      bookings.filter(
-        (b) =>
-          b.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          b.expertName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          b.userEmail?.toLowerCase().includes(searchTerm.toLowerCase())
-      ),
-    [bookings, searchTerm]
-  );
-
-  const paginatedBookings = useMemo(
-    () => filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
-    [filteredBookings, currentPage]
-  );
-
-  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
-
-  const handleSendMeetingLink = (booking) => {
-    setSelectedBooking(booking);
-  };
-
-  const handleBookingSuccess = (bookingId, meetingLink) => {
-    setBookings((prev) =>
-      prev.map((b) => (b.id === bookingId ? { ...b, meetingLink, status: "confirmed" } : b))
+    const filteredBookings = useMemo(() =>
+        bookings.filter(b =>
+            b.userName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            b.expertName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            b.userEmail?.toLowerCase().includes(searchTerm.toLowerCase())
+        ),
+        [bookings, searchTerm]
     );
-    setSelectedBooking(null);
-  };
 
-  return (
-    <div className="p-4 md:p-6 text-gray-800 bg-gray-50 min-h-full">
-      <div className="flex items-center gap-3 mb-6">
-        <BarChart className="w-8 h-8 text-[#36013F]" />
-        <h1 className="text-3xl font-bold text-[#36013F]">Booking Overview</h1>
-      </div>
+    const paginatedBookings = useMemo(() =>
+        filteredBookings.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
+        [filteredBookings, currentPage]
+    );
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <StatCard
-          title="Total Bookings"
-          value={stats.total}
-          icon={<CalendarClock className="text-yellow-600" />}
-          loading={loading}
-        />
-        <StatCard
-          title="Upcoming Appointments"
-          value={stats.upcoming}
-          icon={<Calendar className="text-yellow-600" />}
-          loading={loading}
-        />
-        <StatCard
-          title="Bookings Today"
-          value={stats.today}
-          icon={<Clock className="text-yellow-600" />}
-          loading={loading}
-        />
-      </div>
+    const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
 
-      <div className="bg-white p-6 rounded-2xl shadow-sm border">
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-          <h2 className="text-xl font-semibold text-gray-800">All Appointments</h2>
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="text"
-              placeholder="Search by client or expert..."
-              className="p-2 pl-10 border rounded-lg w-full bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+    const handleSendMeetingLink = (booking) => setSelectedBooking(booking);
+    const handleBookingSuccess = (bookingId, meetingLink) => {
+        setBookings(prev => prev.map(b => (b.id === bookingId ? { ...b, meetingLink, status: "confirmed" } : b)));
+        setSelectedBooking(null);
+    };
 
-        {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#36013F]" />
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm text-left">
-                <thead className="text-gray-500">
-                  <tr>
-                    <th className="p-3 font-semibold">Client</th>
-                    <th className="p-3 font-semibold">Expert</th>
-                    <th className="p-3 font-semibold">Appointment</th>
-                    <th className="p-3 font-semibold">Refered By Agency</th>
-                    <th className="p-3 font-semibold">Status</th>
-                    <th className="p-3 font-semibold">Action</th>
-                    
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedBookings.map((b) => (
-                    <tr key={b.id} className="border-t border-gray-200 hover:bg-gray-50 transition">
-                      <td className="p-4">
-                        <p className="font-medium text-gray-800">{b.userName || "N/A"}</p>
-                        <p className="text-gray-500">{b.userEmail || "N/A"}</p>
-                        <p className="text-gray-500">{b.userPhone || "N/A"}</p>
-                      </td>
-                      <td className="p-4 font-medium text-gray-700">{b.expertName || "N/A"}</td>
-                      <td className="p-4">
-                        <p className="font-medium text-gray-800">{b.bookingDate || "N/A"}</p>
-                        <p className="text-gray-500">{b.bookingTime || "N/A"}</p>
-                      </td>
-                      <td className="p-4">
-                        <p className="font-medium text-gray-800">{b.referredByAgencyName || "N/A"}</p>
-                      </td>
-                      <td className="p-4">
-                        <span
-                          className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${
-                            b.status === "confirmed" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {b.status || "pending"}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <button
-                          onClick={() => handleSendMeetingLink(b)}
-                          className="flex items-center gap-2 px-3 py-1 text-sm font-medium text-[#36013F] bg-[#F4D35E] rounded-lg hover:bg-[#e0c54e]"
-                          disabled={b.status === "confirmed"}
-                        >
-                          <Link2 size={16} /> Send Link
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {paginatedBookings.length === 0 && (
-                    <tr>
-                      <td colSpan="5" className="text-center p-8 text-gray-500 border-t">
-                        No matching bookings found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+    return (
+        <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <StatCard title="Total Bookings" value={stats.total} icon={<CalendarClock className="text-yellow-600" />} loading={loading} />
+                <StatCard title="Upcoming Appointments" value={stats.upcoming} icon={<Calendar className="text-yellow-600" />} loading={loading} />
+                <StatCard title="Bookings Today" value={stats.today} icon={<Clock className="text-yellow-600" />} loading={loading} />
             </div>
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-6 gap-2">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <button
-                    key={page}
-                    className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
-                      page === currentPage
-                        ? "bg-[#36013F] text-white border-[#36013F]"
-                        : "text-gray-700 border-gray-200 hover:bg-gray-100"
-                    }`}
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </button>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-      {selectedBooking && (
-        <MeetingLinkModal
-          booking={selectedBooking}
-          onClose={() => setSelectedBooking(null)}
-          onSuccess={handleBookingSuccess}
-        />
-      )}
-    </div>
-  );
+            <div className="bg-white p-6 rounded-2xl shadow-sm border">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                    <h2 className="text-xl font-semibold text-gray-800">All Appointments</h2>
+                    <div className="relative w-full sm:max-w-xs">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input type="text" placeholder="Search by client or expert..." className="p-2 pl-10 border rounded-lg w-full bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#36013F]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                    </div>
+                </div>
+                {loading ? (
+                    <div className="flex justify-center items-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#36013F]" /></div>
+                ) : (
+                    <>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm text-left">
+                                <thead className="text-gray-500">
+                                    <tr>
+                                        <th className="p-3 font-semibold">Client</th>
+                                        <th className="p-3 font-semibold">Expert</th>
+                                        <th className="p-3 font-semibold">Appointment</th>
+                                        <th className="p-3 font-semibold">Refered By Agency</th>
+                                        <th className="p-3 font-semibold">Status</th>
+                                        <th className="p-3 font-semibold">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedBookings.map((b) => (
+                                        <tr key={b.id} className="border-t border-gray-200 hover:bg-gray-50 transition">
+                                            <td className="p-4"><p className="font-medium text-gray-800">{b.userName || "N/A"}</p><p className="text-gray-500">{b.userEmail || "N/A"}</p><p className="text-gray-500">{b.userPhone || "N/A"}</p></td>
+                                            <td className="p-4 font-medium text-gray-700">{b.expertName || "N/A"}</td>
+                                            <td className="p-4"><p className="font-medium text-gray-800">{b.bookingDate || "N/A"}</p><p className="text-gray-500">{b.bookingTime || "N/A"}</p></td>
+                                            <td className="p-4"><p className="font-medium text-gray-800">{b.referredByAgencyName || "N/A"}</p></td>
+                                            <td className="p-4"><span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${b.status === "confirmed" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}>{b.status || "pending"}</span></td>
+                                            <td className="p-4"><button onClick={() => handleSendMeetingLink(b)} className="flex items-center gap-2 px-3 py-1 text-sm font-medium text-[#36013F] bg-[#F4D35E] rounded-lg hover:bg-[#e0c54e]" disabled={b.status === "confirmed"}><Link2 size={16} /> Send Link</button></td>
+                                        </tr>
+                                    ))}
+                                    {paginatedBookings.length === 0 && (
+                                        <tr><td colSpan="6" className="text-center p-8 text-gray-500 border-t">No matching bookings found.</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="flex justify-center mt-6 gap-2">
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                    <button key={page} className={`px-3 py-1 rounded-md text-sm font-medium border transition ${page === currentPage ? "bg-[#36013F] text-white border-[#36013F]" : "text-gray-700 border-gray-200 hover:bg-gray-100"}`} onClick={() => setCurrentPage(page)}>{page}</button>
+                                ))}
+                            </div>
+                        )}
+                    </>
+                )}
+            </div>
+            {selectedBooking && (<MeetingLinkModal booking={selectedBooking} onClose={() => setSelectedBooking(null)} onSuccess={handleBookingSuccess} />)}
+        </div>
+    );
+}
+
+// --- MAIN PAGE COMPONENT ---
+
+export default function SchedulingPage() {
+    const [activeTab, setActiveTab] = useState('overview');
+
+    return (
+        <div className="p-4 md:p-6 text-gray-800 bg-gray-50 min-h-full">
+            <div className="max-w-7xl mx-auto">
+                <div className="flex items-center gap-3 mb-6">
+                    <CalendarClock className="w-8 h-8 text-[#36013F]" />
+                    <h1 className="text-3xl font-bold text-[#36013F]">Scheduling</h1>
+                </div>
+
+                <div className="bg-gray-100 p-1 rounded-xl flex gap-1 w-full sm:w-auto mb-6 max-w-sm border">
+                    <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 rounded-lg font-semibold transition-colors w-full ${activeTab === 'overview' ? 'bg-white shadow text-[#36013F]' : 'text-gray-600 hover:bg-gray-200'}`}>Booking Overview</button>
+                    <button onClick={() => setActiveTab('availability')} className={`px-4 py-2 rounded-lg font-semibold transition-colors w-full ${activeTab === 'availability' ? 'bg-white shadow text-[#36013F]' : 'text-gray-600 hover:bg-gray-200'}`}>Manage Availability</button>
+                </div>
+
+                {activeTab === 'overview' && <BookingOverview />}
+                {activeTab === 'availability' && <ManageAvailability />}
+            </div>
+        </div>
+    );
 }
