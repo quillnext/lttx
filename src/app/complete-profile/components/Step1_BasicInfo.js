@@ -1,11 +1,30 @@
-
-import PhoneInput from "react-phone-input-2";
-import "react-phone-input-2/lib/style.css";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import dynamic from 'next/dynamic';
 
-const Select = dynamic(() => import('react-select'), { ssr: false });
+// Dynamically import components with your new .then() logic and the corrected .catch() block
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn()
+        .then((mod) => {
+          // This ensures compatibility with modules that may not have a default export
+          return mod.default || mod;
+        })
+        .catch((err) => {
+          console.error(`Failed to load ${name}:`, err);
+          // FIX: The error component must be returned inside a module-like object
+          return { default: () => <div className="text-red-500">Error loading {name} component.</div> };
+        }),
+    {
+      ssr: false,
+      loading: () => <div>Loading {name}...</div>,
+    }
+  );
+
+const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInput");
+const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
+const Select = loadComponent(() => import('react-select'), "Select");
+const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
+
 
 export default function Step1_BasicInfo({
   formData,
@@ -164,33 +183,20 @@ export default function Step1_BasicInfo({
             placeholder="Select a location (e.g., Mumbai, India)"
             className={`w-full ${errors.location ? 'border-red-500' : ''}`}
             classNamePrefix="react-select"
-            isDisabled={cityOptions.length === 0}
+            isDisabled={cityOptions.length === 0 && !formData.location}
             isSearchable={true}
             onInputChange={inputValue => {
               if (inputValue) {
                 fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
-                  .then(res => {
-                    if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
-                    return res.json();
-                  })
+                  .then(res => res.ok ? res.json() : Promise.reject(new Error(`Failed to fetch: ${res.status}`)))
                   .then(data => {
-                    const sortedCities = data.sort((a, b) => {
-                      const isAIndia = a.country === 'India';
-                      const isBIndia = b.country === 'India';
-                      if (isAIndia && !isBIndia) return -1;
-                      if (!isAIndia && isBIndia) return 1;
-                      if (isAIndia && isBIndia) {
-                        const cityA = a.label.replace(', India', '');
-                        const cityB = b.label.replace(', India', '');
-                        return cityA.localeCompare(cityB);
-                      }
-                      return a.label.localeCompare(b.label);
-                    });
+                    if (data.error) throw new Error(data.error);
+                    const sortedCities = [...data].sort((a, b) => a.label.localeCompare(b.label));
                     setCityOptions(sortedCities);
                   })
                   .catch(err => {
                     console.error('Error fetching cities:', err);
-                    setApiError('Failed to fetch city options. Please try again.');
+                    setApiError(`Failed to load city options: ${err.message}. Using fallback options.`);
                   });
               }
             }}

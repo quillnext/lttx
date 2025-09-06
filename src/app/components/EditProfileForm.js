@@ -1,24 +1,39 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getFirestore, query, collection, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import _ from "lodash";
-import Cropper from 'react-easy-crop';
 import getCroppedImg from '../complete-profile/getCroppedImg';
 
-// Dynamically import react-select and creatable-select with SSR disabled
-const Select = dynamic(() => import("react-select"), { ssr: false });
-const CreatableSelect = dynamic(() => import("react-select/creatable"), { ssr: false });
+// Reusable helper for dynamic imports with error and loading states
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn()
+        .then((mod) => mod.default || mod)
+        .catch((err) => {
+          console.error(`Failed to load ${name}:`, err);
+          return { default: () => <div className="text-red-500 text-center p-4">Error loading {name}.</div> };
+        }),
+    {
+      ssr: false,
+      loading: () => <div className="text-center p-4">Loading...</div>,
+    }
+  );
+
+// Dynamically import heavy components
+const Select = loadComponent(() => import("react-select"), "Select");
+const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
+const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInput");
+const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
+const Cropper = loadComponent(() => import('react-easy-crop'), "Cropper");
 
 const db = getFirestore(app);
 
@@ -551,13 +566,13 @@ export default function EditProfileForm({ initialData, onSave }) {
             </div>
           )}
           
-           {/* Profile Type Display */}
+            {/* Profile Type Display */}
           <div className="space-y-4">
              <h2 className="text-2xl font-semibold text-[var(--primary)]">⚙️ Profile Type</h2>
              <div className="px-4 py-3 bg-gray-100 rounded-xl text-gray-800 font-medium">
                 {formData.profileType === 'agency' ? 'Travel Agency' : 'Individual Expert'}
             </div>
-          </div>
+           </div>
 
 
           {/* Basic Information */}
@@ -652,39 +667,39 @@ export default function EditProfileForm({ initialData, onSave }) {
               </div>
 
                {formData.profileType === 'expert' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                  <DatePicker
-                    selected={formData.dateOfBirth}
-                    onChange={(date) => {
-                      setFormData((prev) => ({ ...prev, dateOfBirth: date }));
-                      setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
-                    }}
-                    dateFormat="yyyy-MM-dd"
-                    placeholderText="Select date of birth (YYYY-MM-DD)"
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.dateOfBirth ? "border-red-500" : ""}`}
-                    maxDate={new Date()}
-                    showYearDropdown
-                    yearDropdownItemNumber={100}
-                    scrollableYearDropdown
-                  />
-                  {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Years Active</label>
-                  <input
-                    type="text"
-                    name="yearsActive"
-                    placeholder="e.g., 5+ years"
-                    className={`w-full px-4 py-3 border rounded-xl ${errors.yearsActive ? 'border-red-500' : ''}`}
-                    value={formData.yearsActive}
-                    onChange={handleChange}
-                  />
-                  {errors.yearsActive && <p className="text-sm text-red-600 mt-1">{errors.yearsActive}</p>}
-                </div>
-              )}
-              
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                   <DatePicker
+                     selected={formData.dateOfBirth}
+                     onChange={(date) => {
+                       setFormData((prev) => ({ ...prev, dateOfBirth: date }));
+                       setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
+                     }}
+                     dateFormat="yyyy-MM-dd"
+                     placeholderText="Select date of birth (YYYY-MM-DD)"
+                     className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.dateOfBirth ? "border-red-500" : ""}`}
+                     maxDate={new Date()}
+                     showYearDropdown
+                     yearDropdownItemNumber={100}
+                     scrollableYearDropdown
+                   />
+                   {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
+                 </div>
+               ) : (
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Years Active</label>
+                   <input
+                     type="text"
+                     name="yearsActive"
+                     placeholder="e.g., 5+ years"
+                     className={`w-full px-4 py-3 border rounded-xl ${errors.yearsActive ? 'border-red-500' : ''}`}
+                     value={formData.yearsActive}
+                     onChange={handleChange}
+                   />
+                   {errors.yearsActive && <p className="text-sm text-red-600 mt-1">{errors.yearsActive}</p>}
+                 </div>
+               )}
+               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                 <Select
@@ -912,111 +927,111 @@ export default function EditProfileForm({ initialData, onSave }) {
           {/* Experience & Credentials */}
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold text-[var(--primary)]">{formData.profileType === 'agency' ? '🏢 Trust & Credentials' : '📚 Experience & Credentials'}</h2>
-             {formData.profileType === 'expert' ? (
-                <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
-                  {formData.experience.map((exp, index) => (
-                    <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl bg-gray-50">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="Enter job title (e.g., Travel Consultant)"
-                            className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                            value={exp.title}
-                            onChange={(e) => handleExperienceChange(index, "title", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <input
-                            type="text"
-                            placeholder="Enter company (e.g., MakeMyTrip)"
-                            className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                            value={exp.company}
-                            onChange={(e) => handleExperienceChange(index, "company", e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <DatePicker
-                            selected={exp.startDate}
-                            onChange={(date) => handleExperienceChange(index, "startDate", date)}
-                            dateFormat="yyyy-MM"
-                            placeholderText="Select start date (YYYY-MM)"
-                            className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                            maxDate={new Date()}
-                            showMonthYearPicker
-                          />
-                          <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <DatePicker
-                            selected={exp.endDate !== "Present" ? exp.endDate : null}
-                            onChange={(date) => handleExperienceChange(index, "endDate", date)}
-                            dateFormat="yyyy-MM"
-                            placeholderText="Select end date (YYYY-MM)"
-                            className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                            maxDate={new Date()}
-                            showMonthYearPicker
-                            disabled={exp.endDate === "Present"}
-                          />
-                          <label className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={exp.endDate === "Present"}
-                              onChange={(e) => handleExperienceChange(index, "endDate", e.target.checked ? "Present" : null)}
-                            />
-                            Present
-                          </label>
-                        </div>
-                      </div>
-                      {formData.experience.length > 1 && (
-                        <button
-                          type="button"
-                          className="text-red-500 text-sm hover:text-red-700"
-                          onClick={() => removeExperience(index)}
-                        >
-                          ✕ Remove
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addExperience}
-                    className="text-sm text-[var(--primary)] hover:underline mt-2"
-                  >
-                    + Add Experience
-                  </button>
-                  {errors.experience && <p className="text-sm text-red-600 mt-1">{errors.experience}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
-                  <input
-                    type="text"
-                    name="certifications"
-                    placeholder="Enter certifications (e.g., Aussie Specialist, VisitBritain)"
-                    className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.certifications ? "border-red-500" : ""}`}
-                    value={formData.certifications}
-                    onChange={handleChange}
-                  />
-                  {errors.certifications && <p className="text-sm text-red-600 mt-1">{errors.certifications}</p>}
-                </div>
-                </>
-            ) : (
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Licence / IATA / GST No. (if any)</label>
-                    <input
-                        type="text"
-                        name="licenseNumber"
-                        className={`w-full px-4 py-2 border rounded-xl ${errors.licenseNumber ? 'border-red-500' : ''}`}
-                        placeholder="Enter your agency's registration number"
-                        value={formData.licenseNumber}
-                        onChange={handleChange}
-                    />
-                    {errors.licenseNumber && <p className="text-sm text-red-600 mt-1">{errors.licenseNumber}</p>}
-                </div>
-            )}
+               {formData.profileType === 'expert' ? (
+                 <>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
+                   {formData.experience.map((exp, index) => (
+                     <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl bg-gray-50">
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div>
+                           <input
+                             type="text"
+                             placeholder="Enter job title (e.g., Travel Consultant)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             value={exp.title}
+                             onChange={(e) => handleExperienceChange(index, "title", e.target.value)}
+                           />
+                         </div>
+                         <div>
+                           <input
+                             type="text"
+                             placeholder="Enter company (e.g., MakeMyTrip)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             value={exp.company}
+                             onChange={(e) => handleExperienceChange(index, "company", e.target.value)}
+                           />
+                         </div>
+                         <div>
+                           <DatePicker
+                             selected={exp.startDate}
+                             onChange={(date) => handleExperienceChange(index, "startDate", date)}
+                             dateFormat="yyyy-MM"
+                             placeholderText="Select start date (YYYY-MM)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             maxDate={new Date()}
+                             showMonthYearPicker
+                           />
+                           <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <DatePicker
+                             selected={exp.endDate !== "Present" ? exp.endDate : null}
+                             onChange={(date) => handleExperienceChange(index, "endDate", date)}
+                             dateFormat="yyyy-MM"
+                             placeholderText="Select end date (YYYY-MM)"
+                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
+                             maxDate={new Date()}
+                             showMonthYearPicker
+                             disabled={exp.endDate === "Present"}
+                           />
+                           <label className="flex items-center gap-2 text-sm">
+                             <input
+                               type="checkbox"
+                               checked={exp.endDate === "Present"}
+                               onChange={(e) => handleExperienceChange(index, "endDate", e.target.checked ? "Present" : null)}
+                             />
+                             Present
+                           </label>
+                         </div>
+                       </div>
+                       {formData.experience.length > 1 && (
+                         <button
+                           type="button"
+                           className="text-red-500 text-sm hover:text-red-700"
+                           onClick={() => removeExperience(index)}
+                         >
+                           ✕ Remove
+                         </button>
+                       )}
+                     </div>
+                   ))}
+                   <button
+                     type="button"
+                     onClick={addExperience}
+                     className="text-sm text-[var(--primary)] hover:underline mt-2"
+                   >
+                     + Add Experience
+                   </button>
+                   {errors.experience && <p className="text-sm text-red-600 mt-1">{errors.experience}</p>}
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
+                   <input
+                     type="text"
+                     name="certifications"
+                     placeholder="Enter certifications (e.g., Aussie Specialist, VisitBritain)"
+                     className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.certifications ? "border-red-500" : ""}`}
+                     value={formData.certifications}
+                     onChange={handleChange}
+                   />
+                   {errors.certifications && <p className="text-sm text-red-600 mt-1">{errors.certifications}</p>}
+                 </div>
+                 </>
+               ) : (
+                 <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">Licence / IATA / GST No. (if any)</label>
+                     <input
+                         type="text"
+                         name="licenseNumber"
+                         className={`w-full px-4 py-2 border rounded-xl ${errors.licenseNumber ? 'border-red-500' : ''}`}
+                         placeholder="Enter your agency's registration number"
+                         value={formData.licenseNumber}
+                         onChange={handleChange}
+                     />
+                     {errors.licenseNumber && <p className="text-sm text-red-600 mt-1">{errors.licenseNumber}</p>}
+                 </div>
+               )}
           </div>
 
           {/* Referral Information */}
