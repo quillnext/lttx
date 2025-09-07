@@ -5,17 +5,32 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFirestore, collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import '@/app/globals.css';
 import Link from 'next/link';
 import Footer from '../pages/Footer';
 import Navbar from '../components/Navbar';
-import Cropper from 'react-easy-crop';
 import getCroppedImg from './getCroppedImg';
 import Step1_BasicInfo from './components/Step1_BasicInfo';
 import Step2_Services from './components/Step2_Services';
 import Step3_Experience from './components/Step3_Experience';
+
+// Dynamically import components with error handling
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn().catch((err) => {
+        console.error(`Failed to load ${name}:`, err);
+        return () => <div>Error loading ${name} component.</div>;
+      }),
+    {
+      ssr: false,
+      loading: () => <div>Loading ${name}...</div>,
+    }
+  );
+
+const Cropper = loadComponent(() => import('react-easy-crop'), 'Cropper');
 
 const storage = getStorage(app);
 const db = getFirestore(app);
@@ -49,7 +64,7 @@ export default function CompleteProfile() {
     experience: [{ title: '', company: '', startDate: null, endDate: null }],
     certifications: '',
     licenseNumber: '',
-    referred: '',
+    referred: 'No',
     referralCode: '',
   });
   const [originalProfile, setOriginalProfile] = useState(null);
@@ -68,6 +83,38 @@ export default function CompleteProfile() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  useEffect(() => {
+    const loadCSS = (href, fallback) => {
+      const link = document.createElement("link");
+      link.href = href;
+      link.rel = "stylesheet";
+      link.onerror = () => {
+        console.warn(`Failed to load local CSS: ${href}. Loading fallback: ${fallback}`);
+        const fallbackLink = document.createElement("link");
+        fallbackLink.href = fallback;
+        fallbackLink.rel = "stylesheet";
+        document.head.appendChild(fallbackLink);
+      };
+      document.head.appendChild(link);
+      return () => {
+        document.head.removeChild(link);
+        const fallbackElement = document.querySelector(`link[href="${fallback}"]`);
+        if (fallbackElement) {
+          document.head.removeChild(fallbackElement);
+        }
+      };
+    };
+
+    const cssFiles = [
+      { local: "/css/react-phone-input-2.css", fallback: "https://unpkg.com/react-phone-input-2@2.15.1/lib/style.css" },
+      { local: "/css/react-datepicker.css", fallback: "https://unpkg.com/react-datepicker@4.8.0/dist/react-datepicker.css" },
+      { local: "/css/react-easy-crop.css", fallback: "https://unpkg.com/react-easy-crop@5.0.7/react-easy-crop.css" }
+    ];
+
+    const cleanups = cssFiles.map(({ local, fallback }) => loadCSS(local, fallback));
+    return () => cleanups.forEach(cleanup => cleanup());
+  }, []);
 
   const formatDate = (date, format = 'YYYY-MM-DD') => {
     if (!date) return '';
@@ -94,67 +141,43 @@ export default function CompleteProfile() {
     const fetchCities = async () => {
       try {
         const response = await fetch('/api/cities');
-        if (!response.ok) {
-          if (response.status === 405) {
-            throw new Error('Method Not Allowed: Ensure the API supports GET requests');
-          }
-          throw new Error(`Failed to fetch cities: ${response.status}`);
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response format from cities API');
-        }
+        if (!response.ok) throw new Error(`Failed to fetch cities: ${response.status}`);
         const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        const sortedCities = data.sort((a, b) => {
-          const isAIndia = a.country === 'India';
-          const isBIndia = b.country === 'India';
-          if (isAIndia && !isBIndia) return -1;
-          if (!isAIndia && isBIndia) return 1;
-          if (isAIndia && isBIndia) {
-            const cityA = a.label.replace(', India', '');
-            const cityB = b.label.replace(', India', '');
-            return cityA.localeCompare(cityB);
-          }
-          return a.label.localeCompare(b.label);
-        });
+        if (data.error) throw new Error(data.error);
+        if (data.length === 0) throw new Error("No city data returned.");
+        const sortedCities = [...data].sort((a, b) => a.label.localeCompare(b.label));
         setCityOptions(sortedCities);
       } catch (error) {
         console.error('Error fetching cities:', error);
-        setApiError(`Failed to load city options: ${error.message}. Please try again later.`);
+        setApiError(`Failed to load city options: ${error.message}. Using fallback options.`);
+        setCityOptions([{ value: 'Unknown', label: 'Unknown' }]);
       }
     };
 
     const fetchLanguages = async () => {
       try {
         const response = await fetch('/api/languages');
-        if (!response.ok) {
-          if (response.status === 405) {
-            throw new Error('Method Not Allowed: Ensure the API supports GET requests');
-          }
-          throw new Error(`Failed to fetch languages: ${response.status}`);
-        }
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          throw new Error('Invalid response format from languages API');
-        }
+        if (!response.ok) throw new Error(`Failed to fetch languages: ${response.status}`);
         const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        const uniqueLanguages = Array.from(new Map(data.map(item => [item.value, item])).values());
-        setLanguageOptions(uniqueLanguages);
+        if (data.error) throw new Error(data.error);
+        if (data.length === 0) throw new Error("No language data returned.");
+        setLanguageOptions(data);
       } catch (error) {
         console.error('Error fetching languages:', error);
-        setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
+        setApiError(`Failed to load language options: ${error.message}. Using fallback options.`);
+        setLanguageOptions([{ value: 'English', label: 'English' }]);
       }
     };
 
     fetchCities();
     fetchLanguages();
   }, []);
+  
+  useEffect(() => {
+    if (formData.location && cityOptions.length > 0 && !cityOptions.some(option => option.value === formData.location)) {
+      setCityOptions(prevOptions => [{ value: formData.location, label: formData.location }, ...prevOptions]);
+    }
+  }, [formData.location, cityOptions]);
 
   useEffect(() => {
     if (profileId) {
@@ -180,10 +203,10 @@ export default function CompleteProfile() {
               pricing: data.pricing || '',
               about: data.about || '',
               photo: null,
-              services: data.services?.length ? data.services : [''],
-              regions: data.regions?.length ? data.regions : [],
+              services: Array.isArray(data.services) && data.services.length > 0 ? data.services : [''],
+              regions: Array.isArray(data.regions) ? data.regions : [],
               expertise: Array.isArray(data.expertise) ? data.expertise : [],
-              experience: data.experience?.length
+              experience: Array.isArray(data.experience) && data.experience.length > 0
                 ? data.experience.map(exp => ({
                     title: exp.title || '',
                     company: exp.company || '',
@@ -193,11 +216,13 @@ export default function CompleteProfile() {
                 : [{ title: '', company: '', startDate: null, endDate: null }],
               certifications: data.certifications || '',
               licenseNumber: data.licenseNumber || '',
-              referred: data.referred || '',
+              referred: data.referred || 'No',
               referralCode: data.referralCode || '',
             });
             setImagePreview(data.photo || null);
             setAgreed(true);
+          } else {
+            setApiError(`Profile with ID "${profileId}" not found.`);
           }
         } catch (error) {
           console.error('Error fetching profile:', error);
@@ -214,15 +239,11 @@ export default function CompleteProfile() {
 
   const handleCropConfirm = useCallback(async () => {
     try {
-      const croppedImage = await getCroppedImg(imagePreview, croppedAreaPixels);
-      const blob = await (await fetch(croppedImage)).blob();
-      const file = new File([blob], `cropped_${formData.photo.name}`, { type: blob.type });
-      setFormData(prev => ({ ...prev, photo: file }));
-      setImagePreview(croppedImage);
+      if (!imagePreview || !croppedAreaPixels) return;
+      const croppedImageFile = await getCroppedImg(imagePreview, croppedAreaPixels, formData.photo?.name || 'profile.jpg');
+      setFormData(prev => ({ ...prev, photo: croppedImageFile }));
+      setImagePreview(URL.createObjectURL(croppedImageFile));
       setShowCropModal(false);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setCroppedAreaPixels(null);
     } catch (error) {
       console.error('Error cropping image:', error);
       setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
@@ -543,7 +564,7 @@ export default function CompleteProfile() {
       experience: [{ title: '', company: '', startDate: null, endDate: null }],
       certifications: '',
       licenseNumber: '',
-      referred: '',
+      referred: 'No',
       referralCode: '',
     });
     setImagePreview(null);
@@ -569,16 +590,16 @@ export default function CompleteProfile() {
     setIsSubmitting(true);
 
     try {
-      let photoURL = profileId ? (await getDoc(doc(db, 'Profiles', profileId))).data().photo : '';
-      if (formData.photo && typeof formData.photo !== 'string' && formData.fullName) {
-        const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-        const timestamp = Date.now();
-        const fileExtension = formData.photo.name.split('.').pop();
-        const fileName = `profile_${timestamp}.${fileExtension}`;
-        const storageRef = ref(storage, `Profiles/${sanitizedFullName}/${fileName}`);
+      let photoURL = profileId && originalProfile ? originalProfile.photo : '';
+      if (formData.photo && typeof formData.photo !== 'string') {
+          const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+          const timestamp = Date.now();
+          const fileExtension = formData.photo.name.split('.').pop();
+          const fileName = `profile_${sanitizedFullName}_${timestamp}.${fileExtension}`;
+          const storageRef = ref(storage, `Profiles/${fileName}`);
 
-        await uploadBytes(storageRef, formData.photo);
-        photoURL = await getDownloadURL(storageRef);
+          await uploadBytes(storageRef, formData.photo);
+          photoURL = await getDownloadURL(storageRef);
       }
 
       const profileData = {
@@ -596,7 +617,7 @@ export default function CompleteProfile() {
         pricing: formData.pricing,
         about: formData.about,
         photo: photoURL,
-        services: formData.services,
+        services: formData.services.filter(s => s.trim()),
         regions: formData.regions,
         expertise: formData.expertise,
         experience: formData.profileType === 'expert' ? formData.experience.map(exp => ({
@@ -609,30 +630,18 @@ export default function CompleteProfile() {
         licenseNumber: formData.profileType === 'agency' ? formData.licenseNumber : '',
         referred: formData.referred || 'No',
         referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
-        timestamp: serverTimestamp(),
       };
 
-      let localProfileId = profileId;
       const response = await fetch('/api/send-profile-form', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...profileData, profileId: localProfileId }),
+        body: JSON.stringify({ ...profileData, profileId }),
       });
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error('Invalid response format from profile submission API');
-      }
       const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit profile');
-      }
+      if (!response.ok) throw new Error(result.error || 'Failed to submit profile');
 
       setSavedProfileId(result.profileId);
-
-      const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-
       setShowSuccessModal(true);
       setTimeout(() => {
         setShowSuccessModal(false);
@@ -731,7 +740,7 @@ export default function CompleteProfile() {
                     className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
                     onClick={() => {
                       setShowCropModal(false);
-                      setImagePreview(null);
+                      setImagePreview(originalProfile?.photo || null);
                       setFormData(prev => ({ ...prev, photo: null }));
                     }}
                   >

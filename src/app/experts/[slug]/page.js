@@ -3,6 +3,9 @@
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
+import Navbar from "@/app/components/Navbar";
+import Footer from "@/app/pages/Footer";
+import Link from "next/link";
 
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
@@ -21,10 +24,10 @@ export async function generateMetadata({ params }) {
     console.error("Meta error:", error);
   }
 
-   if (!profile) {
+   if (!profile || profile.isPublic === false) {
     return {
       title: "Expert Not Found | XmyTravel",
-      description: "This expert profile could not be found.",
+      description: "This expert profile could not be found or is private.",
       robots: { index: false, follow: false },
     };
   }
@@ -96,6 +99,24 @@ export default async function ExpertProfilePage({ params }) {
   }
 
   if (!profile) return <div>Profile not found</div>;
+
+  if (profile.isPublic === false) {
+    return (
+      <>
+        <Navbar />
+        <div className="min-h-screen flex items-center justify-center bg-gray-100 pt-20">
+          <div className="text-center p-8 bg-white rounded-lg shadow-md">
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Profile is Private</h1>
+            <p className="text-gray-600">This expert's profile is not currently available to the public.</p>
+            <Link href="/ask-an-expert" className="mt-6 inline-block bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all">
+              Find Other Experts
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   const sortedExperience = profile.experience
     ?.map((exp) => {

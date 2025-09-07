@@ -1,7 +1,21 @@
 
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn().catch((err) => {
+        console.error(`Failed to load ${name}:`, err);
+        return () => <div className="text-red-500">Error loading {name} component.</div>;
+      }),
+    {
+      ssr: false,
+      loading: () => <div>Loading {name}...</div>,
+    }
+  );
+
+const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
 
 export default function Step3_Experience({
   formData,
@@ -185,6 +199,11 @@ export default function Step3_Experience({
                 src={imagePreview}
                 alt="Profile photo preview"
                 className="object-cover w-full h-full"
+                onError={(e) => {
+                  console.error("Failed to load image preview:", e.target.src);
+                  e.target.onerror = null; 
+                  e.target.src = '/default-avatar.png';
+                }}
               />
             </div>
             <button

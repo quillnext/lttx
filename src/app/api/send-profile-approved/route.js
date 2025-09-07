@@ -119,6 +119,7 @@ export async function POST(req) {
       leadId,
       // System fields
       status: "approved",
+      isPublic: true, // Make profile public by default on approval
       userId: userRecord.uid,
       forcePasswordChange: !!password,
       approvalTimestamp: new Date().toISOString(),

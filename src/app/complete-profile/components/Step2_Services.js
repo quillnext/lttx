@@ -1,7 +1,20 @@
 
 import dynamic from 'next/dynamic';
 
-const CreatableSelect = dynamic(() => import('react-select/creatable'), { ssr: false });
+const loadComponent = (importFn, name) =>
+  dynamic(
+    () =>
+      importFn().catch((err) => {
+        console.error(`Failed to load ${name}:`, err);
+        return () => <div className="text-red-500">Error loading {name} component.</div>;
+      }),
+    {
+      ssr: false,
+      loading: () => <div>Loading {name}...</div>,
+    }
+  );
+
+const CreatableSelect = loadComponent(() => import('react-select/creatable'), 'CreatableSelect');
 
 const expertiseOptions = [
   { value: 'Visa and Documentation Services', label: 'Visa and Documentation Services' },

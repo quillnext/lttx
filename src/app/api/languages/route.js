@@ -11,10 +11,25 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search');
 
-    let languageOptions = languagesData.map(lang => ({
-      value: lang.name,
-      label: lang.name,
-    }));
+    const languageMap = new Map();
+    languagesData.forEach(lang => {
+      // Ensure lang and lang.name are valid before processing
+      if (lang && typeof lang.name === 'string') {
+        const trimmedName = lang.name.trim();
+        // Use a consistent key (lowercase) for de-duplication
+        const key = trimmedName.toLowerCase();
+        // Add to map only if the key doesn't exist, preserving first-seen casing
+        if (trimmedName && !languageMap.has(key)) {
+          languageMap.set(key, {
+            value: trimmedName,
+            label: trimmedName,
+          });
+        }
+      }
+    });
+    
+    let languageOptions = Array.from(languageMap.values());
+
 
     if (search) {
       languageOptions = languageOptions.filter(option =>
