@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 // // // import { NextResponse } from "next/server";
 // // // import nodemailer from "nodemailer";
@@ -654,6 +655,8 @@
 //   }
 // }
 
+=======
+>>>>>>> 0c36243b9582f13e63d3d6f4895b2cad38ad91cd
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
@@ -667,7 +670,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, year, type, dashboardLink, keywords }) => `
+const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, year, type, dashboardLink, keywords, referredByAgencyName }) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -725,6 +728,7 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
           <p>Thank you for reaching out to travel expert <strong>${expertName}</strong> on XMyTravel!</p>
           <p>We're excited to connect you with experienced guidance for your travel needs.</p>
           <p><strong>Your Question:</strong><br/>"${question}"</p>
+          ${referredByAgencyName ? `<p><strong>Referred by:</strong> ${referredByAgencyName}</p>` : ""}
           ${
             keywords && keywords.length > 0 ? `
               <p><strong>Keywords:</strong></p>
@@ -740,6 +744,7 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
           <h2>Hello ${expertName},</h2>
           <p>You've received a new question from a traveler on your XMyTravel profile.</p>
           <p><strong>Question:</strong><br/>"${question}"</p>
+          ${referredByAgencyName ? `<p><strong>Referred by:</strong> ${referredByAgencyName}</p>` : ""}
           ${
             keywords && keywords.length > 0 ? `
               <p><strong>Keywords:</strong></p>
@@ -761,6 +766,7 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
           <h2>Hello Admin,</h2>
           <p>A new user inquiry has been submitted on XMyTravel.</p>
           <p><strong>Question:</strong><br/>"${question}"</p>
+          ${referredByAgencyName ? `<p><strong>Referred by Agency:</strong> ${referredByAgencyName}</p>` : ""}
           ${
             keywords && keywords.length > 0 ? `
               <p><strong>Keywords:</strong></p>
@@ -795,7 +801,8 @@ export async function POST(request) {
       expertName,
       question,
       userPhone,
-      keywords = [], // Default to empty array if not provided
+      keywords = [],
+      referredByAgencyName,
     } = await request.json();
 
     // Validate required fields
@@ -841,6 +848,7 @@ export async function POST(request) {
         type: "user",
         dashboardLink,
         keywords,
+        referredByAgencyName,
       }),
     });
 
@@ -859,6 +867,7 @@ export async function POST(request) {
         type: "expert",
         dashboardLink,
         keywords,
+        referredByAgencyName,
       }),
     });
 
@@ -877,6 +886,7 @@ export async function POST(request) {
         type: "admin",
         dashboardLink,
         keywords,
+        referredByAgencyName,
       }),
     });
 

@@ -167,233 +167,35 @@ export default function ManageRequestsPage() {
     }
   };
 
-  const generateUniqueReferralCode = async (profileId) => {
-    const prefix = "REF";
-    const numberLength = 3;
-    const maxAttempts = 30;
-
-    console.log(`Generating referral code for profile ${profileId}...`);
-
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const randomNumber = Math.floor(100 + Math.random() * 900);
-      const code = `${prefix}${randomNumber}`;
-
-      console.log(`Attempt ${attempt + 1}: Generated code ${code}`);
-
-      try {
-        const codeQuery = query(collection(db, "Profiles"), where("generatedReferralCode", "==", code));
-        const querySnapshot = await getDocs(codeQuery);
-        if (querySnapshot.empty) {
-          console.log(`Code ${code} is unique`);
-          return code;
-        }
-        console.log(`Code ${code} already exists, retrying...`);
-      } catch (error) {
-        console.error(`Error checking code uniqueness (attempt ${attempt + 1}):`, error);
-        if (attempt === maxAttempts - 1) {
-          console.warn("Max attempts reached, using fallback code");
-          const timestampNum = Date.now().toString().slice(-3);
-          return `REF${profileId.slice(0, 2).toUpperCase()}${timestampNum}`;
-        }
-      }
-    }
-
-    console.warn("Using ultimate fallback code");
-    const timestampNum = Date.now().toString().slice(-3);
-    return `REF${profileId.slice(0, 2).toUpperCase()}${timestampNum}`;
-  };
-
-  // const handleApprove = async (profile) => {
-  //   setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
-  //   try {
-  //     console.log(`Approving profile ${profile.id} for ${profile.fullName}`);
-  //     const docRef = doc(db, "ProfileRequests", profile.id);
-  //     const docSnap = await getDoc(docRef);
-
-  //     if (!docSnap.exists()) {
-  //       console.warn(`Profile ${profile.id} does not exist in ProfileRequests`);
-  //       alert("Profile no longer exists.");
-  //       return;
-  //     }
-
-  //     const data = docSnap.data();
-  //     console.log("Profile data:", data);
-
-  //     let generatedReferralCode;
-  //     try {
-  //       generatedReferralCode = await generateUniqueReferralCode(profile.id);
-  //       console.log(`Generated referral code: ${generatedReferralCode}`);
-  //     } catch (error) {
-  //       console.error("Failed to generate referral code:", error);
-  //       generatedReferralCode = `FB-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-  //       console.warn(`Using fallback referral code: ${generatedReferralCode}`);
-  //     }
-
-  //     if (!generatedReferralCode || generatedReferralCode.length < 6) {
-  //       console.error("Invalid referral code, using emergency fallback");
-  //       generatedReferralCode = `EM-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-  //     }
-
-  //     const updatedData = {
-  //       ...data,
-  //       generatedReferralCode,
-  //       approvalTimestamp: new Date().toISOString(),
-  //     };
-
-  //     console.log("Saving to Profiles with data:", updatedData);
-  //     try {
-  //       await setDoc(doc(db, "Profiles", profile.id), updatedData);
-  //       console.log(`Profile ${profile.id} saved to Profiles`);
-  //     } catch (error) {
-  //       console.error("Failed to save to Profiles:", error);
-  //       throw new Error(`Failed to save profile: ${error.message}`);
-  //     }
-
-  //     try {
-  //       await deleteDoc(docRef);
-  //       console.log(`Profile ${profile.id} deleted from ProfileRequests`);
-  //     } catch (error) {
-  //       console.error("Failed to delete from ProfileRequests:", error);
-  //       throw new Error(`Failed to delete profile: ${error.message}`);
-  //     }
-
-  //     const slug = data.username || `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
-  //     try {
-  //       console.log("Sending approval email with payload:", {
-  //         fullName: data.fullName,
-  //         email: data.email,
-  //         slug,
-  //         referred: data.referred,
-  //         referralCode: data.referralCode,
-  //         generatedReferralCode,
-  //       });
-  //       const response = await fetch("/api/send-profile-approved", {
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({
-  //           fullName: data.fullName,
-  //           email: data.email,
-  //           slug,
-  //           referred: data.referred,
-  //           referralCode: data.referralCode,
-  //           generatedReferralCode,
-  //         }),
-  //       });
-  //       if (!response.ok) {
-  //         console.error("Approval email API failed:", response.status);
-  //       } else {
-  //         console.log("Approval email sent successfully");
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to send approval email:", error);
-  //     }
-
-  //     fetchRequests();
-  //   } catch (error) {
-  //     console.error("Failed to approve profile:", error);
-  //     alert(`Error approving profile: ${error.message}`);
-  //   } finally {
-  //     setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: false }));
-  //   }
-  // };
-
   const handleApprove = async (profile) => {
-  setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
-  try {
-    console.log(`Approving profile ${profile.id} for ${profile.fullName}`);
-    const docRef = doc(db, "ProfileRequests", profile.id);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      console.warn(`Profile ${profile.id} does not exist in ProfileRequests`);
-      alert("Profile no longer exists.");
-      return;
-    }
-
-    const data = docSnap.data();
-    console.log("Profile data:", data);
-
-    let generatedReferralCode;
+    setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
     try {
-      generatedReferralCode = await generateUniqueReferralCode(profile.id);
-      console.log(`Generated referral code: ${generatedReferralCode}`);
-    } catch (error) {
-      console.error("Failed to generate referral code:", error);
-      generatedReferralCode = `FB-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-      console.warn(`Using fallback referral code: ${generatedReferralCode}`);
-    }
-
-    if (!generatedReferralCode || generatedReferralCode.length < 6) {
-      console.error("Invalid referral code, using emergency fallback");
-      generatedReferralCode = `EM-${profile.id.slice(0, 4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
-    }
-
-    const updatedData = {
-      ...data,
-      generatedReferralCode,
-      approvalTimestamp: new Date().toISOString(),
-    };
-
-    console.log("Saving to Profiles with data:", updatedData);
-    try {
-      await setDoc(doc(db, "Profiles", profile.id), updatedData);
-      console.log(`Profile ${profile.id} saved to Profiles`);
-    } catch (error) {
-      console.error("Failed to save to Profiles:", error);
-      throw new Error(`Failed to save profile: ${error.message}`);
-    }
-
-    try {
-      await deleteDoc(docRef);
-      console.log(`Profile ${profile.id} deleted from ProfileRequests`);
-    } catch (error) {
-      console.error("Failed to delete from ProfileRequests:", error);
-      throw new Error(`Failed to delete profile: ${error.message}`);
-    }
-
-    const slug = data.username || `${data.fullName.toLowerCase().replace(/\s+/g, '-')}-${profile.id.slice(0, 6)}`;
-    const username = data.username || data.fullName.toLowerCase().replace(/\s+/g, "");
-    try {
-      console.log("Sending approval email with payload:", {
-        profileId: profile.id,
-        fullName: data.fullName,
-        email: data.email,
-        slug,
-        generatedReferralCode,
-        username,
-      });
+      console.log(`Approving profile ${profile.id}...`);
+      
       const response = await fetch("/api/send-profile-approved", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          profileId: profile.id, // Add profileId
-          fullName: data.fullName,
-          email: data.email,
-          slug,
-          generatedReferralCode,
-          username, // Add username
+          profileId: profile.id,
         }),
       });
+
       const result = await response.json();
       if (!response.ok) {
-        console.error("Approval email API failed:", response.status, result);
-        throw new Error(result.error || "Failed to send approval email");
-      } else {
-        console.log("Approval email sent successfully");
+        throw new Error(result.error || "Failed to approve profile");
       }
-    } catch (error) {
-      console.error("Failed to send approval email:", error);
-      throw new Error(`Failed to send approval email: ${error.message}`);
-    }
 
-    fetchRequests();
-  } catch (error) {
-    console.error("Failed to approve profile:", error);
-    alert(`Error approving profile: ${error.message}`);
-  } finally {
-    setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: false }));
-  }
-};
+      console.log("Approval successful for profile:", profile.id);
+      await fetchRequests(); // Reload data to remove the request from the list
+    
+    } catch (error) {
+      console.error("Failed to approve profile:", error);
+      alert(`Error approving profile: ${error.message}`);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: false }));
+    }
+  };
+
   const handleDelete = async (profile) => {
     const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
     if (!confirm) return;
