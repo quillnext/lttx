@@ -242,10 +242,10 @@ export default function ProfilesTablePage() {
             {currentItems.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50 transition">
                 <td className="p-3 border text-gray-600">{p.timestamp}</td>
-                <td className="p-3 border text-gray-600">{p.generatedReferralCode}</td>
-                <td className="p-3 border font-medium"><span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-secondary2 border border-primary/20">
+                <td className="p-3 border text-gray-600"><span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-secondary2 border border-primary/20">
                         {p.profileType}
-                      </span><br/>
+                      </span><br/>{p.generatedReferralCode}</td>
+                <td className="p-3 border font-medium">
                       {p.fullName}
                       <br/><span className="font-light">{p.email}</span>
                       </td>
