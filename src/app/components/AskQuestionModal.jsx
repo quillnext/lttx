@@ -1,15 +1,15 @@
 
-
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, getFirestore, query, where, getDocs } from "firebase/firestore";
+import { collection, addDoc, getFirestore } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useSearchParams } from "next/navigation";
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -33,51 +33,33 @@ export default function AskQuestionModal({ expert, onClose }) {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
+  // Load user details
   useEffect(() => {
     const savedData = localStorage.getItem("userFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
+      console.log("AskQuestionModal: Loaded from localStorage:", parsedData);
       setName(parsedData.name || "");
       setEmail(parsedData.email || "");
       setPhone(parsedData.phone || "");
       setHasSubmitted(true);
-      setIsEmailVerified(true);
+      setIsEmailVerified(true); // Assume verified if previously submitted
     }
-
-    const fetchAgencies = async () => {
-        try {
-            const agenciesQuery = query(collection(db, "Profiles"), where("profileType", "==", "agency"));
-            const querySnapshot = await getDocs(agenciesQuery);
-            if (!querySnapshot.empty) {
-                const agencyData = querySnapshot.docs.map(doc => ({ value: doc.id, label: doc.data().fullName }));
-                setAgencies(agencyData);
-            }
-        } catch (error) {
-            console.error("Failed to fetch agencies:", error);
-            toast.error("Could not load agency list.");
-        }
-    };
-    fetchAgencies();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
+        console.log("AskQuestionModal: Auth user:", currentUser);
         setUser(currentUser);
         setName(currentUser.displayName || "");
         setEmail(currentUser.email || "");
         setPhone(currentUser.phoneNumber || "");
         setHasSubmitted(true);
-        setIsEmailVerified(true);
+        setIsEmailVerified(true); // Authenticated users skip OTP
       }
     });
 
     return () => unsubscribe();
   }, []);
-
-  // Update question
-  useEffect(() => {
-    console.log("AskQuestionModal: initialQuestion updated:", initialQuestion);
-    setQuestion(initialQuestion || "");
-  }, [initialQuestion]);
 
   // Clear on close
   useEffect(() => {
@@ -109,10 +91,15 @@ export default function AskQuestionModal({ expert, onClose }) {
       if (!phone.trim()) newErrors.phone = "Phone number is required.";
       else if (!/^\+?[1-9]\d{1,14}$/.test(phone)) newErrors.phone = "Invalid phone number.";
     }
-    if (referredByAgency === "Yes" && !selectedAgency) newErrors.agency = "Please select an agency.";
     if (!expert?.id) newErrors.form = "Expert profile ID is missing.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const validateEmailPayload = (payload) => {
+    const requiredFields = ["userEmail", "userName", "expertEmail", "expertName", "question", "userPhone"];
+    const missingFields = requiredFields.filter((field) => !payload[field] || payload[field].trim() === "");
+    return missingFields.length === 0 ? null : `Missing or empty fields: ${missingFields.join(", ")}`;
   };
 
   const handleSendOtp = async () => {
@@ -135,6 +122,7 @@ export default function AskQuestionModal({ expert, onClose }) {
         toast.error(errorData.error || "Failed to send OTP.");
       }
     } catch (error) {
+      console.error("Error sending OTP:", error);
       toast.error("Error sending OTP.");
     } finally {
       setLoading(false);
@@ -161,6 +149,7 @@ export default function AskQuestionModal({ expert, onClose }) {
         toast.error(data.error || "Invalid or expired OTP.");
       }
     } catch (error) {
+      console.error("Error verifying OTP:", error);
       toast.error("Error verifying OTP.");
     } finally {
       setLoading(false);
@@ -169,6 +158,7 @@ export default function AskQuestionModal({ expert, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("AskQuestionModal: handleSubmit called:", { question, name, email, phone, expert });
     if (!validateForm()) {
       toast.error("Please fill out all required fields correctly.");
       return;
@@ -176,29 +166,23 @@ export default function AskQuestionModal({ expert, onClose }) {
 
     setLoading(true);
     try {
-        const questionData = {
-            expertId: expert.id,
-            expertName: expert.fullName || "Unknown Expert",
-            expertEmail: expert.email || "no-email@placeholder.com",
-            question,
-            userName: name,
-            userEmail: email,
-            userPhone: phone,
-            status: "pending",
-            isPublic: false,
-            createdAt: new Date().toISOString(),
-            reply: null,
-        };
-      
-        if (referredByAgency === 'Yes' && selectedAgency) {
-            questionData.referredByAgencyId = selectedAgency.value;
-            questionData.referredByAgencyName = selectedAgency.label;
-        }
-
-      await addDoc(collection(db, "Questions"), questionData);
+      const docRef = await addDoc(collection(db, "Questions"), {
+        expertId: expert.id,
+        expertName: expert.fullName || "Unknown Expert",
+        expertEmail: expert.email || "no-email@placeholder.com",
+        question,
+        userName: name,
+        userEmail: email,
+        userPhone: phone,
+        status: "pending",
+        isPublic: false,
+        createdAt: new Date().toISOString(),
+        reply: null,
+      });
 
       if (!hasSubmitted && !user) {
         const userData = { name, email, phone, purpose: "General Query" };
+        console.log("AskQuestionModal: Saving user data to localStorage:", userData);
         localStorage.setItem("userFormData", JSON.stringify(userData));
         setHasSubmitted(true);
       }
@@ -211,6 +195,7 @@ export default function AskQuestionModal({ expert, onClose }) {
           expertName: expert.fullName || "Unknown Expert",
           question,
           userPhone: phone,
+          keywords: urlKeywords, // Use exact URL keywords
         };
 
         console.log("AskQuestionModal: Email payload:", emailPayload);
@@ -247,8 +232,11 @@ export default function AskQuestionModal({ expert, onClose }) {
       setErrors({});
 
       setSuccess(true);
-      setTimeout(() => onClose(), 2000);
+      setTimeout(() => {
+        onClose();
+      }, 2000);
     } catch (error) {
+      console.error("AskQuestionModal: Error submitting question:", error.message);
       toast.error(`Failed to submit question: ${error.message}`);
     } finally {
       setLoading(false);
@@ -257,7 +245,7 @@ export default function AskQuestionModal({ expert, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-gray-900/30 to-black/30 flex items-center justify-center z-50">
-      <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-6 w-full max-w-lg relative border border-white/10 overflow-y-auto">
+      <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-6 w-full max-w-lg relative border border-white/10 overflow-y-auto h-auto max-h-[90vh]">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors text-xl font-bold"
@@ -265,7 +253,7 @@ export default function AskQuestionModal({ expert, onClose }) {
           ✕
         </button>
         <h2 className="text-2xl font-bold bg-clip-text text-white">
-          {isAgency ? `Request a Quote from ${expert?.fullName}` : `Ask a Question to ${expert?.fullName || "Expert"}`}
+          Ask a Question to {expert?.fullName || "Expert"}
         </h2>
         {success ? (
           <p className="text-green-400 text-center font-medium text-lg animate-pulse">
@@ -275,7 +263,7 @@ export default function AskQuestionModal({ expert, onClose }) {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
               <label className="block text-sm font-semibold text-white mb-2">
-                {isAgency ? 'Your Request' : 'Your Question'}
+                Your Question
               </label>
               <textarea
                 value={question}
@@ -284,34 +272,22 @@ export default function AskQuestionModal({ expert, onClose }) {
                   errors.question ? "border-red-500" : "border-white/20"
                 }`}
                 rows="5"
-                placeholder={isAgency ? "Please describe your travel plans, including destination, number of travelers, duration, and estimated budget." : "Type your question here..."}
+                placeholder="Type your question here..."
                 required
               />
               {errors.question && (
                 <p className="text-red-400 text-sm mt-2">{errors.question}</p>
               )}
-              {/* Display keywords below the input */}
-              {(urlKeywords.length > 0 || (urlQuestion && keywords.length > 0)) && (
+              {urlKeywords.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {urlKeywords.length > 0 ? (
-                    urlKeywords.map((keyword, index) => (
-                      <span
-                        key={index}
-                        className="bg-[#F4D35E] text-[#36013F] px-2 py-1 rounded-full text-sm font-medium"
-                      >
-                        {keyword}
-                      </span>
-                    ))
-                  ) : keywords.length > 0 ? (
-                    keywords.map((keyword, index) => (
-                      <span
-                        key={index}
-                        className="bg-[#F4D35E] text-[#36013F] px-2 py-1 rounded-full text-sm font-medium"
-                      >
-                        {keyword}
-                      </span>
-                    ))
-                  ) : null}
+                  {urlKeywords.map((keyword, index) => (
+                    <span
+                      key={index}
+                      className="bg-[#F4D35E] text-[#36013F] px-2 py-1 rounded-full text-sm font-medium"
+                    >
+                      {keyword}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
@@ -405,42 +381,6 @@ export default function AskQuestionModal({ expert, onClose }) {
                   )}
                 </div>
               </>
-            )}
-            <div className="pt-2">
-              <label className="block text-sm font-semibold text-white/90 mb-2">Referred by an agency?</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-white">
-                  <input type="radio" name="referredByAgency" value="Yes" checked={referredByAgency === 'Yes'} onChange={(e) => setReferredByAgency(e.target.value)} />
-                  Yes
-                </label>
-                <label className="flex items-center gap-2 text-white">
-                  <input type="radio" name="referredByAgency" value="No" checked={referredByAgency === 'No'} onChange={(e) => setReferredByAgency(e.target.value)} />
-                  No
-                </label>
-              </div>
-            </div>
-            {referredByAgency === 'Yes' && (
-              <div>
-                <label className="block text-sm font-semibold text-white/90 mb-2">Select Agency</label>
-                <Select
-                  options={agencies}
-                  value={selectedAgency}
-                  onChange={setSelectedAgency}
-                  placeholder="Select an agency..."
-                  styles={{
-                      control: (base) => ({
-                        ...base,
-                        background: "rgba(255, 255, 255, 0.05)",
-                        borderColor: "rgba(255, 255, 255, 0.2)",
-                      }),
-                      singleValue: (base) => ({ ...base, color: "white" }),
-                      input: (base) => ({...base, color: "white"}),
-                      menu: (base) => ({...base, color: "black"}),
-                  }}
-                  classNamePrefix="react-select"
-                />
-                {errors.agency && <p className="text-red-400 text-sm mt-2">{errors.agency}</p>}
-              </div>
             )}
             {errors.form && (
               <p className="text-red-400 text-sm mt-2">{errors.form}</p>
