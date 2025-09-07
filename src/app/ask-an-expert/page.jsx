@@ -44,6 +44,12 @@ export default function ExpertsDirectory() {
     return searchParams.get("question") || "";
   }, [searchParams]);
 
+  const getYears = (yearsStr) => {
+    if (!yearsStr || typeof yearsStr !== 'string') return "0+";
+    const match = yearsStr.match(/\d+\+?/);
+    return match ? match[0] : "0+";
+  };
+  
   const toSentenceCase = (input) => {
     if (!input) return "";
     if (Array.isArray(input)) {
@@ -208,6 +214,8 @@ export default function ExpertsDirectory() {
             title: toSentenceCase(exp.title),
           })) : [],
           email: data.email || "",
+          profileType: data.profileType || 'expert',
+          yearsActive: data.yearsActive || '',
         };
       });
 
@@ -467,9 +475,14 @@ export default function ExpertsDirectory() {
                     />
                   </button>
                   <div className="flex-1">
-                    <h2 className="text-base font-semibold text-card-foreground">
-                      {expert.fullName || "Unknown Expert"}
-                    </h2>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h2 className="text-base font-semibold text-card-foreground">
+                        {expert.fullName || "Unknown Expert"}
+                      </h2>
+                      <span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        {expert.profileType}
+                      </span>
+                    </div>
                     <p className="text-xs text-muted-foreground line-clamp-2">
                       {truncateTagline(expert.tagline) || "No tagline provided"}
                     </p>
@@ -477,7 +490,7 @@ export default function ExpertsDirectory() {
                   <div className="flex justify-center items-center py-1 space-y-0.5">
                     <div className="text-secondary border-2 border-secondary rounded-lg px-2 w-[48px] flex flex-col items-center py-1">
                       <h1 className="font-bold text-center text-base text-secondary-foreground">
-                        {calculateTotalExperience(expert.experience) || "0+"}
+                        {expert.profileType === 'agency' ? getYears(expert.yearsActive) : (calculateTotalExperience(expert.experience) || "0+")}
                       </h1>
                       <span className="font-semibold text-xs text-center text-secondary-foreground">YEARS</span>
                     </div>
@@ -545,7 +558,14 @@ export default function ExpertsDirectory() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 className="space-y-4"
               >
-                <div className="animate-gradientShift bg-black/30 rounded-3xl shadow-lg p-6 text-center relative">
+                <div
+                  className={`${
+                    expert.profileType === 'agency' ? 'animate-gradientShift2' : 'animate-gradientShift'
+                  } text-primary-foreground rounded-3xl shadow-lg p-6 text-center relative`}
+                >
+                  <span className="absolute top-2 left-2 bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm uppercase">
+                    {expert.profileType === 'agency' ? 'Travel Agency' : 'Expert'}
+                  </span>
                   <div className="mb-4 relative">
                     <button
                       onClick={() => openLightbox(expert.photo && expert.photo !== "" ? expert.photo : "/default.jpg")}
@@ -563,30 +583,32 @@ export default function ExpertsDirectory() {
                     <div className="flex justify-center items-center py-1 absolute top-0 right-0 space-y-0.5">
                       <div className="text-secondary border-2 border-white rounded-lg px-2 w-[48px] flex flex-col items-center">
                         <h1 className="font-bold text-center text-base text-white">
-                          {calculateTotalExperience(expert.experience) || "0+"}
+                          {expert.profileType === 'agency' ? getYears(expert.yearsActive) : (calculateTotalExperience(expert.experience) || "0+")}
                         </h1>
                         <span className="font-semibold text-xs text-center text-white">YEARS</span>
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm mt-1 text-primary-foreground">@{expert.username || "unknown"}</p>
+                  <p className="text-sm mt-1">@{expert.username || "unknown"}</p>
                   <h1
-                    className="text-xl font-semibold text-primary-foreground"
+                    className="text-xl font-semibold"
                     style={{ fontFamily: "'DM Serif Display', serif" }}
                   >
                     {expert.fullName || "Unknown Expert"}
                   </h1>
                   {expert.title && (
-                    <p className="text-sm mt-1 text-primary-foreground">{expert.title}</p>
+                    <p className="text-sm mt-1">{expert.title}</p>
                   )}
                   {expert.tagline && (
-                    <p className="text-sm mt-1 text-primary-foreground">{truncateTagline(expert.tagline) || "No tagline provided"}</p>
+                    <p className="text-sm mt-1">{truncateTagline(expert.tagline) || "No tagline provided"}</p>
                   )}
-                  <span className="inline-flex items-center gap-1 bg-secondary text-secondary-foreground text-xs font-medium px-3 py-1 mt-2 rounded-full">
-                    <FaCheckCircle className="w-4 h-4" />
-                    Verified by Xmytravel
-                  </span>
-                  <div className="mt-4 text-sm text-left space-y-2 text-primary-foreground">
+                  <div className="mt-2 flex justify-center items-center gap-2">
+                    <span className="inline-flex items-center gap-1 bg-secondary text-secondary-foreground text-xs font-medium px-3 py-1 rounded-full">
+                      <FaCheckCircle className="w-4 h-4" />
+                      Verified by Xmytravel
+                    </span>
+                  </div>
+                  <div className="mt-4 text-sm text-left space-y-2">
                     {expert.location && (
                       <p className="flex items-center gap-2">
                         <FaMapMarkerAlt className="w-4 h-4 text-secondary border border-secondary rounded-[50%]" />

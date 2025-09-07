@@ -49,6 +49,7 @@ export default function ProfilesTablePage() {
         list.push({
           id: docSnap.id,
           fullName: data.fullName,
+           profileType: data.profileType || 'expert',
           username: data.username,
           generatedReferralCode: data.generatedReferralCode,
           referralCode: data.referralCode,
@@ -231,7 +232,6 @@ export default function ProfilesTablePage() {
               <th className="p-3 border">Date</th>
               <th className="p-3 border">Own Referral Code</th>
               <th className="p-3 border">Name</th>
-              <th className="p-3 border">Email</th>
               <th className="p-3 border">Location</th>
               <th className="p-3 border">Referred By (Code)</th>
               <th className="p-3 border">Visibility</th>
@@ -242,9 +242,13 @@ export default function ProfilesTablePage() {
             {currentItems.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50 transition">
                 <td className="p-3 border text-gray-600">{p.timestamp}</td>
-                <td className="p-3 border text-gray-600">{p.generatedReferralCode}</td>
-                <td className="p-3 border font-medium">{p.fullName}</td>
-                <td className="p-3 border">{p.email}</td>
+                <td className="p-3 border text-gray-600"><span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-secondary2 border border-primary/20">
+                        {p.profileType}
+                      </span><br/>{p.generatedReferralCode}</td>
+                <td className="p-3 border font-medium">
+                      {p.fullName}
+                      <br/><span className="font-light">{p.email}</span>
+                      </td>
                 <td className="p-3 border">{p.location}</td>
                 <td className="p-3 border">{p.referralCode}</td>
                 <td className="p-3 border">
