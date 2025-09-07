@@ -1,5 +1,3 @@
-
-// src/app/utils/sendApprovalNotificationEmail.js
 import { sendEmail } from "@/lib/email";
 
 export async function sendApprovalNotificationEmail({ fullName, email, slug, generatedReferralCode, username, password }) {
@@ -8,16 +6,13 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
   const profileUrl = `https://xmytravel.com/experts/${slug}`;
   const year = new Date().getFullYear();
 
-  // Conditionally include the password in the email
-  const loginCredentialsSection = password
-    ? `
-      <p><strong>Your Login Credentials:</strong></p>
-      <p>Username: ${username}<br>Email: ${email}<br> Password: ${password}</p>
-      <p>Please use these credentials to log in to your dashboard at <a href="https://xmytravel.com/expert-login">https://xmytravel.com/expert-login</a>.</p>
-    `
-    : `
-      <p>Your profile has been approved! You can log in to your dashboard using your existing credentials at <a href="https://xmytravel.com/expert-login">https://xmytravel.com/expert-login</a>.</p>
-    `;
+  // Define login credentials section without password
+  const loginCredentialsSection = `
+    <p>Your profile has been approved! You can log in to your dashboard at <a href="https://xmytravel.com/expert-login">https://xmytravel.com/expert-login</a>.</p>
+    <p><strong>Your Login Details:</strong></p>
+    <p>Username: ${username}<br>Email: ${email}</p>
+    <p>If you are a new user, please use the <a href="https://xmytravel.com/expert-forgot-password">password reset link</a> to set your password, or contact support at <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>.</p>
+  `;
 
   const html = `
     <!DOCTYPE html>

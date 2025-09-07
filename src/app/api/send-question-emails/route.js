@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.in',
+  host: "smtp.zoho.in",
   port: 465,
   secure: true,
   auth: {
@@ -146,24 +146,27 @@ export async function POST(request) {
       referredByAgencyName,
     } = await request.json();
 
+    // Validate required fields
     if (!userEmail || !userName || !expertEmail || !expertName || !question || !userPhone) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Missing required fields: userEmail, userName, expertEmail, expertName, question, or userPhone" },
         { status: 400 }
       );
     }
 
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(userEmail) || !emailRegex.test(expertEmail)) {
       return NextResponse.json(
-        { error: "Invalid email address" },
+        { error: "Invalid email address for user or expert" },
         { status: 400 }
       );
     }
 
+    // Validate email configuration
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.ADMIN_EMAIL) {
       return NextResponse.json(
-        { error: "Email configuration missing" },
+        { error: "Email configuration missing in environment variables" },
         { status: 500 }
       );
     }
@@ -228,9 +231,9 @@ export async function POST(request) {
       }),
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json({ success: true, message: "Emails sent successfully" }, { status: 200 });
   } catch (error) {
     console.error("Error sending emails:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: `Failed to send emails: ${error.message}` }, { status: 500 });
   }
 }

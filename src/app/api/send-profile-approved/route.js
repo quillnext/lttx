@@ -1,4 +1,3 @@
-
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { sendApprovalNotificationEmail } from "@/app/utils/sendApprovalNotificationEmail";
 import { NextResponse } from "next/server";
@@ -21,46 +20,72 @@ export async function POST(req) {
   try {
     body = await req.json();
   } catch (error) {
+    console.error("Invalid request body:", error.message);
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
   const { profileId } = body;
 
   if (!profileId) {
+    console.error("Missing profileId in request body");
     return NextResponse.json({ error: "Missing required profileId" }, { status: 400 });
   }
 
   try {
-    // 1. Read the request from `ProfileRequests` collection.
+    // 1. Read the request from `ProfileRequests` collection
     const requestProfileRef = adminDb.collection("ProfileRequests").doc(profileId);
     const requestProfileDoc = await requestProfileRef.get();
-    
+
     if (!requestProfileDoc.exists) {
       console.error(`Profile request not found with ID: ${profileId}`);
       return NextResponse.json({ error: "Profile request not found" }, { status: 404 });
     }
 
     const requestProfileData = requestProfileDoc.data();
-    
-    // 2. Explicitly destructure all expected fields and validate required ones.
-    const { 
-        email, fullName, username, phone, profileType, tagline, location,
-        languages, responseTime, pricing, about, services, regions,
-        expertise, photo, referred, referralCode, generatedReferralCode,
-        dateOfBirth, yearsActive, experience, certifications, licenseNumber, leadId
+    console.log("Found profile request data:", requestProfileData);
+
+    // 2. Destructure and validate required fields
+    const {
+      email,
+      fullName,
+      username,
+      phone,
+      profileType,
+      tagline,
+      location,
+      languages,
+      responseTime,
+      pricing,
+      about,
+      services,
+      regions,
+      expertise,
+      photo,
+      referred,
+      referralCode,
+      generatedReferralCode,
+      dateOfBirth,
+      yearsActive,
+      experience,
+      certifications,
+      licenseNumber,
+      leadId,
     } = requestProfileData;
-    
+
     const requiredFields = { email, fullName, username, phone };
     const missingFields = Object.entries(requiredFields)
-        .filter(([_, value]) => !value)
-        .map(([key]) => key);
+      .filter(([_, value]) => !value)
+      .map(([key]) => key);
 
     if (missingFields.length > 0) {
-        return NextResponse.json({ error: `Profile request is missing required fields: ${missingFields.join(', ')}` }, { status: 400 });
+      console.error(`Missing required fields: ${missingFields.join(", ")}`);
+      return NextResponse.json(
+        { error: `Profile request is missing required fields: ${missingFields.join(", ")}` },
+        { status: 400 }
+      );
     }
-    console.log("Found profile request data for:", email);
 
-    // 3. Create/Get Firebase Auth user.
+    // 3. Create/Get Firebase Auth user
     let userRecord;
     let password = null;
 
@@ -85,12 +110,11 @@ export async function POST(req) {
       }
     }
 
-    // 4. Construct the final profile explicitly to ensure data integrity.
+    // 4. Construct and save the final profile
     const newProfileRef = adminDb.collection("Profiles").doc(userRecord.uid);
-    
+
     const finalProfileData = {
-      // Basic Info
-      profileType: profileType || 'expert',
+      profileType: profileType || "expert",
       username,
       fullName,
       email,
@@ -104,52 +128,59 @@ export async function POST(req) {
       pricing,
       about,
       photo,
-      // Services & Expertise
       services,
       regions,
       expertise,
-      // Experience & Credentials
       experience,
       certifications,
       licenseNumber,
-      // Referral Info
       referred,
       referralCode,
       generatedReferralCode,
       leadId,
-      // System fields
       status: "approved",
+      isPublic: true,
       userId: userRecord.uid,
       forcePasswordChange: !!password,
       approvalTimestamp: new Date().toISOString(),
     };
-    
-    // Remove any undefined fields to keep Firestore data clean
-    Object.keys(finalProfileData).forEach(key => finalProfileData[key] === undefined && delete finalProfileData[key]);
-    
+
+    // Remove undefined fields
+    Object.keys(finalProfileData).forEach(
+      (key) => finalProfileData[key] === undefined && delete finalProfileData[key]
+    );
+
     console.log("Saving final profile data to Profiles collection:", finalProfileData);
     await newProfileRef.set(finalProfileData);
     console.log(`Successfully created profile in 'Profiles' with ID: ${userRecord.uid}`);
 
-    // 5. Delete the request from `ProfileRequests`.
+    // 5. Delete the request from `ProfileRequests`
     await requestProfileRef.delete();
     console.log(`Successfully deleted profile request with ID: ${profileId}`);
 
-    // 6. Send notification email.
-    const slug = username.toLowerCase().replace(/\s+/g, '-');
+    // 6. Validate email parameters and send notification
+    if (!username || !generatedReferralCode) {
+      console.warn(
+        `Missing username or generatedReferralCode for email: ${email}`,
+        { username, generatedReferralCode }
+      );
+      throw new Error("Missing username or generatedReferralCode for notification email");
+    }
+
+    const slug = username.toLowerCase().replace(/\s+/g, "-");
     await sendApprovalNotificationEmail({
-        fullName: fullName,
-        email: email,
-        slug,
-        generatedReferralCode: generatedReferralCode,
-        username: username,
-        password, // Will be null if user already existed
+      fullName,
+      email,
+      slug,
+      generatedReferralCode,
+      username,
+      password, // Pass password (null for existing users)
     });
     console.log(`Approval email process initiated for ${email}`);
 
     return NextResponse.json({ success: true, newProfileId: userRecord.uid }, { status: 200 });
   } catch (error) {
-    console.error("Error in send-profile-approved:", error.message, error.stack);
+    console.error("Error in profile approval:", error.message, error.stack);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
