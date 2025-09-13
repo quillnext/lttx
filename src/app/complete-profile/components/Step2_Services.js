@@ -30,13 +30,37 @@ const expertiseOptions = [
 ];
 
 const regionOptions = [
-  { value: 'North America', label: 'North America' },
-  { value: 'South America', label: 'South America' },
-  { value: 'Europe', label: 'Europe' },
-  { value: 'Asia', label: 'Asia' },
-  { value: 'Africa', label: 'Africa' },
-  { value: 'Australia', label: 'Australia' },
-  { value: 'Antarctica', label: 'Antarctica' },
+  { value: 'north-america', label: 'North America' },
+  { value: 'central-america', label: 'Central America' },
+  { value: 'caribbean', label: 'Caribbean' },
+  { value: 'south-america', label: 'South America' },
+
+  { value: 'western-europe', label: 'Western Europe' },
+  { value: 'eastern-europe', label: 'Eastern Europe' },
+  { value: 'northern-europe', label: 'Northern Europe' },
+  { value: 'southern-europe', label: 'Southern Europe' },
+
+  { value: 'south-asia', label: 'South Asia' },
+  { value: 'southeast-asia', label: 'Southeast Asia' },
+  { value: 'east-asia', label: 'East Asia' },
+  { value: 'central-asia', label: 'Central Asia' },
+  { value: 'west-asia', label: 'West Asia' },
+
+  { value: 'north-africa', label: 'North Africa' },
+  { value: 'west-africa', label: 'West Africa' },
+  { value: 'east-africa', label: 'East Africa' },
+  { value: 'central-africa', label: 'Central Africa' },
+  { value: 'southern-africa', label: 'Southern Africa' },
+
+  { value: 'australia-nz', label: 'Australia & New Zealand' },
+  { value: 'pacific-islands', label: 'Pacific Islands' },
+  { value: 'antarctica', label: 'Antarctica' },
+
+  
+  { value: 'mena', label: 'MENA' },
+  { value: 'emea', label: 'EMEA' },
+  { value: 'apac', label: 'APAC' },
+  { value: 'latam', label: 'LATAM' },
 ];
 
 export default function Step2_Services({
