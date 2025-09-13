@@ -1,3 +1,5 @@
+
+
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { sendApprovalNotificationEmail } from "@/app/utils/sendApprovalNotificationEmail";
 import { NextResponse } from "next/server";
@@ -44,7 +46,7 @@ export async function POST(req) {
     const requestProfileData = requestProfileDoc.data();
     console.log("Found profile request data:", requestProfileData);
 
-    // 2. Destructure and validate required fields
+    // 2. Destructure and validate ALL required fields including agency-specific fields
     const {
       email,
       fullName,
@@ -69,6 +71,11 @@ export async function POST(req) {
       experience,
       certifications,
       licenseNumber,
+      certificates,
+      officePhotos,
+      registeredAddress,
+      website,
+      employeeCount,
       leadId,
     } = requestProfileData;
 
@@ -110,34 +117,37 @@ export async function POST(req) {
       }
     }
 
-    // 4. Construct and save the final profile
-    const newProfileRef = adminDb.collection("Profiles").doc(userRecord.uid);
-
+    // 4. Construct and save the final profile with ALL fields
     const finalProfileData = {
       profileType: profileType || "expert",
       username,
       fullName,
       email,
       phone,
-      dateOfBirth,
-      yearsActive,
-      tagline,
-      location,
-      languages,
-      responseTime,
-      pricing,
-      about,
-      photo,
-      services,
-      regions,
-      expertise,
-      experience,
-      certifications,
-      licenseNumber,
-      referred,
-      referralCode,
+      dateOfBirth: dateOfBirth || '',
+      yearsActive: yearsActive || '',
+      tagline: tagline || '',
+      location: location || '',
+      languages: Array.isArray(languages) ? languages : [],
+      responseTime: responseTime || '',
+      pricing: pricing || '',
+      about: about || '',
+      photo: photo || '',
+      services: Array.isArray(services) ? services : [],
+      regions: Array.isArray(regions) ? regions : [],
+      expertise: Array.isArray(expertise) ? expertise : [],
+      experience: Array.isArray(experience) ? experience : [],
+      certifications: certifications || '',
+      licenseNumber: licenseNumber || '',
+      referred: referred || 'No',
+      referralCode: referred === 'Yes' ? referralCode : null,
       generatedReferralCode,
-      leadId,
+      leadId: leadId || null,
+      certificates: Array.isArray(certificates) ? certificates : [],
+      officePhotos: Array.isArray(officePhotos) ? officePhotos : [],
+      registeredAddress: registeredAddress || '',
+      website: website || '',
+      employeeCount: employeeCount || '',
       status: "approved",
       isPublic: true,
       userId: userRecord.uid,
@@ -151,6 +161,7 @@ export async function POST(req) {
     );
 
     console.log("Saving final profile data to Profiles collection:", finalProfileData);
+    const newProfileRef = adminDb.collection("Profiles").doc(userRecord.uid);
     await newProfileRef.set(finalProfileData);
     console.log(`Successfully created profile in 'Profiles' with ID: ${userRecord.uid}`);
 

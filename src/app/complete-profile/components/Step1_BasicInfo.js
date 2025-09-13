@@ -1,22 +1,18 @@
 import dynamic from 'next/dynamic';
 
-// Dynamically import components with your new .then() logic and the corrected .catch() block
+// Dynamically import components with error handling
 const loadComponent = (importFn, name) =>
   dynamic(
     () =>
       importFn()
-        .then((mod) => {
-          // This ensures compatibility with modules that may not have a default export
-          return mod.default || mod;
-        })
+        .then((mod) => mod.default || mod)
         .catch((err) => {
           console.error(`Failed to load ${name}:`, err);
-          // FIX: The error component must be returned inside a module-like object
-          return { default: () => <div className="text-red-500">Error loading {name} component.</div> };
+          return { default: () => <div className="text-red-500">Error loading ${name} component.</div> };
         }),
     {
       ssr: false,
-      loading: () => <div>Loading {name}...</div>,
+      loading: () => <div>Loading ${name}...</div>,
     }
   );
 
@@ -24,7 +20,6 @@ const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInpu
 const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
 const Select = loadComponent(() => import('react-select'), "Select");
 const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
-
 
 export default function Step1_BasicInfo({
   formData,
@@ -247,5 +242,5 @@ export default function Step1_BasicInfo({
         </div>
       </div>
     </div>
-  )
+  );
 }

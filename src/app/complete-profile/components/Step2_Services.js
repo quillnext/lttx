@@ -1,20 +1,22 @@
-
 import dynamic from 'next/dynamic';
 
 const loadComponent = (importFn, name) =>
   dynamic(
     () =>
-      importFn().catch((err) => {
-        console.error(`Failed to load ${name}:`, err);
-        return () => <div className="text-red-500">Error loading {name} component.</div>;
-      }),
+      importFn()
+        .then((mod) => mod.default || mod)
+        .catch((err) => {
+          console.error(`Failed to load ${name}:`, err);
+          return { default: () => <div className="text-red-500">Error loading ${name} component.</div> };
+        }),
     {
       ssr: false,
-      loading: () => <div>Loading {name}...</div>,
+      loading: () => <div>Loading ${name}...</div>,
     }
   );
 
 const CreatableSelect = loadComponent(() => import('react-select/creatable'), 'CreatableSelect');
+const Select = loadComponent(() => import('react-select'), 'Select');
 
 const expertiseOptions = [
   { value: 'Visa and Documentation Services', label: 'Visa and Documentation Services' },
@@ -27,6 +29,16 @@ const expertiseOptions = [
   { value: 'Luxury Cruise Trip Planning', label: 'Luxury Cruise Trip Planning' },
 ];
 
+const regionOptions = [
+  { value: 'North America', label: 'North America' },
+  { value: 'South America', label: 'South America' },
+  { value: 'Europe', label: 'Europe' },
+  { value: 'Asia', label: 'Asia' },
+  { value: 'Africa', label: 'Africa' },
+  { value: 'Australia', label: 'Australia' },
+  { value: 'Antarctica', label: 'Antarctica' },
+];
+
 export default function Step2_Services({
   formData,
   errors,
@@ -36,12 +48,14 @@ export default function Step2_Services({
   removeField,
   addField,
   selectedExpertise,
+  setSelectedExpertise,
   handleExpertiseChange,
   handleExpertiseKeyDown,
   addExpertise,
   removeExpertise,
 }) {
   const { profileType } = formData;
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-semibold text-[var(--primary)]">
@@ -62,7 +76,7 @@ export default function Step2_Services({
               onChange={e => handleArrayChange(index, 'services', e.target.value)}
             />
             {formData.services.length > 1 && (
-               <button
+              <button
                 type="button"
                 className="text-red-500 text-sm hover:text-red-700"
                 onClick={() => removeField('services', index)}
@@ -75,100 +89,83 @@ export default function Step2_Services({
         <button
           type="button"
           onClick={() => addField('services')}
-          className="text-sm text-[var(--primary)] hover:underline mt-2"
+          className="mt-2 text-sm text-[var(--primary)] hover:text-gray-800"
         >
-          + Add More
+          + Add another service
         </button>
         {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
+      </div>
+      {/* Regions */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {profileType === 'expert' ? 'Regions I Can Help With' : 'Regions Served'}
+        </label>
+        <Select
+          instanceId="region-select"
+          isMulti
+          options={regionOptions}
+          value={regionOptions.filter(option => formData.regions.includes(option.value))}
+          onChange={selected => {
+            const values = selected ? selected.map(opt => opt.value) : [];
+            if (values.length > 5) {
+              setErrors(prev => ({ ...prev, regions: 'You can select up to 5 regions.' }));
+              return;
+            }
+            setFormData(prev => ({ ...prev, regions: values }));
+            setErrors(prev => ({ ...prev, regions: '' }));
+          }}
+          placeholder="Select up to 5 regions (e.g., Europe, Asia)"
+          className={`w-full ${errors.regions ? 'border-red-500' : ''}`}
+          classNamePrefix="react-select"
+        />
+        {errors.regions && <p className="text-sm text-red-600 mt-1">{errors.regions}</p>}
       </div>
       {/* Expertise */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          {profileType === 'expert' ? 'Expertise Areas (Up to 5)' : 'Specialisations (Up to 5)'}
+          {profileType === 'expert' ? 'Areas of Expertise' : 'Specialisations'}
         </label>
-        <div className="flex gap-2 mb-2">
+        <div className="flex gap-2 items-center">
           <CreatableSelect
             instanceId="expertise-select"
             options={expertiseOptions}
             value={selectedExpertise}
             onChange={handleExpertiseChange}
             onKeyDown={handleExpertiseKeyDown}
-            placeholder="Select or type expertise (e.g., Adventure Travel)"
-            className={`w-full ${errors.expertise ? 'border-red-500' : ''}`}
+            placeholder="Select or type expertise (e.g., Visa Assistance)"
+            className="w-full"
             classNamePrefix="react-select"
-            formatCreateLabel={inputValue => `Add "${inputValue}"`}
+            isClearable
           />
           <button
             type="button"
-            className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer"
             onClick={addExpertise}
-            disabled={!selectedExpertise}
+            className="px-4 py-2 text-sm font-semibold text-white bg-[var(--primary)] rounded-xl hover:bg-opacity-90"
           >
             Add
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {formData.expertise.map(exp => (
-            <span
-              key={exp}
-              className="bg-[var(--primary)] text-white px-2 py-1 rounded-full text-sm flex items-center"
-            >
-              {exp}
-              <button type="button" className="ml-2 text-white" onClick={() => removeExpertise(exp)}>
-                ✕
-              </button>
-            </span>
-          ))}
-        </div>
+        {formData.expertise.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {formData.expertise.map((exp, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 px-3 py-1 bg-[var(--primary)] text-white rounded-full text-sm"
+              >
+                {exp}
+                <button
+                  type="button"
+                  onClick={() => removeExpertise(exp)}
+                  className="text-white hover:text-gray-200"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
       </div>
-      {/* Regions */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {profileType === 'expert' ? 'Regions You Specialize In' : 'Destination Specialisations'}
-        </label>
-        <select
-          multiple
-          className={`w-full px-4 py-3 border rounded-xl ${errors.regions ? 'border-red-500' : ''}`}
-          onChange={e => {
-            const options = Array.from(e.target.selectedOptions).map(o => o.value);
-            if (options.length > 5) {
-              setErrors(prev => ({ ...prev, regions: 'You can select up to 5 regions.' }));
-              return;
-            }
-            setFormData(prev => ({ ...prev, regions: options }));
-            setErrors(prev => ({ ...prev, regions: '' }));
-          }}
-          value={formData.regions}
-        >
-          <option value="south-asia">South Asia</option>
-          <option value="southeast-asia">Southeast Asia</option>
-          <option value="east-asia">East Asia</option>
-          <option value="central-asia">Central Asia</option>
-          <option value="west-asia">West Asia</option>
-          <option value="north-africa">North Africa</option>
-          <option value="west-africa">West Africa</option>
-          <option value="east-africa">East Africa</option>
-          <option value="central-africa">Central Africa</option>
-          <option value="southern-africa">Southern Africa</option>
-          <option value="north-america">North America</option>
-          <option value="central-america">Central America</option>
-          <option value="caribbean">Caribbean</option>
-          <option value="south-america">South America</option>
-          <option value="western-europe">Western Europe</option>
-          <option value="eastern-europe">Eastern Europe</option>
-          <option value="northern-europe">Northern Europe</option>
-          <option value="southern-europe">Southern Europe</option>
-          <option value="australia-nz">Australia & New Zealand</option>
-          <option value="pacific-islands">Pacific Islands</option>
-          <option value="mena">MENA</option>
-          <option value="emea">EMEA</option>
-          <option value="apac">APAC</option>
-          <option value="latam">LATAM</option>
-        </select>
-        <p className="text-sm text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select up to 5 regions</p>
-        {errors.regions && <p className="text-sm text-red-600 mt-1">{errors.regions}</p>}
-      </div>
     </div>
-  )
+  );
 }

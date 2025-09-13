@@ -1,4 +1,6 @@
 
+
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -20,10 +22,12 @@ import Step3_Experience from './components/Step3_Experience';
 const loadComponent = (importFn, name) =>
   dynamic(
     () =>
-      importFn().catch((err) => {
-        console.error(`Failed to load ${name}:`, err);
-        return () => <div>Error loading ${name} component.</div>;
-      }),
+      importFn()
+        .then((mod) => mod.default || mod)
+        .catch((err) => {
+          console.error(`Failed to load ${name}:`, err);
+          return { default: () => <div className="text-red-500">Error loading ${name} component.</div> };
+        }),
     {
       ssr: false,
       loading: () => <div>Loading ${name}...</div>,
@@ -66,6 +70,11 @@ export default function CompleteProfile() {
     licenseNumber: '',
     referred: 'No',
     referralCode: '',
+    certificates: [],
+    officePhotos: [],
+    registeredAddress: '',
+    website: '',
+    employeeCount: '',
   });
   const [originalProfile, setOriginalProfile] = useState(null);
   const [errors, setErrors] = useState({});
@@ -83,6 +92,8 @@ export default function CompleteProfile() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [certificatePreviews, setCertificatePreviews] = useState([]);
+  const [officePhotoPreviews, setOfficePhotoPreviews] = useState([]);
 
   useEffect(() => {
     const loadCSS = (href, fallback) => {
@@ -172,7 +183,7 @@ export default function CompleteProfile() {
     fetchCities();
     fetchLanguages();
   }, []);
-  
+
   useEffect(() => {
     if (formData.location && cityOptions.length > 0 && !cityOptions.some(option => option.value === formData.location)) {
       setCityOptions(prevOptions => [{ value: formData.location, label: formData.location }, ...prevOptions]);
@@ -202,7 +213,7 @@ export default function CompleteProfile() {
               responseTime: data.responseTime || '',
               pricing: data.pricing || '',
               about: data.about || '',
-              photo: null,
+              photo: data.photo || null,
               services: Array.isArray(data.services) && data.services.length > 0 ? data.services : [''],
               regions: Array.isArray(data.regions) ? data.regions : [],
               expertise: Array.isArray(data.expertise) ? data.expertise : [],
@@ -218,8 +229,15 @@ export default function CompleteProfile() {
               licenseNumber: data.licenseNumber || '',
               referred: data.referred || 'No',
               referralCode: data.referralCode || '',
+              certificates: Array.isArray(data.certificates) ? data.certificates : [],
+              officePhotos: Array.isArray(data.officePhotos) ? data.officePhotos : [],
+              registeredAddress: data.registeredAddress || '',
+              website: data.website || '',
+              employeeCount: data.employeeCount || '',
             });
             setImagePreview(data.photo || null);
+            setCertificatePreviews(data.certificates || []);
+            setOfficePhotoPreviews(data.officePhotos || []);
             setAgreed(true);
           } else {
             setApiError(`Profile with ID "${profileId}" not found.`);
@@ -250,13 +268,48 @@ export default function CompleteProfile() {
     }
   }, [imagePreview, croppedAreaPixels, formData.photo]);
 
-  const handleFile = e => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, photo: file }));
-      setImagePreview(URL.createObjectURL(file));
-      setShowCropModal(true);
-      setErrors(prev => ({ ...prev, photo: '' }));
+  const handleFile = (e, field) => {
+    const files = Array.from(e.target.files);
+    if (field === 'photo') {
+      const file = files[0];
+      if (file) {
+        setFormData(prev => ({ ...prev, photo: file }));
+        setImagePreview(URL.createObjectURL(file));
+        setShowCropModal(true);
+        setErrors(prev => ({ ...prev, photo: '' }));
+      }
+    } else if (field === 'certificates') {
+      if (files.length + formData.certificates.length > 5) {
+        setErrors(prev => ({ ...prev, certificates: 'You can upload up to 5 certificates.' }));
+        return;
+      }
+      setFormData(prev => ({ ...prev, certificates: [...prev.certificates, ...files] }));
+      setCertificatePreviews(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
+      setErrors(prev => ({ ...prev, certificates: '' }));
+    } else if (field === 'officePhotos') {
+      if (files.length + formData.officePhotos.length > 5) {
+        setErrors(prev => ({ ...prev, officePhotos: 'You can upload up to 5 office photos.' }));
+        return;
+      }
+      setFormData(prev => ({ ...prev, officePhotos: [...prev.officePhotos, ...files] }));
+      setOfficePhotoPreviews(prev => [...prev, ...files.map(file => URL.createObjectURL(file))]);
+      setErrors(prev => ({ ...prev, officePhotos: '' }));
+    }
+  };
+
+  const removeFile = (index, field) => {
+    if (field === 'certificates') {
+      setFormData(prev => ({
+        ...prev,
+        certificates: prev.certificates.filter((_, i) => i !== index),
+      }));
+      setCertificatePreviews(prev => prev.filter((_, i) => i !== index));
+    } else if (field === 'officePhotos') {
+      setFormData(prev => ({
+        ...prev,
+        officePhotos: prev.officePhotos.filter((_, i) => i !== index),
+      }));
+      setOfficePhotoPreviews(prev => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -444,6 +497,7 @@ export default function CompleteProfile() {
   const validateEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = phone => /^\+?[0-9]{7,15}$/.test(phone);
   const validateUsername = username => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
+  const validateWebsite = website => !website || /^https?:\/\/[^\s/$.?#].[^\s]*$/.test(website);
 
   const validateDateOfBirth = date => {
     if (!date) return false;
@@ -483,7 +537,7 @@ export default function CompleteProfile() {
         if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
           newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old and not in the future.';
         }
-      } else { // agency
+      } else {
         if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
       }
 
@@ -514,8 +568,13 @@ export default function CompleteProfile() {
         const dateError = validateExperienceDates(formData.experience);
         if (dateError) newErrors.experience = dateError;
         if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
+      } else {
+        if (!formData.registeredAddress.trim()) newErrors.registeredAddress = 'Registered address is required';
+        if (!formData.employeeCount.trim()) newErrors.employeeCount = 'Number of employees is required';
+        if (!profileId && !formData.officePhotos.length) newErrors.officePhotos = 'At least one office photo is required';
+        if (formData.website && !validateWebsite(formData.website)) newErrors.website = 'Invalid website URL';
       }
-      
+
       if (!formData.tagline?.trim()) newErrors.tagline = 'This field is required';
       if (!formData.about?.trim()) newErrors.about = 'This field is required';
       if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
@@ -566,8 +625,15 @@ export default function CompleteProfile() {
       licenseNumber: '',
       referred: 'No',
       referralCode: '',
+      certificates: [],
+      officePhotos: [],
+      registeredAddress: '',
+      website: '',
+      employeeCount: '',
     });
     setImagePreview(null);
+    setCertificatePreviews([]);
+    setOfficePhotoPreviews([]);
     setShowCropModal(false);
     setCrop({ x: 0, y: 0 });
     setZoom(1);
@@ -590,16 +656,47 @@ export default function CompleteProfile() {
     setIsSubmitting(true);
 
     try {
-      let photoURL = profileId && originalProfile ? originalProfile.photo : '';
-      if (formData.photo && typeof formData.photo !== 'string') {
-          const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-          const timestamp = Date.now();
-          const fileExtension = formData.photo.name.split('.').pop();
-          const fileName = `profile_${sanitizedFullName}_${timestamp}.${fileExtension}`;
-          const storageRef = ref(storage, `Profiles/${fileName}`);
+      const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
 
-          await uploadBytes(storageRef, formData.photo);
-          photoURL = await getDownloadURL(storageRef);
+      let photoURL = profileId && originalProfile ? originalProfile.photo : '';
+      let certificateURLs = profileId && originalProfile ? [...originalProfile.certificates] : [];
+      let officePhotoURLs = profileId && originalProfile ? [...originalProfile.officePhotos] : [];
+
+      if (formData.photo && typeof formData.photo !== 'string') {
+        const timestamp = Date.now();
+        const fileExtension = formData.photo.name.split('.').pop();
+        const fileName = `profile_${sanitizedFullName}_${timestamp}.${fileExtension}`;
+        const storageRef = ref(storage, `Profiles/${fileName}`);
+        await uploadBytes(storageRef, formData.photo);
+        photoURL = await getDownloadURL(storageRef);
+      }
+
+      if (formData.certificates.length > 0) {
+        for (const cert of formData.certificates) {
+          if (typeof cert === 'string') {
+            if (!certificateURLs.includes(cert)) certificateURLs.push(cert);
+            continue;
+          }
+          const certName = `certificate_${sanitizedFullName}_${Date.now()}_${cert.name}`;
+          const certRef = ref(storage, `Certificates/${certName}`);
+          await uploadBytes(certRef, cert);
+          const url = await getDownloadURL(certRef);
+          if (!certificateURLs.includes(url)) certificateURLs.push(url);
+        }
+      }
+
+      if (formData.officePhotos.length > 0) {
+        for (const photo of formData.officePhotos) {
+          if (typeof photo === 'string') {
+            if (!officePhotoURLs.includes(photo)) officePhotoURLs.push(photo);
+            continue;
+          }
+          const photoName = `office_${sanitizedFullName}_${Date.now()}_${photo.name}`;
+          const photoRef = ref(storage, `OfficePhotos/${photoName}`);
+          await uploadBytes(photoRef, photo);
+          const url = await getDownloadURL(photoRef);
+          if (!officePhotoURLs.includes(url)) officePhotoURLs.push(url);
+        }
       }
 
       const profileData = {
@@ -609,7 +706,7 @@ export default function CompleteProfile() {
         email: formData.email,
         phone: formData.phone,
         dateOfBirth: formData.profileType === 'expert' && formData.dateOfBirth ? formatDate(formData.dateOfBirth, 'YYYY-MM-DD') : '',
-        yearsActive: formData.profileType === 'agency' ? formData.yearsActive : '',
+        yearsActive: formData.yearsActive || '',
         tagline: formData.tagline,
         location: formData.location,
         languages: formData.languages,
@@ -626,10 +723,15 @@ export default function CompleteProfile() {
           startDate: exp.startDate ? formatDate(exp.startDate, 'YYYY-MM') : '',
           endDate: exp.endDate === 'Present' ? 'Present' : exp.endDate ? formatDate(exp.endDate, 'YYYY-MM') : '',
         })) : [],
-        certifications: formData.profileType === 'expert' ? formData.certifications : '',
-        licenseNumber: formData.profileType === 'agency' ? formData.licenseNumber : '',
+        certifications: formData.certifications,
+        licenseNumber: formData.licenseNumber,
         referred: formData.referred || 'No',
         referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
+        certificates: certificateURLs,
+        officePhotos: officePhotoURLs,
+        registeredAddress: formData.registeredAddress,
+        website: formData.website,
+        employeeCount: formData.employeeCount,
       };
 
       const response = await fetch('/api/send-profile-form', {
@@ -646,7 +748,8 @@ export default function CompleteProfile() {
       setTimeout(() => {
         setShowSuccessModal(false);
         resetForm();
-        router.push('/');
+        const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
+        router.push(`/experts/${slug}`);
       }, 3000);
     } catch (error) {
       console.error('Submission error:', error);
@@ -683,7 +786,7 @@ export default function CompleteProfile() {
                   🎉 Profile {profileId ? 'Updated' : 'Submitted'}!
                 </h2>
                 <p className="text-gray-700 mb-6 text-sm">
-                  Your expert profile has been successfully {profileId ? 'updated' : 'submitted'}.<br />
+                  Your profile has been successfully {profileId ? 'updated' : 'submitted'}.<br />
                   {profileId
                     ? 'Changes have been saved.'
                     : 'Our team will review the details and reach out if anything more is needed.'}
@@ -763,7 +866,6 @@ export default function CompleteProfile() {
                 {apiError}
               </div>
             )}
-            
             {currentStep === 0 && (
               <Step1_BasicInfo
                 formData={formData}
@@ -782,7 +884,6 @@ export default function CompleteProfile() {
                 setApiError={setApiError}
               />
             )}
-
             {currentStep === 1 && (
               <Step2_Services
                 formData={formData}
@@ -800,7 +901,6 @@ export default function CompleteProfile() {
                 removeExpertise={removeExpertise}
               />
             )}
-
             {currentStep === 2 && (
               <Step3_Experience
                 formData={formData}
@@ -810,7 +910,10 @@ export default function CompleteProfile() {
                 addExperience={addExperience}
                 handleChange={handleChange}
                 handleFile={handleFile}
+                removeFile={removeFile}
                 imagePreview={imagePreview}
+                certificatePreviews={certificatePreviews}
+                officePhotoPreviews={officePhotoPreviews}
                 agreed={agreed}
                 setAgreed={setAgreed}
                 referralCodeStatus={referralCodeStatus}
@@ -818,7 +921,6 @@ export default function CompleteProfile() {
                 setShowCropModal={setShowCropModal}
               />
             )}
-
             <div className="flex justify-between pt-6">
               {currentStep > 0 && (
                 <button

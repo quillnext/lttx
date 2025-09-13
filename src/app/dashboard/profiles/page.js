@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -26,6 +28,8 @@ export default function ProfilesTablePage() {
   const [itemsPerPage] = useState(10);
   const [toast, setToast] = useState("");
   const [loadingStates, setLoadingStates] = useState({});
+  const [selectedProfile, setSelectedProfile] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const db = getFirestore(app);
   const storage = getStorage(app);
   const router = useRouter();
@@ -37,6 +41,7 @@ export default function ProfilesTablePage() {
 
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
+        console.log(data)
         let rawDate;
         if (data.timestamp && typeof data.timestamp.toDate === "function") {
           rawDate = data.timestamp.toDate();
@@ -45,21 +50,22 @@ export default function ProfilesTablePage() {
         } else {
           rawDate = new Date();
         }
+        console.log(rawDate)
 
         list.push({
           id: docSnap.id,
           fullName: data.fullName,
-           profileType: data.profileType || 'expert',
+          profileType: data.profileType || 'expert',
           username: data.username,
           generatedReferralCode: data.generatedReferralCode,
           referralCode: data.referralCode,
           email: data.email,
           location: data.location,
           phone: data.phone,
-          uid: data.uid || "", // Add UID field
-          status: data.status || "", // Add status field
-          authStatus: data.authStatus || "", // Add authStatus field
-          isPublic: data.isPublic !== false, // Default to true
+          uid: data.uid || "",
+          status: data.status || "",
+          authStatus: data.authStatus || "",
+          isPublic: data.isPublic !== false,
           rawTimestamp: rawDate,
           timestamp:
             rawDate.toLocaleDateString("en-GB") +
@@ -111,6 +117,12 @@ export default function ProfilesTablePage() {
         if (data.photo) {
           await deleteImageFolder(data.photo);
         }
+        if (data.certificates && Array.isArray(data.certificates)) {
+          await Promise.all(data.certificates.map(url => deleteImageFolder(url)));
+        }
+        if (data.officePhotos && Array.isArray(data.officePhotos)) {
+          await Promise.all(data.officePhotos.map(url => deleteImageFolder(url)));
+        }
       }
 
       await deleteDoc(docRef);
@@ -147,7 +159,6 @@ export default function ProfilesTablePage() {
         throw new Error(result.error || "Failed to authenticate profile.");
       }
 
-      // Update local state to reflect the new UID and status
       setProfiles((prev) =>
         prev.map((p) =>
           p.id === profile.id
@@ -197,6 +208,32 @@ export default function ProfilesTablePage() {
     router.push(`/dashboard/edit/${id}`);
   };
 
+  const handleViewFullProfile = async (id) => {
+    setLoadingStates((prev) => ({ ...prev, [`full-profile-${id}`]: true }));
+    try {
+      const docRef = doc(db, "Profiles", id);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        setSelectedProfile({ id: snapshot.id, ...snapshot.data() });
+        setIsModalOpen(true);
+      } else {
+        setToast("Profile not found.");
+        setTimeout(() => setToast(""), 3000);
+      }
+    } catch (error) {
+      console.error("Error fetching full profile:", error);
+      setToast("Failed to load profile details.");
+      setTimeout(() => setToast(""), 3000);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [`full-profile-${id}`]: false }));
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedProfile(null);
+  };
+
   const filteredProfiles = profiles.filter((p) =>
     p.fullName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -242,31 +279,66 @@ export default function ProfilesTablePage() {
             {currentItems.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50 transition">
                 <td className="p-3 border text-gray-600">{p.timestamp}</td>
-                <td className="p-3 border text-gray-600"><span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-secondary2 border border-primary/20">
-                        {p.profileType}
-                      </span><br/>{p.generatedReferralCode}</td>
+                <td className="p-3 border text-gray-600">
+                  <span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-secondary2 border border-primary/20">
+                    {p.profileType}
+                  </span>
+                  <br />
+                  {p.generatedReferralCode}
+                </td>
                 <td className="p-3 border font-medium">
-                      {p.fullName}
-                      <br/><span className="font-light">{p.email}</span>
-                      </td>
+                  {p.fullName}
+                  <br />
+                  <span className="font-light">{p.email}</span>
+                </td>
                 <td className="p-3 border">{p.location}</td>
                 <td className="p-3 border">{p.referralCode}</td>
                 <td className="p-3 border">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={p.isPublic}
-                            onChange={() => handleTogglePublic(p.id, p.isPublic)}
-                            className="sr-only peer"
-                            disabled={loadingStates[`toggle-${p.id}`]}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                        <span className="ml-3 text-sm font-medium text-gray-900">
-                            {loadingStates[`toggle-${p.id}`] ? '...' : p.isPublic ? 'Public' : 'Private'}
-                        </span>
-                    </label>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={p.isPublic}
+                      onChange={() => handleTogglePublic(p.id, p.isPublic)}
+                      className="sr-only peer"
+                      disabled={loadingStates[`toggle-${p.id}`]}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                    <span className="ml-3 text-sm font-medium text-gray-900">
+                      {loadingStates[`toggle-${p.id}`] ? '...' : p.isPublic ? 'Public' : 'Private'}
+                    </span>
+                  </label>
                 </td>
                 <td className="p-3 border flex gap-2 items-center">
+                  <button
+                    onClick={() => handleViewFullProfile(p.id)}
+                    className="px-3 py-1 rounded-lg text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200 relative flex items-center justify-center"
+                    disabled={loadingStates[`full-profile-${p.id}`]}
+                  >
+                    {loadingStates[`full-profile-${p.id}`] ? (
+                      <svg
+                        className="animate-spin h-4 w-4 text-purple-800"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v8h8a8 8 0 01-16 0z"
+                        ></path>
+                      </svg>
+                    ) : (
+                      "View Full Profile"
+                    )}
+                  </button>
                   <button
                     onClick={() => handleView(p.username)}
                     className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 relative flex items-center justify-center"
@@ -394,7 +466,7 @@ export default function ProfilesTablePage() {
             ))}
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan="8" className="text-center py-4 text-gray-500">
+                <td colSpan="7" className="text-center py-4 text-gray-500">
                   No matching profiles found.
                 </td>
               </tr>
@@ -418,6 +490,199 @@ export default function ProfilesTablePage() {
               {page}
             </button>
           ))}
+        </div>
+      )}
+
+      {isModalOpen && selectedProfile && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl">
+            <h2 className="text-xl font-semibold text-[#36013F] mb-4">Full Profile Details</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Profile Type</label>
+                <p className="text-gray-900 capitalize">{selectedProfile.profileType || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                <p className="text-gray-900">{selectedProfile.fullName || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Username</label>
+                <p className="text-gray-900">{selectedProfile.username || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Email</label>
+                <p className="text-gray-900">{selectedProfile.email || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Phone</label>
+                <p className="text-gray-900">{selectedProfile.phone || ''}</p>
+              </div>
+              {selectedProfile.profileType === 'expert' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Date of Birth</label>
+                  <p className="text-gray-900">{selectedProfile.dateOfBirth || ''}</p>
+                </div>
+              )}
+              {selectedProfile.profileType === 'agency' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Years Active</label>
+                  <p className="text-gray-900">{selectedProfile.yearsActive || ''}</p>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Location</label>
+                <p className="text-gray-900">{selectedProfile.location || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Languages</label>
+                <p className="text-gray-900">{Array.isArray(selectedProfile.languages) ? selectedProfile.languages.join(', ') : ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Response Time</label>
+                <p className="text-gray-900">{selectedProfile.responseTime || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Pricing</label>
+                <p className="text-gray-900">{selectedProfile.pricing || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Tagline</label>
+                <p className="text-gray-900">{selectedProfile.tagline || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">About</label>
+                <p className="text-gray-900">{selectedProfile.about || ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Services</label>
+                <p className="text-gray-900">{Array.isArray(selectedProfile.services) ? selectedProfile.services.join(', ') : ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Regions</label>
+                <p className="text-gray-900">{Array.isArray(selectedProfile.regions) ? selectedProfile.regions.join(', ') : ''}</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Expertise</label>
+                <p className="text-gray-900">{Array.isArray(selectedProfile.expertise) ? selectedProfile.expertise.join(', ') : ''}</p>
+              </div>
+              {selectedProfile.profileType === 'expert' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Experience</label>
+                  {Array.isArray(selectedProfile.experience) && selectedProfile.experience.length > 0 ? (
+                    selectedProfile.experience.map((exp, index) => (
+                      <div key={index} className="border p-3 rounded-lg mb-2">
+                        <p><strong>Title:</strong> {exp.title || ''}</p>
+                        <p><strong>Company:</strong> {exp.company || ''}</p>
+                        <p><strong>Start Date:</strong> {exp.startDate || ''}</p>
+                        <p><strong>End Date:</strong> {exp.endDate || ''}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-900"></p>
+                  )}
+                </div>
+              )}
+              {selectedProfile.profileType === 'expert' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Certifications</label>
+                  <p className="text-gray-900">{selectedProfile.certifications || ''}</p>
+                </div>
+              )}
+              {selectedProfile.profileType === 'agency' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Registered Address</label>
+                    <p className="text-gray-900">{selectedProfile.registeredAddress || ''}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Website</label>
+                    <p className="text-gray-900">{selectedProfile.website || ''}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Number of Employees</label>
+                    <p className="text-gray-900">{selectedProfile.employeeCount || ''}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">License Number</label>
+                    <p className="text-gray-900">{selectedProfile.licenseNumber || ''}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Association Membership Certificates</label>
+                    {Array.isArray(selectedProfile.certificates) && selectedProfile.certificates.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedProfile.certificates.map((url, index) => (
+                          <div key={index} className="relative w-24 h-24">
+                            {url.endsWith('.pdf') ? (
+                              <div className="w-full h-full bg-gray-200 flex items-center justify-center rounded-lg text-sm text-gray-600">
+                                PDF
+                              </div>
+                            ) : (
+                              <img
+                                src={url}
+                                alt={`Certificate ${index + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-900"></p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Office/Establishment Photos</label>
+                    {Array.isArray(selectedProfile.officePhotos) && selectedProfile.officePhotos.length > 0 ? (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedProfile.officePhotos.map((url, index) => (
+                          <div key={index} className="relative w-24 h-24">
+                            <img
+                              src={url}
+                              alt={`Office Photo ${index + 1}`}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-900"></p>
+                    )}
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Referred</label>
+                <p className="text-gray-900">{selectedProfile.referred || ''}</p>
+              </div>
+              {selectedProfile.referred === 'Yes' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Referral Code</label>
+                  <p className="text-gray-900">{selectedProfile.referralCode || ''}</p>
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Profile Photo</label>
+                {selectedProfile.photo ? (
+                  <img
+                    src={selectedProfile.photo}
+                    alt="Profile Photo"
+                    className="w-24 h-24 object-cover rounded-full"
+                  />
+                ) : (
+                  <p className="text-gray-900"></p>
+                )}
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 text-sm font-medium text-white bg-[#36013F] rounded-lg hover:bg-opacity-90"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
