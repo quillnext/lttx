@@ -748,8 +748,8 @@ export default function CompleteProfile() {
       setTimeout(() => {
         setShowSuccessModal(false);
         resetForm();
-        const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-        router.push(`/experts/${slug}`);
+       
+        router.push('/');
       }, 3000);
     } catch (error) {
       console.error('Submission error:', error);
