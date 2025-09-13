@@ -1,4 +1,5 @@
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 
 const loadComponent = (importFn, name) =>
   dynamic(
@@ -391,7 +392,8 @@ export default function Step3_Experience({
       </div>
 
       {/* Terms Agreement */}
-      <div>
+      <div className="pt-4 border-t">
+         <label className="block text-sm font-medium text-gray-700 mb-1">Final Declaration</label>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
@@ -399,15 +401,14 @@ export default function Step3_Experience({
             onChange={e => setAgreed(e.target.checked)}
             className="h-4 w-4"
           />
-          <span className="text-sm text-gray-700">
-            I agree to the{' '}
-            <a href="/terms" target="_blank" className="text-[var(--primary)] hover:underline">
-              Terms and Conditions
-            </a>{' '}
-            and{' '}
-            <a href="/privacy" target="_blank" className="text-[var(--primary)] hover:underline">
-              Privacy Policy
-            </a>
+         <span>
+            I confirm that the information provided is accurate and complies with{' '}
+            <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{' '}
+            <Link
+              href="/privacy-policy"
+              className="text-blue-600 underline hover:text-blue-800"
+              target="_blank"
+            >Privacy Policy</Link>
           </span>
         </label>
         {errors.agreed && <p className="text-sm text-red-600 mt-1">{errors.agreed}</p>}
