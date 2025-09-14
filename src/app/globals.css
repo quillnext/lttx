@@ -7,8 +7,8 @@
 :root {
   --primary: #36013F;
   --secondary: #F4D35E;
-  --primary1: #1F4036;
-  --secondary1:#5E7AF4;
+  --primary1: #eded1f;
+  --secondary1:#381b3d;
   --gradient-bg: linear-gradient(to bottom right, var(--secondary), var(--primary));
   --gradient-bg2: linear-gradient(to bottom right, var(--secondary1), var(--primary1));
   --gradient-animation: gradientShift 15s ease infinite;

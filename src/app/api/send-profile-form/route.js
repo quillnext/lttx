@@ -1,4 +1,5 @@
 
+
 import { NextResponse } from "next/server";
 import {
   getFirestore,
@@ -49,6 +50,12 @@ export async function POST(req) {
       profileType,
       yearsActive,
       licenseNumber,
+      certificates,
+      officePhotos,
+      registeredAddress,
+      website,
+      employeeCount,
+      expertise,
     } = body;
 
     if (!email || !fullName || !phone || (!profileId && !username)) {
@@ -57,62 +64,44 @@ export async function POST(req) {
 
     let savedProfileId = profileId;
 
-    // Build profile data with common fields
-    const commonProfileData = {
+    // Build profile data with all fields from the request
+    const profileData = {
       username,
       fullName,
       email,
       phone,
+      dateOfBirth: dateOfBirth || '',
       tagline,
       location,
-      languages,
+      languages: Array.isArray(languages) ? languages : [],
       responseTime,
       pricing,
       about,
-      services,
-      regions,
-      expertise: body.expertise || [],
-      photo,
+      services: Array.isArray(services) ? services : [],
+      regions: Array.isArray(regions) ? regions : [],
+      experience: Array.isArray(experience) ? experience : [],
+      certifications: certifications || '',
       referred: referred || 'No',
       referralCode: referred === 'Yes' ? referralCode : null,
-      timestamp: serverTimestamp(),
+      photo,
       leadId: leadId || null,
+      profileType: profileType || 'expert',
+      yearsActive: yearsActive || '',
+      licenseNumber: licenseNumber || '',
+      certificates: Array.isArray(certificates) ? certificates : [],
+      officePhotos: Array.isArray(officePhotos) ? officePhotos : [],
+      registeredAddress: registeredAddress || '',
+      website: website || '',
+      employeeCount: employeeCount || '',
+      expertise: Array.isArray(expertise) ? expertise : [],
+      timestamp: serverTimestamp(),
     };
 
-    let profileData;
-
-    if (profileType === 'agency') {
-      profileData = {
-        ...commonProfileData,
-        profileType: 'agency',
-        yearsActive: yearsActive || '',
-        licenseNumber: licenseNumber || '',
-        // Explicitly clear expert-specific fields
-        dateOfBirth: '',
-        experience: [],
-        certifications: '',
-      };
-    } else { // Default to 'expert'
-      profileData = {
-        ...commonProfileData,
-        profileType: 'expert',
-        dateOfBirth: dateOfBirth || '',
-        experience: experience || [],
-        certifications: certifications || '',
-        // Explicitly clear agency-specific fields
-        yearsActive: '',
-        licenseNumber: '',
-      };
-    }
-    
     if (profileId) {
-      // This is an update to an existing profile in the 'Profiles' collection
-      const updateData = { ...profileData };
-      delete updateData.username; // Username cannot be changed
-      delete updateData.generatedReferralCode; // This should not be updated
-      await updateDoc(doc(db, "Profiles", profileId), updateData);
+      // Update existing profile in the 'Profiles' collection
+      await updateDoc(doc(db, "Profiles", profileId), profileData, { merge: true });
     } else {
-      // This is a new profile request for the 'ProfileRequests' collection
+      // New profile request for the 'ProfileRequests' collection
       if (!["Yes", "No"].includes(referred)) throw new Error("Referred must be 'Yes' or 'No'");
 
       const [profilesSnap, profileRequestsSnap, emailSnap] = await Promise.all([
