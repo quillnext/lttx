@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -169,10 +168,6 @@ export default function ExpertsDirectory() {
     setSelectedImage(imageSrc);
     setIsLightboxOpen(true);
   };
-
-  // Remove the useEffect that automatically opens the modal
-  // Previously, this useEffect set modalExpert on mount, causing the modal to open
-  // Now, modalExpert is only set when the "Ask Question" button is clicked
 
   useEffect(() => {
     if (keywords.length > 0) {
@@ -527,7 +522,7 @@ export default function ExpertsDirectory() {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <Link href={`/experts/${expert.username}`} className="flex-1">
+                  <Link href={expert.profileType === 'agency' ? `/agency/${expert.username}` : `/experts/${expert.username}`} className="flex-1">
                     <button className="w-full bg-primary text-primary-foreground py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer">
                       View Profile
                     </button>
@@ -536,7 +531,7 @@ export default function ExpertsDirectory() {
                     onClick={() => setModalExpert(expert)}
                     className="flex-1 bg-secondary text-secondary-foreground py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
                   >
-                    Ask Question
+                    {expert.profileType === 'agency' ? 'Request a Quote' : 'Ask Question'}
                   </button>
                 </div>
               </motion.div>
@@ -596,7 +591,7 @@ export default function ExpertsDirectory() {
                   >
                     {expert.fullName || "Unknown Expert"}
                   </h1>
-                  {expert.title && (
+                  {expert.title && expert.profileType !== 'agency' && (
                     <p className="text-sm mt-1">{expert.title}</p>
                   )}
                   {expert.tagline && (
@@ -635,7 +630,7 @@ export default function ExpertsDirectory() {
                     )}
                   </div>
                   <div className="flex gap-2 mt-4">
-                    <Link href={`/experts/${expert.username}`} className="flex-1">
+                    <Link href={expert.profileType === 'agency' ? `/agency/${expert.username}` : `/experts/${expert.username}`} className="flex-1">
                       <button className="w-full bg-white text-primary py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer">
                         View Profile
                       </button>
@@ -644,7 +639,7 @@ export default function ExpertsDirectory() {
                       onClick={() => setModalExpert(expert)}
                       className="flex-1 bg-secondary text-secondary-foreground py-1.5 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
                     >
-                      Ask Question
+                      {expert.profileType === 'agency' ? 'Request a Quote' : 'Ask Question'}
                     </button>
                   </div>
                 </div>

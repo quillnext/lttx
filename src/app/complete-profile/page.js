@@ -1,6 +1,4 @@
 
-
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -17,6 +15,7 @@ import getCroppedImg from './getCroppedImg';
 import Step1_BasicInfo from './components/Step1_BasicInfo';
 import Step2_Services from './components/Step2_Services';
 import Step3_Experience from './components/Step3_Experience';
+import Image from 'next/image';
 
 // Dynamically import components with error handling
 const loadComponent = (importFn, name) =>
@@ -94,6 +93,33 @@ export default function CompleteProfile() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [certificatePreviews, setCertificatePreviews] = useState([]);
   const [officePhotoPreviews, setOfficePhotoPreviews] = useState([]);
+  const [isMainDescriptionExpanded, setIsMainDescriptionExpanded] = useState(false);
+
+  // Profile write-ups
+  const profileWriteUps = {
+    expert: (
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-semibold text-[var(--primary)] mb-2 text-left">Individual Expert Profile</h2>
+        <p className="text-sm text-gray-700 text-left">
+          Become a recognised travel authority on the world’s first platform dedicated to human expertise in travel. As an Individual Expert, you showcase your specialised knowledge, from destinations and cultures to niche travel themes, while building credibility with a global audience that values authentic guidance over generic content. This is not just another listing; it’s your chance to join an exclusive network of verified travel professionals shaping the future of ethical and expert-led travel advice. Become a recognised travel authority on the world’s first platform dedicated to human expertise in travel. As an Individual Expert, you showcase your specialised knowledge, from destinations and cultures to niche travel themes, while building credibility with a global audience that values authentic guidance over generic content. This is not just another listing; it’s your chance to join an exclusive network of verified travel professionals shaping the future of ethical and expert-led travel advice.
+        </p>
+      </div>
+    ),
+    agency: (
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-semibold text-[var(--primary)] mb-2 text-left">Travel Agency Profile</h2>
+        <p className="text-sm text-gray-700 text-left">
+          Position your agency as a trusted voice in the global travel community by creating your official profile on Xmytravel. Unlike traditional directories, this is a curated ecosystem where agencies stand out for their expertise, not just their offerings. By joining, you gain visibility as a credible, verified travel partner while connecting with travellers actively seeking professional consultation. This is the only platform that transforms your agency’s knowledge into influence and authority.
+        </p>
+      </div>
+    ),
+  };
+
+  // Main description for truncation
+  const mainDescription = "Create your professional profile and join the world’s only platform dedicated to authentic travel expertise. Whether you are an individual expert or a travel agency, this is your gateway to global recognition, credibility, and meaningful traveller connections.";
+  const words = mainDescription.split(/\s+/).filter(word => word.trim());
+  const isTruncated = words.length > 20 && !isMainDescriptionExpanded;
+  const displayText = isTruncated ? words.slice(0, 20).join(' ') : mainDescription;
 
   useEffect(() => {
     const loadCSS = (href, fallback) => {
@@ -648,6 +674,7 @@ export default function CompleteProfile() {
     setReferrerUsername('');
     setSelectedExpertise(null);
     setApiError('');
+    setIsMainDescriptionExpanded(false);
   };
 
   const handleSubmit = async () => {
@@ -748,7 +775,6 @@ export default function CompleteProfile() {
       setTimeout(() => {
         setShowSuccessModal(false);
         resetForm();
-       
         router.push('/');
       }, 3000);
     } catch (error) {
@@ -767,6 +793,32 @@ export default function CompleteProfile() {
       <Navbar />
       <div className="bg-[#F4D35E] flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden mt-20">
+          <Image src="/emailbanner.jpeg" alt="Logo"  width={400} height={40} className="mx-auto mb-4 w-full" />
+          <div className="p-6 text-center">
+            
+            <h1 className="text-2xl font-bold text-[var(--primary)] mb-2 text-left">
+              Create Your Professional Profile
+            </h1>
+            <p className="text-sm text-gray-700 mb-6 text-left">
+              {displayText}
+              {isTruncated && (
+                <span
+                  className="text-[var(--primary)] underline cursor-pointer ml-1"
+                  onClick={() => setIsMainDescriptionExpanded(true)}
+                >
+                  ...read more
+                </span>
+              )}
+              {!isTruncated && words.length > 20 && (
+                <span
+                  className="text-[var(--primary)] underline cursor-pointer ml-1"
+                  onClick={() => setIsMainDescriptionExpanded(false)}
+                >
+                  ...read less
+                </span>
+              )}
+            </p>
+          </div>
           <div className="relative">
             <div className="bg-[#D8E7EC] h-3 w-full">
               <div
@@ -796,7 +848,7 @@ export default function CompleteProfile() {
                     setShowSuccessModal(false);
                     resetForm();
                     const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-                    router.push(`/experts/${slug}`);
+                    router.push(formData.profileType === 'agency' ? `/agency/${slug}` : `/experts/${slug}`);
                   }}
                   className="px-6 py-2 rounded-full text-white bg-[var(--primary)] hover:bg-green-700 transition"
                 >
@@ -882,6 +934,7 @@ export default function CompleteProfile() {
                 setFormData={setFormData}
                 setErrors={setErrors}
                 setApiError={setApiError}
+                profileWriteUp={profileWriteUps[formData.profileType]}
               />
             )}
             {currentStep === 1 && (
