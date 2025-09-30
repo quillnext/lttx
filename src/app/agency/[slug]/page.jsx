@@ -1,10 +1,10 @@
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import ClientProfilePage from "./ClientProfilePage";
+import ClientProfilePage from "../../experts/[slug]/ClientProfilePage"; // Adjust path as needed
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 import Link from "next/link";
-import { redirect } from "next/navigation"; 
+
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
   const db = getFirestore(app);
@@ -22,21 +22,21 @@ export async function generateMetadata({ params }) {
     console.error("Meta error:", error);
   }
 
-if (!profile || profile.isPublic === false) {
+  if (!profile || profile.isPublic === false || profile.profileType !== "agency") {
     return {
-      title: "Expert Not Found | XmyTravel",
-      description: "This expert profile could not be found or is private.",
+      title: "Agency Not Found | XmyTravel",
+      description: "This agency profile could not be found or is not an agency.",
       robots: { index: false, follow: false },
     };
   }
 
-  const title = `${profile.fullName} - ${profile.tagline || "Travel Expert"}`;
-  const description = profile.about?.substring(0, 200) || "Verified expert on XmyTravel";
+  const title = `${profile.fullName} - ${profile.tagline || "Travel Agency"}`;
+  const description = profile.about?.substring(0, 200) || "Verified travel agency on XmyTravel";
   const image = profile.photo || "https://www.xmytravel.com/logolttx.svg";
-  const url = `https://www.xmytravel.com/experts/${params.slug}`;
+  const url = `https://www.xmytravel.com/agency/${params.slug}`;
 
   return {
-  title,
+    title,
     description,
     openGraph: {
       title,
@@ -62,7 +62,7 @@ if (!profile || profile.isPublic === false) {
 }
 
 // ✅ MAIN PAGE FUNCTION
-export default async function ExpertProfilePage({ params }) {
+export default async function AgencyProfilePage({ params }) {
   const db = getFirestore(app);
   const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
   let profile = null;
@@ -70,7 +70,7 @@ export default async function ExpertProfilePage({ params }) {
 
   try {
     const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) return <div>Profile not found</div>;
+    if (querySnapshot.empty) return <div>Agency not found</div>;
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
@@ -83,9 +83,9 @@ export default async function ExpertProfilePage({ params }) {
       };
     });
 
-    
-    if (profile?.profileType === 'agency') {
-      redirect(`/agency/${params.slug}`);
+    // Ensure this is an agency profile
+    if (profile?.profileType !== 'agency') {
+      return <div>This profile is not an agency</div>;
     }
 
     if (profile) {
@@ -97,11 +97,11 @@ export default async function ExpertProfilePage({ params }) {
     }
 
   } catch (error) {
-    console.error("Error fetching profile:", error);
-    return <div>Error loading profile</div>;
+    console.error("Error fetching agency profile:", error);
+    return <div>Error loading agency profile</div>;
   }
 
-  if (!profile) return <div>Profile not found</div>;
+  if (!profile) return <div>Agency not found</div>;
 
   if (profile.isPublic === false) {
     return (
@@ -109,10 +109,10 @@ export default async function ExpertProfilePage({ params }) {
         <Navbar />
         <div className="min-h-screen flex items-center justify-center bg-gray-100 pt-20">
           <div className="text-center p-8 bg-white rounded-lg shadow-md">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">Profile is Private</h1>
-            <p className="text-gray-600">This expert's profile is not currently available to the public.</p>
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">Agency Profile is Private</h1>
+            <p className="text-gray-600">This agency's profile is not currently available to the public.</p>
             <Link href="/ask-an-expert" className="mt-6 inline-block bg-primary text-white font-semibold py-2 px-4 rounded-lg hover:bg-opacity-90 transition-all">
-              Find Other Experts
+              Find Other Agencies or Experts
             </Link>
           </div>
         </div>

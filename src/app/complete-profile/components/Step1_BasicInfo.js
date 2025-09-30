@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import components with error handling
@@ -35,12 +38,26 @@ export default function Step1_BasicInfo({
   fetchLeadByPhone,
   setFormData,
   setErrors,
-  setApiError
+  setApiError,
+  profileWriteUp,
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Extract text content from profileWriteUp for truncation
+  const getTextContent = (element) => {
+    if (!element) return '';
+    const pElement = element.props?.children?.find(child => child.type === 'p')?.props?.children || '';
+    return typeof pElement === 'string' ? pElement : '';
+  };
+
+  const textContent = getTextContent(profileWriteUp);
+  const words = textContent.split(/\s+/).filter(word => word.trim());
+  const isTruncated = words.length > 30 && !isExpanded;
+  const displayText = isTruncated ? words.slice(0, 30).join(' ') : textContent;
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h3 className="block text-lg font-semibold text-gray-800 mb-3">What type of profile are you creating?</h3>
         <div className="flex border border-gray-300 rounded-xl p-1 bg-gray-100">
           <button
             type="button"
@@ -62,7 +79,28 @@ export default function Step1_BasicInfo({
           </button>
         </div>
       </div>
-
+      <div className="mb-6 text-left">
+        {profileWriteUp.props.children[0]}
+        <p className="text-sm text-gray-700">
+          {displayText}
+          {isTruncated && (
+            <span
+              className="text-[var(--primary)] underline cursor-pointer ml-1"
+              onClick={() => setIsExpanded(true)}
+            >
+              ...read more
+            </span>
+          )}
+          {!isTruncated && words.length > 30 && (
+            <span
+              className="text-[var(--primary)] underline cursor-pointer ml-1"
+              onClick={() => setIsExpanded(false)}
+            >
+              ...read less
+            </span>
+          )}
+        </p>
+      </div>
       <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Phone Number */}

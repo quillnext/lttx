@@ -501,7 +501,18 @@ const BookingComponent = ({ expert, weeklySchedule }) => {
         const bookingsSnap = await getDocs(bookingsQuery);
         const bookedTimes = bookingsSnap.docs.map((d) => d.data().bookingTime);
 
+  
+        const now = new Date();
+        const isToday = date.toDateString() === now.toDateString();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+
         const finalAvailableSlots = potentialSlots
+          .filter((time) => {
+            if (!isToday) return true;
+            const [hours, minutes] = time.split(":").map(Number);
+            const slotTimeInMinutes = hours * 60 + minutes;
+            return slotTimeInMinutes > currentTime; 
+          })
           .filter((time) => !bookedTimes.includes(time))
           .map((time) => ({ startTime: time, status: "available" }))
           .sort((a, b) => a.startTime.localeCompare(b.startTime));

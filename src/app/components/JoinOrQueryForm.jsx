@@ -95,13 +95,9 @@ export default function JoinLTTXForm() {
             });
 
           if (filteredExperts.length > 0) {
-            router.push(`/ask-an-expert?keywords=${encodeURIComponent(keywords.join(","))}`);
-          } else {
-            alert("No matching experts found. Try different keywords.");
-          }
-        } else {
-          alert("Please provide more details in your query to find relevant experts.");
-        }
+            router.push('/');
+          } 
+        } 
       }
     } catch (error) {
       console.error("Submission error:", error);
