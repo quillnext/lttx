@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -198,9 +196,10 @@ export default function ProfilesTablePage() {
     }
   };
 
-  const handleView = (username) => {
-    setLoadingStates((prev) => ({ ...prev, [`view-${username}`]: true }));
-    router.push(`/experts/${username}`);
+  const handleView = (profile) => {
+    setLoadingStates((prev) => ({ ...prev, [`view-${profile.username}`]: true }));
+    const route = profile.profileType === 'agency' ? `/agency/${profile.username}` : `/experts/${profile.username}`;
+    router.push(route);
   };
 
   const handleEdit = (id) => {
@@ -340,7 +339,7 @@ export default function ProfilesTablePage() {
                     )}
                   </button>
                   <button
-                    onClick={() => handleView(p.username)}
+                    onClick={() => handleView(p)}
                     className="px-3 py-1 rounded-lg text-xs font-medium bg-green-100 text-green-800 hover:bg-green-200 relative flex items-center justify-center"
                     disabled={loadingStates[`view-${p.username}`]}
                   >
