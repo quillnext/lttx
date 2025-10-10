@@ -9,6 +9,7 @@ import {
   doc,
   getDoc,
   updateDoc,
+  addDoc,
 } from "firebase/firestore";
 import {
   getStorage,
@@ -18,6 +19,7 @@ import {
 } from "firebase/storage";
 import { app } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { Loader, Send, ChevronDown, ChevronUp } from "lucide-react";
 
 export default function ProfilesTablePage() {
   const [profiles, setProfiles] = useState([]);
@@ -28,6 +30,14 @@ export default function ProfilesTablePage() {
   const [loadingStates, setLoadingStates] = useState({});
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // New states for admin prompts
+  const [selectedProfiles, setSelectedProfiles] = useState(new Set());
+  const [promptModal, setPromptModal] = useState(false);
+  const [promptQuestion, setPromptQuestion] = useState("");
+  const [promptAnswer, setPromptAnswer] = useState("");
+  const [promptError, setPromptError] = useState(null);
+  const [promptLoading, setPromptLoading] = useState(false);
+  const [sendToAll, setSendToAll] = useState(false);
   const db = getFirestore(app);
   const storage = getStorage(app);
   const router = useRouter();
@@ -81,6 +91,94 @@ export default function ProfilesTablePage() {
 
     fetchProfiles();
   }, [db]);
+
+  // New handlers for admin prompts
+  const handleToggleSelect = (id) => {
+    const newSelected = new Set(selectedProfiles);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedProfiles(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    const filteredIds = filteredProfiles.map(p => p.id);
+    if (selectedProfiles.size === filteredIds.length) {
+      setSelectedProfiles(new Set());
+    } else {
+      setSelectedProfiles(new Set(filteredIds));
+    }
+  };
+
+  const handleSendPrompt = async () => {
+    if (!promptQuestion.trim() || !promptAnswer.trim()) {
+      setPromptError("Question and answer are required.");
+      return;
+    }
+
+    const targets = sendToAll ? profiles : profiles.filter(p => selectedProfiles.has(p.id));
+    if (targets.length === 0) {
+      setPromptError("No profiles selected.");
+      return;
+    }
+
+    setPromptLoading(true);
+    try {
+      for (const profile of targets) {
+        // Create a question doc for each target
+        await addDoc(collection(db, "Questions"), {
+          expertId: profile.uid,
+          expertName: profile.fullName || "Unknown",
+          expertEmail: profile.email || "",
+          question: promptQuestion,
+          userName: "Admin",
+          userEmail: "admin@xmytravel.com",
+          userPhone: "",
+          status: "admin_prompt",
+          isAdminPrompt: true,
+          suggestedAnswer: promptAnswer,
+          isPublic: false,
+          createdAt: new Date().toISOString(),
+          reply: null,
+        });
+
+        // Send email to expert/agency
+        if (profile.email && profile.email.trim()) {
+          const response = await fetch("/api/send-admin-prompt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              expertEmail: profile.email,
+              expertName: profile.fullName || "Unknown",
+              question: promptQuestion,
+              suggestedAnswer: promptAnswer,
+              profileType: profile.profileType || "expert",
+            }),
+          });
+
+          if (!response.ok) {
+            console.error(`Failed to send email to ${profile.email}`);
+          }
+        }
+      }
+
+      setPromptModal(false);
+      setPromptQuestion("");
+      setPromptAnswer("");
+      setPromptError(null);
+      setSendToAll(false);
+      setSelectedProfiles(new Set());
+      setToast("Prompts sent successfully!");
+      setTimeout(() => setToast(""), 3000);
+    } catch (error) {
+      console.error("Error sending prompts:", error.message);
+      setPromptError(error.message);
+    } finally {
+      setPromptLoading(false);
+    }
+  };
 
   const deleteImageFolder = async (photoURL) => {
     try {
@@ -262,9 +360,27 @@ export default function ProfilesTablePage() {
       )}
 
       <div className="overflow-x-auto rounded-xl shadow border bg-white">
+        <div className="flex items-center justify-between p-3 border-b bg-gray-50">
+          <button
+            onClick={handleSelectAll}
+            className="flex items-center gap-2 text-sm text-[#36013F] hover:underline"
+          >
+            {selectedProfiles.size === filteredProfiles.length ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            Select All ({selectedProfiles.size}/{filteredProfiles.length})
+          </button>
+          <button
+            onClick={() => setPromptModal(true)}
+            disabled={sendToAll ? false : selectedProfiles.size === 0}
+            className="px-4 py-2 bg-[#36013F] text-white rounded-lg hover:bg-[#4a0150] disabled:opacity-50 flex items-center gap-2 disabled:cursor-not-allowed"
+          >
+            <Send size={16} />
+            Send Prompt
+          </button>
+        </div>
         <table className="min-w-full text-sm text-left border rounded-xl shadow-sm">
           <thead className="bg-[#F4D35E] text-[#36013F] font-semibold text-left">
             <tr>
+              <th className="p-3 border w-12"></th>
               <th className="p-3 border">Date</th>
               <th className="p-3 border">Own Referral Code</th>
               <th className="p-3 border">Name</th>
@@ -277,6 +393,14 @@ export default function ProfilesTablePage() {
           <tbody className="divide-y">
             {currentItems.map((p) => (
               <tr key={p.id} className="hover:bg-gray-50 transition">
+                <td className="p-3 border">
+                  <input
+                    type="checkbox"
+                    checked={selectedProfiles.has(p.id)}
+                    onChange={() => handleToggleSelect(p.id)}
+                    className="rounded"
+                  />
+                </td>
                 <td className="p-3 border text-gray-600">{p.timestamp}</td>
                 <td className="p-3 border text-gray-600">
                   <span className="capitalize text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-secondary2 border border-primary/20">
@@ -465,7 +589,7 @@ export default function ProfilesTablePage() {
             ))}
             {currentItems.length === 0 && (
               <tr>
-                <td colSpan="7" className="text-center py-4 text-gray-500">
+                <td colSpan="8" className="text-center py-4 text-gray-500">
                   No matching profiles found.
                 </td>
               </tr>
@@ -680,6 +804,79 @@ export default function ProfilesTablePage() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Prompt Modal */}
+      {promptModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg">
+            <button
+              onClick={() => {
+                setPromptModal(false);
+                setPromptQuestion("");
+                setPromptAnswer("");
+                setPromptError(null);
+                setSendToAll(false);
+              }}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+            <h2 className="text-2xl font-bold text-[#36013F] mb-6">
+              Send Prompt {sendToAll ? "to All" : `to ${selectedProfiles.size} Selected`}
+            </h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSendPrompt();
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Question</label>
+                <textarea
+                  value={promptQuestion}
+                  onChange={(e) => setPromptQuestion(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#36013F]"
+                  rows="3"
+                  placeholder="Enter the question..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Suggested Answer</label>
+                <textarea
+                  value={promptAnswer}
+                  onChange={(e) => setPromptAnswer(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#36013F]"
+                  rows="5"
+                  placeholder="Enter the suggested answer..."
+                  required
+                />
+              </div>
+              {promptError && <p className="text-red-500 text-sm">{promptError}</p>}
+              <button
+                type="submit"
+                disabled={promptLoading}
+                className="w-full bg-[#36013F] text-white py-3 rounded-lg hover:bg-[#4a0150] disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {promptLoading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
+                {promptLoading ? "Sending..." : "Send Prompt"}
+              </button>
+            </form>
+            <div className="mt-4 p-3 bg-gray-100 rounded-lg">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={sendToAll}
+                  onChange={(e) => setSendToAll(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">Send to all profiles</span>
+              </label>
             </div>
           </div>
         </div>
