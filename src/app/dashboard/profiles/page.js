@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -30,7 +32,6 @@ export default function ProfilesTablePage() {
   const [loadingStates, setLoadingStates] = useState({});
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  // New states for admin prompts
   const [selectedProfiles, setSelectedProfiles] = useState(new Set());
   const [promptModal, setPromptModal] = useState(false);
   const [promptQuestion, setPromptQuestion] = useState("");
@@ -92,7 +93,6 @@ export default function ProfilesTablePage() {
     fetchProfiles();
   }, [db]);
 
-  // New handlers for admin prompts
   const handleToggleSelect = (id) => {
     const newSelected = new Set(selectedProfiles);
     if (newSelected.has(id)) {
@@ -127,7 +127,6 @@ export default function ProfilesTablePage() {
     setPromptLoading(true);
     try {
       for (const profile of targets) {
-        // Create a question doc for each target
         await addDoc(collection(db, "Questions"), {
           expertId: profile.uid,
           expertName: profile.fullName || "Unknown",
@@ -144,7 +143,6 @@ export default function ProfilesTablePage() {
           reply: null,
         });
 
-        // Send email to expert/agency
         if (profile.email && profile.email.trim()) {
           const response = await fetch("/api/send-admin-prompt", {
             method: "POST",
@@ -618,7 +616,13 @@ export default function ProfilesTablePage() {
 
       {isModalOpen && selectedProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-xl relative">
+            <button
+              onClick={closeModal}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl"
+            >
+              ×
+            </button>
             <h2 className="text-xl font-semibold text-[#36013F] mb-4">Full Profile Details</h2>
             <div className="space-y-4">
               <div>
@@ -797,22 +801,13 @@ export default function ProfilesTablePage() {
                 )}
               </div>
             </div>
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={closeModal}
-                className="px-4 py-2 text-sm font-medium text-white bg-[#36013F] rounded-lg hover:bg-opacity-90"
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Admin Prompt Modal */}
       {promptModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg">
+          <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-lg relative">
             <button
               onClick={() => {
                 setPromptModal(false);
@@ -821,9 +816,9 @@ export default function ProfilesTablePage() {
                 setPromptError(null);
                 setSendToAll(false);
               }}
-              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl"
             >
-              ✕
+              ×
             </button>
             <h2 className="text-2xl font-bold text-[#36013F] mb-6">
               Send Prompt {sendToAll ? "to All" : `to ${selectedProfiles.size} Selected`}
@@ -866,6 +861,7 @@ export default function ProfilesTablePage() {
                 {promptLoading ? <Loader className="animate-spin" size={20} /> : <Send size={20} />}
                 {promptLoading ? "Sending..." : "Send Prompt"}
               </button>
+             
             </form>
             <div className="mt-4 p-3 bg-gray-100 rounded-lg">
               <label className="flex items-center gap-2">

@@ -54,10 +54,8 @@ export default function Messages() {
           console.warn("Duplicate question IDs found:", duplicates);
         }
 
-        // Filter to only show pending or admin_prompt questions (not answered)
-        const pendingQuestions = questionList.filter(q => q.status !== "answered");
-
-        const sorted = pendingQuestions.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+        // Sort questions by timestamp (newest first)
+        const sorted = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
         setQuestions(sorted);
       } catch (error) {
         console.error("Error fetching questions:", error.message);
@@ -108,8 +106,14 @@ export default function Messages() {
         throw new Error(errorData.error || "Failed to send reply email");
       }
 
-      // Remove the question from the list since it's now answered
-      setQuestions((prev) => prev.filter(q => q.id !== question.id));
+      // Update the question in the state to reflect the reply and status
+      setQuestions((prev) =>
+        prev.map((q) =>
+          q.id === question.id
+            ? { ...q, reply: finalReply, status: "answered", repliedAt: new Date().toISOString() }
+            : q
+        )
+      );
       setReplyModal(null);
       setReplyText("");
       setReplyError(null);
@@ -155,8 +159,14 @@ export default function Messages() {
         throw new Error(errorData.error || "Failed to send reply email");
       }
 
-      // Remove the question from the list since it's now answered
-      setQuestions((prev) => prev.filter(q => q.id !== question.id));
+      // Update the question in the state to reflect the reply and status
+      setQuestions((prev) =>
+        prev.map((q) =>
+          q.id === question.id
+            ? { ...q, reply: question.suggestedAnswer, status: "answered", repliedAt: new Date().toISOString() }
+            : q
+        )
+      );
       setReplyModal(null);
       setReplyText("");
       setReplyError(null);
@@ -227,7 +237,7 @@ export default function Messages() {
         <p className="text-gray-600">
           {filteredQuestions.length === 0 && searchTerm
             ? "No matching messages found."
-            : "No pending questions."}
+            : "No questions available."}
         </p>
       ) : (
         <div className="overflow-x-auto bg-white border rounded-xl shadow">
@@ -236,6 +246,7 @@ export default function Messages() {
               <tr>
                 <th className="p-3 border">Date</th>
                 <th className="p-3 border">User Name</th>
+                <th className="p-3 border">Source</th>
                 <th className="p-3 border">Status</th>
                 <th className="p-3 border">Action</th>
                 <th className="p-3 border w-12"></th>
@@ -248,7 +259,22 @@ export default function Messages() {
                     <td className="p-3 border font-medium">{q.timestamp || "N/A"}</td>
                     <td className="p-3 border font-medium">{q.userName || "N/A"}</td>
                     <td className="p-3 border">
-                      {q.status === "pending" ? (
+                      {isAdminPrompt(q) ? (
+                        <span className="bg-blue-100 text-blue-800 font-medium px-3 py-1 text-xs rounded-lg">
+                          Admin
+                        </span>
+                      ) : (
+                        <span className="bg-green-100 text-green-800 font-medium px-3 py-1 text-xs rounded-lg">
+                          User
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3 border">
+                      {q.status === "answered" ? (
+                        <span className="bg-primary text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-2">
+                          <CircleCheckBig size={14} /> Answered
+                        </span>
+                      ) : q.status === "pending" ? (
                         <span className="bg-secondary text-[#36013F] font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-2">
                           <Loader className="spin-animation" size={14} /> Pending
                         </span>
@@ -259,12 +285,14 @@ export default function Messages() {
                       ) : null}
                     </td>
                     <td className="p-3 border">
-                      <button
-                        onClick={() => setReplyModal(q)}
-                        className="px-3 py-1 rounded-lg text-xs font-medium bg-[#36013F] text-white hover:bg-[#4a0150] focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-                      >
-                        {isAdminPrompt(q) ? 'Review Prompt' : 'Reply'}
-                      </button>
+                      {q.status !== "answered" && (
+                        <button
+                          onClick={() => setReplyModal(q)}
+                          className="px-3 py-1 rounded-lg text-xs font-medium bg-[#36013F] text-white hover:bg-[#4a0150] focus:outline-none focus:ring-2 focus:ring-[#36013F]"
+                        >
+                          {isAdminPrompt(q) ? "Review Prompt" : "Reply"}
+                        </button>
+                      )}
                     </td>
                     <td className="p-3 border">
                       <button
@@ -273,13 +301,13 @@ export default function Messages() {
                         aria-expanded={expandedRows[q.id] || false}
                         aria-label={expandedRows[q.id] ? "Collapse question details" : "Expand question details"}
                       >
-                        {expandedRows[q.id] ? <ChevronUp />  : <ChevronDown /> }
+                        {expandedRows[q.id] ? <ChevronUp /> : <ChevronDown />}
                       </button>
                     </td>
                   </tr>
                   {expandedRows[q.id] && (
                     <tr key={`${q.id}-details`}>
-                      <td colSpan="5" className="p-3 border bg-gray-50">
+                      <td colSpan="6" className="p-3 border bg-gray-50">
                         <div className="flex flex-col md:flex-row gap-4 text-gray-700">
                           <div className="w-[30%] border-r">
                             <p>
@@ -292,13 +320,11 @@ export default function Messages() {
                               </div>
                             )}
                           </div>
-                          
                           <div className="w-[70%]">
-                            {q.reply && (
-                              <p>
-                                <strong>Your Reply:</strong> {q.reply}
-                              </p>
-                            )}
+                            <p>
+                              <strong>Your Reply:</strong>{" "}
+                              {q.reply && q.reply.trim() !== "" ? q.reply : "No reply yet"}
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -330,77 +356,81 @@ export default function Messages() {
       )}
 
       {replyModal && (
-       <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-gray-900/30 to-black/30 flex items-center justify-center z-50">
-  <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-8 w-full max-w-lg relative border border-white/30">
-    <button
-      onClick={() => {
-        setReplyModal(null);
-        setReplyText("");
-        setReplyError(null);
-      }}
-      className="absolute top-4 right-4 text-primary  text-lg font-bold"
-      aria-label="Close reply modal"
-    >
-      ✕
-    </button>
-    <h2 className="text-3xl font-bold bg-clip-text text-primary mb-6">
-      {isAdminPrompt(replyModal) ? 'Review Admin Prompt' : 'Reply to'} {replyModal.userName || "User"}
-    </h2>
-    <p className="mb-6 text-primary">
-      <strong className="font-semibold">Question:</strong> {replyModal.question || "N/A"}
-    </p>
-    {isAdminPrompt(replyModal) && replyModal.suggestedAnswer && (
-      <div className="mb-6 p-4 border border-yellow-200 rounded-xl">
-        <strong className="font-semibold text-primary">Suggested Answer from Admin:</strong>
-        <p className="text-sm mt-2 text-primary whitespace-pre-wrap">{replyModal.suggestedAnswer}</p>
-        <button
-          type="button"
-          onClick={() => handleAgreeSuggested(replyModal)}
-          disabled={replyLoading}
-          className="mt-3 w-full bg-secondary text-primary py-2 px-4 rounded-lg font-medium cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-        >
-          {replyLoading ? <Loader className="animate-spin h-4 w-4" /> : 'Agree & Send Reply'}
-        </button>
-        <p className="text-xs text-primary mt-2 text-center">Or write your own answer below if you disagree</p>
-      </div>
-    )}
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        handleReply(replyModal);
-      }}
-      className="space-y-6"
-    >
-      <div>
-        <label className="block text-sm font-semibold text-primary mb-2">
-          Your Reply {isAdminPrompt(replyModal) && '(if you disagree with suggested answer)'}
-        </label>
-        <textarea
-          value={replyText}
-          onChange={(e) => setReplyText(e.target.value)}
-          className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
-            replyError ? "border-red-500" : "border-white/20"
-          }`}
-          rows="5"
-          placeholder="Type your custom reply here..."
-          required
-        />
-        {replyError && (
-          <p className="text-red-400 text-sm mt-2">{replyError}</p>
-        )}
-      </div>
-      <button
-        type="submit"
-        disabled={replyLoading || !replyText.trim()}
-        className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg  transition-all duration-300 transform hover:scale-105 cursor-pointer ${
-          replyLoading ? "opacity-70 cursor-not-allowed" : ""
-        }`}
-      >
-        {replyLoading ? "Sending..." : "Send Custom Reply"}
-      </button>
-    </form>
-  </div>
-</div>
+        <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-gray-900/30 to-black/30 flex items-center justify-center z-50">
+          <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-8 w-full max-w-lg relative border border-white/30">
+            <button
+              onClick={() => {
+                setReplyModal(null);
+                setReplyText("");
+                setReplyError(null);
+              }}
+              className="absolute top-4 right-4 text-primary text-lg font-bold"
+              aria-label="Close reply modal"
+            >
+              ✕
+            </button>
+            <h2 className="text-3xl font-bold bg-clip-text text-primary mb-6">
+              {isAdminPrompt(replyModal) ? "Review Admin Prompt" : "Reply to"}{" "}
+              {replyModal.userName || "User"}
+            </h2>
+            <p className="mb-6 text-primary">
+              <strong className="font-semibold">Question:</strong> {replyModal.question || "N/A"}
+            </p>
+            {isAdminPrompt(replyModal) && replyModal.suggestedAnswer && (
+              <div className="mb-6 p-4 border border-yellow-200 rounded-xl">
+                <strong className="font-semibold text-primary">Suggested Answer from Admin:</strong>
+                <p className="text-sm mt-2 text-primary whitespace-pre-wrap">
+                  {replyModal.suggestedAnswer}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => handleAgreeSuggested(replyModal)}
+                  disabled={replyLoading}
+                  className="mt-3 w-full bg-secondary text-primary py-2 px-4 rounded-lg font-medium cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {replyLoading ? <Loader className="animate-spin h-4 w-4" /> : "Agree & Send Reply"}
+                </button>
+                <p className="text-xs text-primary mt-2 text-center">
+                  Or write your own answer below if you disagree
+                </p>
+              </div>
+            )}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleReply(replyModal);
+              }}
+              className="space-y-6"
+            >
+              <div>
+                <label className="block text-sm font-semibold text-primary mb-2">
+                  Your Reply {isAdminPrompt(replyModal) && "(if you disagree with suggested answer)"}
+                </label>
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
+                    replyError ? "border-red-500" : "border-white/20"
+                  }`}
+                  rows="5"
+                  placeholder="Type your custom reply here..."
+                  required
+                />
+                {replyError && <p className="text-red-400 text-sm mt-2">{replyError}</p>}
+              </div>
+              <button
+                type="submit"
+                disabled={replyLoading || !replyText.trim()}
+                className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${
+                  replyLoading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
+              >
+                {replyLoading ? "Sending..." : "Send Custom Reply"}
+              </button>
+             
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );
