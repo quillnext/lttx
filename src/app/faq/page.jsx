@@ -458,11 +458,11 @@ export default function FAQPage() {
           </aside>
         </main>
 
-        <div className="text-center mt-8">
+        {/* <div className="text-center mt-8">
           <Link href="/faq" className="text-[#36013F] font-semibold hover:underline">
             View all Questions
           </Link>
-        </div>
+        </div> */}
       </div>
     </div>
   );
