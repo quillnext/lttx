@@ -161,97 +161,105 @@ export default function AdminQuestions() {
               </tr>
             </thead>
             <tbody>
-              {currentItems.map((q) => (
-                <React.Fragment key={q.id}>
-                  <tr className="hover:bg-gray-50 transition">
-                    <td className="p-3 border font-medium">{q.timestamp}</td>
-                    <td className="p-3 border font-medium">{q.userName}</td>
-                    <td className="p-3 border">{q.userEmail}</td>
-                    <td className="p-3 border">{q.userPhone}</td>
-                    <td className="p-3 border">{q.expertName}</td>
-                    <td className="p-3 border">
-                      {q.status === "pending" ? (
-                        <span className="bg-secondary text-[#36013F] font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
-                          <Loader className="animate-spin" /> Pending
-                        </span>
-                      ) : (
-                        <span className="bg-primary text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
-                          <CircleCheckBig /> Answered
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3 border">
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={q.isPublic || false}
-                          onChange={() => handleTogglePublic(q.id, q.isPublic || false)}
-                          className="sr-only peer"
-                          disabled={toggling[q.id]}
-                          aria-label={`Toggle public status for question ${q.id}`}
-                        />
-                        <div
-                          className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${
-                            q.isPublic ? "bg-[#36013F]" : "bg-gray-200"
-                          } ${toggling[q.id] ? "opacity-50" : ""}`}
-                        >
+              {currentItems.map((q) => {
+                const hasReply = q.reply && q.reply.trim() !== "";
+                return (
+                  <React.Fragment key={q.id}>
+                    <tr className="hover:bg-gray-50 transition">
+                      <td className="p-3 border font-medium">{q.timestamp}</td>
+                      <td className="p-3 border font-medium">{q.userName}</td>
+                      <td className="p-3 border">{q.userEmail}</td>
+                      <td className="p-3 border">{q.userPhone}</td>
+                      <td className="p-3 border">{q.expertName}</td>
+                      <td className="p-3 border">
+                        {hasReply ? (
+                          <span className="bg-primary text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
+                            <CircleCheckBig /> Answered
+                          </span>
+                        ) : (
+                          <span className="bg-secondary text-[#36013F] font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-1">
+                            <Loader className="animate-spin" /> Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 border">
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={q.isPublic || false}
+                            onChange={() => handleTogglePublic(q.id, q.isPublic || false)}
+                            className="sr-only peer"
+                            disabled={toggling[q.id]}
+                            aria-label={`Toggle public status for question ${q.id}`}
+                          />
                           <div
-                            className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                              q.isPublic ? "translate-x-5" : "translate-x-0"
-                            }`}
-                          ></div>
-                        </div>
-                        <span className="ml-2 text-xs font-medium">
-                          {toggling[q.id] ? (
-                            <Loader className="animate-spin h-4 w-4" />
-                          ) : q.isPublic ? (
-                            "Public"
-                          ) : (
-                            "Private"
-                          )}
-                        </span>
-                      </label>
-                    </td>
-                    <td className="p-3 border">
-                      <button
-                        onClick={() => handleDelete(q.id)}
-                        className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                    <td className="p-3 border">
-                      <button
-                        onClick={() => toggleRow(q.id)}
-                        className="text-gray-600 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#36013F] rounded"
-                        aria-expanded={expandedRows[q.id] || false}
-                        aria-label={expandedRows[q.id] ? "Collapse question details" : "Expand question details"}
-                      >
-                        {expandedRows[q.id] ? <ChevronUp /> : <ChevronDown />}
-                      </button>
-                    </td>
-                  </tr>
-                  {expandedRows[q.id] && (
-                    <tr key={`${q.id}-details`}>
-                      <td colSpan="9" className="p-3 border bg-gray-50">
-                        <div className="flex flex-col md:flex-row gap-4 text-gray-700">
-                          <div className="w-[30%] border-r">
-                            <p>
-                              <strong>Question:</strong> {q.question || "N/A"}
-                            </p>
+                            className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${
+                              q.isPublic ? "bg-[#36013F]" : "bg-gray-200"
+                            } ${toggling[q.id] ? "opacity-50" : ""}`}
+                          >
+                            <div
+                              className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
+                                q.isPublic ? "translate-x-5" : "translate-x-0"
+                              }`}
+                            ></div>
                           </div>
-                          <div className="w-[70%]">
-                            <p>
-                              <strong>Answer:</strong>{" "}
-                              {q.status === "pending" ? "No reply yet" : q.reply || "No reply yet"}
-                            </p>
-                          </div>
-                        </div>
+                          <span className="ml-2 text-xs font-medium">
+                            {toggling[q.id] ? (
+                              <Loader className="animate-spin h-4 w-4" />
+                            ) : q.isPublic ? (
+                              "Public"
+                            ) : (
+                              "Private"
+                            )}
+                          </span>
+                        </label>
+                      </td>
+                      <td className="p-3 border">
+                        <button
+                          onClick={() => handleDelete(q.id)}
+                          className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                      <td className="p-3 border">
+                        <button
+                          onClick={() => toggleRow(q.id)}
+                          className="text-gray-600 hover:text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#36013F] rounded"
+                          aria-expanded={expandedRows[q.id] || false}
+                          aria-label={expandedRows[q.id] ? "Collapse question details" : "Expand question details"}
+                        >
+                          {expandedRows[q.id] ? <ChevronUp /> : <ChevronDown />}
+                        </button>
                       </td>
                     </tr>
-                  )}
-                </React.Fragment>
-              ))}
+                    {expandedRows[q.id] && (
+                      <tr key={`${q.id}-details`}>
+                        <td colSpan="9" className="p-3 border bg-gray-50">
+                          <div className="flex flex-col md:flex-row gap-4 text-gray-700">
+                            <div className="w-[30%] border-r">
+                              <p>
+                                <strong>Question:</strong> {q.question || "N/A"}
+                              </p>
+                            </div>
+                            <div className="w-[70%]">
+                              <p>
+                                <strong>Answer:</strong>{" "}
+                                {hasReply ? q.reply : "No reply yet"}
+                              </p>
+                              {q.isAdminPrompt && !hasReply && q.suggestedAnswer && (
+                                <p className="text-sm text-gray-500 mt-2">
+                                  <strong>Suggested Answer:</strong> {q.suggestedAnswer}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         </div>
