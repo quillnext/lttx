@@ -1079,8 +1079,8 @@ export default function Home() {
                             ${status === "completed"
                               ? "bg-[#36013F] border-[#36013F]"
                               : status === "active"
-                              ? "bg-[#F4D35E] border-[#36013F]"
-                              : "bg-transparent border-white border-opacity-50"
+                              ? "bg-[#F4D35E] border-white"
+                              : "bg-transparent border-[#F4D35E] border-opacity-50"
                             }
                           `}
                         >
@@ -1103,7 +1103,7 @@ export default function Home() {
                             <div
                               className={`
                                 w-2 h-2 rounded-full transition-all duration-500
-                                ${status === "active" ? "bg-[#36013F]" : "bg-transparent border border-white border-opacity-70"}
+                                ${status === "active" ? "bg-white" : "bg-[#F4D35E] border border-[#F4D35E] border-opacity-70"}
                               `}
                             ></div>
                           )}
@@ -1125,7 +1125,7 @@ export default function Home() {
                       {!isFinalStep && (
                         <div
                           className={`
-                            h-0.5 flex-1 -mx-4 transition-all duration-500
+                            h-0.5 flex-1  transition-all duration-500
                             ${status === "completed" || (stepIndex + 1 < currentStep && stepIndex < 4)
                               ? "bg-[#F4D35E]"
                               : "bg-white opacity-50"
