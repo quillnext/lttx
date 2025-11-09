@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -152,7 +153,6 @@ export default function Home() {
     } catch (error) {
       console.error("Home: Search error:", error);
       toast.error("Search failed. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -309,7 +309,7 @@ export default function Home() {
             {activeFollowUps.length > 0 && (
                 <div className="w-full space-y-3 animate-fadeIn">
                     <p className="text-center text-white opacity-90 text-sm font-semibold">
-                        Just a few more details...
+                        Just a few more details (optional)...
                     </p>
                     {activeFollowUps.map(key => (
                         <input
@@ -330,11 +330,21 @@ export default function Home() {
               <button
                 onClick={handleAskExpert}
                 disabled={loading || !isComplete()}
-                className={`bg-[var(--secondary)] text-[var(--primary)] font-semibold px-6 py-3 rounded-full shadow hover:scale-105 transition ${
+                className={`bg-[var(--secondary)] text-[var(--primary)] font-semibold px-6 py-3 rounded-full shadow hover:scale-105 transition flex items-center justify-center ${
                   loading || !isComplete() ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
-                Ask Expert
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Finding experts...
+                  </>
+                ) : (
+                  "Ask Expert"
+                )}
               </button>
               <button
                 onClick={handleReset}
