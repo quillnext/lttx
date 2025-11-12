@@ -42,8 +42,8 @@ export default function Home() {
   }
 
   const quickTags = [
-    'Visa & Documents', 'Flights & Booking', 'Hotels & Stay',
-    'Itinerary & Planning', 'Budget & Costs', 'Family/Group/Work Trips'
+    'Visa & Documents', 'Flights & Booking', 'Hotel & Stay',
+    'Itinerary & Planning'
   ];
 
   const followUpConfig = {
@@ -271,10 +271,9 @@ export default function Home() {
 
         <main className="flex-grow flex items-center justify-center relative px-4">
           <div className="bg-opacity-80 rounded-3xl shadow-xl p-8 w-full max-w-5xl flex flex-col items-center gap-6 animate-fadeIn">
-            <Image src="https://www.xmytravel.com/logolttx.svg" alt="XmyTravel Logo" width={192} height={48} className="w-36 md:w-48 drop-shadow-lg brightness-110" />
+            <Image src="https://www.xmytravel.com/logolttx.svg" alt="XmyTravel Logo" width={192} height={48} className="w-50 md:w-70 drop-shadow-lg brightness-110" />
             
             <div className="text-center">
-                <h1 className="text-2xl md:text-3xl font-bold text-center">Get Expert Travel Guidance, Not Random Internet Advice</h1>
                 <p className="mt-2 text-white/90">Ask your travel question (big or small) and we’ll connect you with the best verified experts for your destination or need.</p>
             </div>
 
@@ -290,7 +289,6 @@ export default function Home() {
                 />
                 <div className="text-center text-secondary  text-xs mt-2 space-y-1">
                     <p>The more details you share, the more accurate your expert match will be.</p>
-                    <p className="font-semibold text-secondary">Your question will be reviewed by verified travel experts, not random bloggers or AI.</p>
                 </div>
             </div>
 
@@ -325,7 +323,6 @@ export default function Home() {
                 </div>
             )}
             
-            <p className="text-center text-sm text-secondary">We’ll route your query to the most relevant verified travel experts for tailored guidance.</p>
             <div className="flex flex-col md:flex-row gap-4 w-full justify-center">
               <button
                 onClick={handleAskExpert}
