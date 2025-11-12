@@ -287,9 +287,6 @@ export default function Home() {
                     rows={1}
                     aria-label="Your travel question"
                 />
-                <div className="text-center text-secondary  text-xs mt-2 space-y-1">
-                    <p>The more details you share, the more accurate your expert match will be.</p>
-                </div>
             </div>
 
             <div className="flex flex-wrap gap-2 justify-center">
@@ -303,9 +300,13 @@ export default function Home() {
                     </button>
                 ))}
             </div>
+              <div className="text-center text-secondary  text-xs mt-2 space-y-1">
+                    <p>The more details you share, the more accurate your expert match will be.</p>
+                </div>
             
             {activeFollowUps.length > 0 && (
                 <div className="w-full space-y-3 animate-fadeIn">
+                  
                     <p className="text-center text-white opacity-90 text-sm font-semibold">
                         Just a few more details (optional)...
                     </p>
