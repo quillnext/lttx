@@ -10,6 +10,8 @@ import Image from "next/image";
 import { FaSearch, FaChevronDown, FaThumbsUp, FaThumbsDown, FaTrophy } from "react-icons/fa";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
+import Navbar from "../components/Navbar";
+import Footer from "../pages/Footer";
 
 const db = getFirestore(app);
 
@@ -216,6 +218,8 @@ export default function FAQPage() {
   };
 
   return (
+<>
+<Navbar/>
     <div className="min-h-screen font-sans bg-gray-100">
       {isLightboxOpen && (
         <Lightbox
@@ -227,7 +231,7 @@ export default function FAQPage() {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         
 
-        <header className="text-center mb-12">
+        <header className="text-center mb-12 mt-20">
           <h1 className="text-4xl sm:text-5xl font-extrabold text-[#36013F] mb-3">
             Already Answered Questions
           </h1>
@@ -465,5 +469,8 @@ export default function FAQPage() {
         </div> */}
       </div>
     </div>
+
+    <Footer/>
+    </>
   );
 }
