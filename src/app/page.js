@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
+import { getFirestore, collection, getDocs, query, where, onSnapshot } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -78,7 +78,7 @@ export default function Home() {
   const router = useRouter();
 
   const [showFaq, setShowFaq] = useState(false);
-  const [questions, setQuestions] = useState([]);
+  const [groupedQuestions, setGroupedQuestions] = useState([]);
   const [topExperts, setTopExperts] = useState([]);
   const [loadingFaq, setLoadingFaq] = useState(true);
   const [searchTermFaq, setSearchTermFaq] = useState("");
@@ -168,7 +168,55 @@ export default function Home() {
     }
   };
 
+  const groupQuestions = (questionList) => {
+    const grouped = {};
+    questionList.forEach((q) => {
+      const questionKey = q.question?.trim().toLowerCase() || "";
+      if (!grouped[questionKey]) {
+        grouped[questionKey] = {
+          originalQuestion: q.question,
+          answerGroups: {},
+          maxTimestamp: 0,
+        };
+      }
+      const group = grouped[questionKey];
+      group.maxTimestamp = Math.max(group.maxTimestamp, q.rawTimestamp);
+
+      const replyKey = q.reply?.trim() || "";
+      if (!group.answerGroups[replyKey]) {
+        group.answerGroups[replyKey] = {
+          reply: q.reply,
+          experts: new Set(),
+          totalLikes: 0,
+          totalDislikes: 0,
+          ids: [],
+          timestamps: [],
+        };
+      }
+      const ag = group.answerGroups[replyKey];
+      ag.experts.add(q.expertName);
+      ag.totalLikes += q.likes || 0;
+      ag.totalDislikes += q.dislikes || 0;
+      ag.ids.push(q.id);
+      ag.timestamps.push(q.rawTimestamp);
+    });
+
+    Object.keys(grouped).forEach((key) => {
+      grouped[key].answerGroupsArray = Object.values(grouped[key].answerGroups).map((ag) => ({
+        ...ag,
+        minTimestamp: Math.min(...ag.timestamps),
+        timestamp:
+          new Date(Math.min(...ag.timestamps)).toLocaleDateString("en-GB") +
+          " " +
+          new Date(Math.min(...ag.timestamps)).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+      }));
+    });
+
+    return Object.values(grouped).sort((a, b) => b.maxTimestamp - a.maxTimestamp);
+  };
+
   useEffect(() => {
+    let unsubscribe = null;
     const fetchQuestionsAndUsernames = async () => {
       setLoadingFaq(true);
       try {
@@ -184,15 +232,16 @@ export default function Home() {
             rawTimestamp: rawDate.getTime(),
           };
         });
-        const sortedQuestions = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+        const grouped = groupQuestions(questionList);
+
         const answerCountMap = questionList.reduce((map, q) => {
           map[q.expertName] = (map[q.expertName] || 0) + 1;
           return map;
         }, {});
         const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
         const profilePromises = uniqueExpertNames.map(async (expertName) => {
-          const q = query(collection(db, "Profiles"), where("fullName", "==", expertName));
-          const profileSnapshot = await getDocs(q);
+          const qProfile = query(collection(db, "Profiles"), where("fullName", "==", expertName));
+          const profileSnapshot = await getDocs(qProfile);
           let username = null,
             profilePhoto = null,
             tagline = null;
@@ -211,14 +260,13 @@ export default function Home() {
           return map;
         }, {});
         
-        // This logic is kept for the FAQ, but it no longer uses the form's `searchData`
         const topExpertsList = profileResults
           .sort((a, b) => b.answerCount - a.answerCount)
           .slice(0, 10)
           .map((expert, index) => ({ ...expert, rank: index + 1 }));
 
         setExpertProfileMap(newExpertProfileMap);
-        setQuestions(sortedQuestions);
+        setGroupedQuestions(grouped);
         setTopExperts(topExpertsList);
       } catch (error) {
         console.error("Error fetching data:", error.message);
@@ -227,21 +275,56 @@ export default function Home() {
         setLoadingFaq(false);
       }
     };
+
     if (showFaq) {
       fetchQuestionsAndUsernames();
+
+      const q = query(
+        collection(db, "Questions"),
+        where("isPublic", "==", true),
+        where("status", "==", "answered")
+      );
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const questionList = snapshot.docs.map((docSnap) => {
+          const data = docSnap.data();
+          const rawDate = new Date(data.createdAt || Date.now());
+          return {
+            id: docSnap.id,
+            ...data,
+            timestamp:
+              rawDate.toLocaleDateString("en-GB") +
+              " " +
+              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+            rawTimestamp: rawDate.getTime(),
+          };
+        });
+        const grouped = groupQuestions(questionList);
+        setGroupedQuestions(grouped);
+      }, (error) => {
+        console.error("Error with real-time listener:", error.message);
+      });
     }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [showFaq]);
 
-  const filteredQuestions = searchTermFaq
-    ? questions.filter(
-        (question) =>
-          question.question?.toLowerCase().includes(searchTermFaq.toLowerCase()) ||
-          question.reply?.toLowerCase().includes(searchTermFaq.toLowerCase()) ||
-          question.expertName?.toLowerCase().includes(searchTermFaq.toLowerCase())
+  const filteredGroups = searchTermFaq
+    ? groupedQuestions.filter(
+        (group) =>
+          group.originalQuestion?.toLowerCase().includes(searchTermFaq.toLowerCase()) ||
+          group.answerGroupsArray.some(
+            (ag) =>
+              ag.reply?.toLowerCase().includes(searchTermFaq.toLowerCase()) ||
+              Array.from(ag.experts).some((expert) =>
+                expert?.toLowerCase().includes(searchTermFaq.toLowerCase())
+              )
+          )
       )
-    : questions;
-  const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
-  const paginatedQuestions = filteredQuestions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+    : groupedQuestions;
+  const totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+  const paginatedGroups = filteredGroups.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <div className="relative min-h-screen overflow-hidden">
@@ -420,67 +503,81 @@ export default function Home() {
                     </svg>
                     <span className="text-lg font-medium">Loading Insights...</span>
                   </div>
-                ) : paginatedQuestions.length === 0 ? (
+                ) : paginatedGroups.length === 0 ? (
                   <div className="text-center bg-white p-8 rounded-lg shadow-sm border">
                     <p className="text-lg font-medium text-gray-700">No questions found.</p>
                     <p className="text-gray-500">Try adjusting your search or check back later.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {paginatedQuestions.map((q) => {
-                      const profile = expertProfileMap[q.expertName] || {
-                        username: null,
-                        profilePhoto: "/default.jpg",
-                        tagline: "No tagline available",
-                      };
-                      return (
-                        <details
-                          key={q.id}
-                          className="group bg-white rounded-lg shadow-sm transition-all duration-300 overflow-hidden border border-gray-200 hover:shadow-lg hover:border-[#F4D35E]"
-                        >
-                          <summary className="flex items-center justify-between p-5 cursor-pointer font-semibold text-[#36013F] hover:bg-gray-50">
-                            <span className="text-lg pr-4">{q.question}</span>
-                            <FaChevronDown className="w-5 h-5 flex-shrink-0 text-gray-400 transition-transform duration-300 group-open:rotate-180 group-open:text-[#36013F]" />
-                          </summary>
-                          <div className="p-5 border-t border-gray-200">
-                            <p className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
-                              {q.reply || "No answer available yet."}
-                            </p>
-                            <div className="flex flex-wrap justify-between items-center gap-4">
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
-                                  className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
-                                >
-                                  <Image
-                                    src={profile.profilePhoto || "/default.jpg"}
-                                    alt={`${q.expertName || "Expert"}'s profile photo`}
-                                    fill
-                                    sizes="40px"
-                                    className="object-cover"
-                                    onError={(e) => (e.target.src = "/default.jpg")}
-                                  />
-                                </button>
-                                <div>
-                                  <span className="text-sm text-gray-500">Answered by</span>
-                                  {profile.username ? (
-                                    <Link
-                                      href={`/experts/${profile.username}`}
-                                      className="block text-[#36013F] font-bold hover:underline"
-                                    >
-                                      {q.expertName}
-                                    </Link>
-                                  ) : (
-                                    <p className="font-bold text-gray-600">{q.expertName || "Unknown Expert"}</p>
-                                  )}
+                    {paginatedGroups.map((group) => (
+                      <details
+                        key={group.originalQuestion}
+                        className="group bg-white rounded-lg shadow-sm transition-all duration-300 overflow-hidden border border-gray-200 hover:shadow-lg hover:border-[#F4D35E]"
+                      >
+                        <summary className="flex items-center justify-between p-5 cursor-pointer font-semibold text-[#36013F] hover:bg-gray-50">
+                          <span className="text-lg pr-4">{group.originalQuestion}</span>
+                          <FaChevronDown className="w-5 h-5 flex-shrink-0 text-gray-400 transition-transform duration-300 group-open:rotate-180 group-open:text-[#36013F]" />
+                        </summary>
+                        <div className="p-5 border-t border-gray-200">
+                          {group.answerGroupsArray.map((ag) => {
+                            const expertsArray = Array.from(ag.experts);
+                            const isSingleExpert = ag.experts.size === 1;
+                            const singleExpertName = isSingleExpert ? expertsArray[0] : null;
+                            const profile = isSingleExpert && singleExpertName
+                              ? (expertProfileMap[singleExpertName] || { username: null, profilePhoto: "/default.jpg", tagline: "No tagline available" })
+                              : null;
+
+                            return (
+                              <div key={ag.reply} className="border-b border-gray-100 pb-4 last:border-b-0">
+                                <p className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                  {ag.reply || "No answer available yet."}
+                                </p>
+                                <div className="flex flex-wrap justify-between items-center gap-4">
+                                  <div className="flex items-center gap-3">
+                                    {isSingleExpert && profile && (
+                                      <button
+                                        onClick={() => openLightbox(profile.profilePhoto)}
+                                        className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
+                                      >
+                                        <Image
+                                          src={profile.profilePhoto}
+                                          alt={`${singleExpertName || "Expert"}'s profile photo`}
+                                          fill
+                                          sizes="40px"
+                                          className="object-cover"
+                                          onError={(e) => (e.target.src = "/default.jpg")}
+                                        />
+                                      </button>
+                                    )}
+                                    <div>
+                                      {isSingleExpert ? (
+                                        <>
+                                          <span className="text-sm text-gray-500">Answered by</span>
+                                          {profile && profile.username ? (
+                                            <Link
+                                              href={`/experts/${profile.username}`}
+                                              className="block text-[#36013F] font-bold hover:underline"
+                                            >
+                                              {singleExpertName}
+                                            </Link>
+                                          ) : (
+                                            <p className="font-bold text-gray-600">{singleExpertName || "Unknown Expert"}</p>
+                                          )}
+                                        </>
+                                      ) : (
+                                        <p className="font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-gray-500 self-end">{ag.timestamp}</p>
                                 </div>
                               </div>
-                              <p className="text-xs text-gray-500 self-end">{q.timestamp}</p>
-                            </div>
-                          </div>
-                        </details>
-                      );
-                    })}
+                            );
+                          })}
+                        </div>
+                      </details>
+                    ))}
                     {totalPages > 1 && (
                       <div className="flex justify-center items-center gap-2 sm:gap-4 mt-8">
                         <button
