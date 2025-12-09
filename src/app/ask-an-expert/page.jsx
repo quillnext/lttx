@@ -29,7 +29,7 @@ export default function ExpertsDirectory() {
   const [lastDoc, setLastDoc] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
-  const [aiContext, setAiContext] = useState(null); // New state for search metadata
+  const [aiContext, setAiContext] = useState(null); 
   const [hasMore, setHasMore] = useState(true);
   const [visibleCards, setVisibleCards] = useState({});
   const searchParams = useSearchParams();
@@ -126,6 +126,7 @@ export default function ExpertsDirectory() {
     };
   };
 
+  // --- Initial Fast Search (Matches + Summary) ---
   const performAiSearch = async (queryText) => {
     setIsAiSearching(true);
     setLoading(true);
@@ -138,7 +139,7 @@ export default function ExpertsDirectory() {
       const response = await fetch('/api/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: queryText })
+        body: JSON.stringify({ query: queryText, action: 'initial' }) // Action: initial
       });
 
       if (!response.ok) {
@@ -180,7 +181,7 @@ export default function ExpertsDirectory() {
 
         setExperts(sortedAiExperts);
         setFilteredExperts(sortedAiExperts);
-        setAiContext(context); 
+        setAiContext(context); // Initial context with summary only
       } else {
         setExperts([]);
         setFilteredExperts([]);
@@ -194,6 +195,23 @@ export default function ExpertsDirectory() {
     } finally {
       setIsAiSearching(false);
       setLoading(false);
+    }
+  };
+
+  // --- On-Demand Section Loading ---
+  const loadSectionData = async (sectionType) => {
+    try {
+      const response = await fetch('/api/ai-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, action: 'section', sectionType })
+      });
+
+      if (!response.ok) return null;
+      return await response.json();
+    } catch (error) {
+      console.error(`Error loading ${sectionType}:`, error);
+      return null;
     }
   };
 
@@ -449,12 +467,12 @@ export default function ExpertsDirectory() {
                     <FaCompass className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#36013F] w-6 h-6 animate-pulse" />
                 </div>
                 <span className="text-[#36013F] font-medium animate-pulse text-lg">
-                    Curating your personal list of experts...
+                    Finding the best experts for you...
                 </span>
             </div>
         )}
 
-        {/* Context Layout */}
+        {/* Context Layout with Lazy Loading */}
         {!isAiSearching && aiContext && filteredExperts.length > 0 && (
             <SearchLayout 
                 experts={filteredExperts} 
@@ -462,6 +480,7 @@ export default function ExpertsDirectory() {
                 query={searchTerm}
                 onBookClick={setModalExpert}
                 openLightbox={(src) => openLightbox(src && src !== "" ? src : "/default.jpg")}
+                loadSectionData={loadSectionData} // Pass the loader function
             />
         )}
 

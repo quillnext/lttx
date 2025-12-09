@@ -1,17 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FaRupeeSign, FaCalendarAlt, FaPassport, FaArrowRight, FaExclamationTriangle, FaSuitcaseRolling } from 'react-icons/fa';
+import { FaRupeeSign, FaCalendarAlt, FaPassport, FaArrowRight, FaExclamationTriangle, FaSuitcaseRolling, FaUnlock, FaGlobeAmericas, FaUsers, FaLightbulb } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
-
- const getYears = (yearsStr) => {
+const getYears = (yearsStr) => {
     if (!yearsStr || typeof yearsStr !== 'string') return "0+";
     const match = yearsStr.match(/\d+\+?/);
     return match ? match[0] : "0+";
-  };
-  const calculateTotalExperience = (experience) => {
+};
+
+const calculateTotalExperience = (experience) => {
     if (!Array.isArray(experience) || experience.length === 0) return "0+";
     const today = new Date();
     let earliestStart = null, latestEnd = null;
@@ -25,9 +25,137 @@ import { motion } from 'framer-motion';
     const totalMonths = (latestEnd.getFullYear() - earliestStart.getFullYear()) * 12 + (latestEnd.getMonth() - earliestStart.getMonth());
     const years = Math.floor(totalMonths / 12);
     return `${years}+`;
-  };
+};
 
-const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) => {
+// Reusable Lazy Load Section
+const LazySection = ({ title, description, icon, type, loadSectionData }) => {
+    const [status, setStatus] = useState('idle'); // idle | loading | loaded
+    const [data, setData] = useState(null);
+
+    const handleLoad = async () => {
+        setStatus('loading');
+        const result = await loadSectionData(type);
+        if (result) {
+            setData(result);
+            setStatus('loaded');
+        } else {
+            setStatus('idle'); // Revert on error
+        }
+    };
+
+    if (status === 'idle') {
+        return (
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 flex flex-col items-center text-center shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-3 bg-gray-100 rounded-full text-[#36013F] mb-3 text-2xl">
+                    {icon}
+                </div>
+                <h3 className="font-bold text-gray-800 text-lg mb-2">{title}</h3>
+                <p className="text-sm text-gray-500 mb-4">{description}</p>
+                <button 
+                    onClick={handleLoad}
+                    className="flex items-center gap-2 bg-[#36013F] text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-opacity-90 transition-all shadow-md group"
+                >
+                    <FaUnlock className="text-xs group-hover:scale-110 transition-transform" />
+                    Reveal {title}
+                </button>
+            </div>
+        );
+    }
+
+    if (status === 'loading') {
+        return (
+            <div className="bg-white border border-gray-100 rounded-2xl p-6 animate-pulse">
+                <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
+                <div className="space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-full"></div>
+                    <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                    <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+                </div>
+            </div>
+        );
+    }
+
+    // Render Loaded Content based on Type
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden"
+        >
+            <div className="absolute top-0 right-0 p-4 opacity-10 text-6xl text-[#36013F]">{icon}</div>
+            
+            {type === 'related_questions' && data.relatedQuestions && (
+                <>
+                    <h3 className="text-lg font-bold text-[#36013F] mb-4 flex items-center gap-2">{icon} Travellers also asked</h3>
+                    <div className="space-y-4">
+                        {data.relatedQuestions.slice(0, 3).map((item, idx) => (
+                            <div key={idx} className="border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                                <h4 className="font-semibold text-gray-800 text-sm leading-snug">"{item.question}"</h4>
+                                <p className="text-xs text-gray-500 italic mt-1">"{item.teaserAnswer}"</p>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {type === 'insights' && data.insights && (
+                <>
+                    <h3 className="text-lg font-bold text-[#36013F] mb-4 flex items-center gap-2">{icon} 4 Key Insights</h3>
+                    <div className="space-y-3">
+                        {data.insights.map((insight, idx) => (
+                            <div key={idx} className="flex items-start gap-2">
+                                <span className="text-[#F4D35E] mt-1 text-xs"><FaExclamationTriangle /></span>
+                                <p className="text-sm text-gray-700">{insight}</p>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
+            {type === 'visa' && data.visaSnapshot && (
+                <>
+                    <h3 className="text-lg font-bold text-[#36013F] mb-4 flex items-center gap-2">{icon} {data.visaSnapshot.title || "Visa Check"}</h3>
+                    <ul className="space-y-2">
+                        {data.visaSnapshot.points?.map((point, idx) => (
+                            <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                                <span className="text-[#36013F] mt-1 font-bold">✓</span> {point}
+                            </li>
+                        ))}
+                    </ul>
+                </>
+            )}
+
+            {type === 'mistakes' && data.mistakes && (
+                <div className="bg-red-50 -m-6 p-6 h-full">
+                    <h3 className="text-lg font-bold text-red-800 mb-4 flex items-center gap-2">{icon} Avoid these mistakes</h3>
+                    <ul className="space-y-3">
+                        {data.mistakes.map((mistake, idx) => (
+                            <li key={idx} className="text-sm text-red-700 font-medium flex items-start gap-2">
+                                <span className="mt-1">✕</span> {mistake}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {type === 'peer_plans' && data.peerPlans && (
+                <>
+                    <h3 className="text-lg font-bold text-[#36013F] mb-4 flex items-center gap-2">{icon} Peer Plans</h3>
+                    <div className="space-y-4">
+                        {data.peerPlans.map((plan, idx) => (
+                            <div key={idx} className="bg-gray-50 p-3 rounded-lg">
+                                <h4 className="font-bold text-gray-800 text-sm">{plan.title}</h4>
+                                <p className="text-xs text-gray-500 mt-1">{plan.desc}</p>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+        </motion.div>
+    );
+};
+
+const SearchLayout = ({ experts, context, query, onBookClick, openLightbox, loadSectionData }) => {
   if (!context) return null;
 
   return (
@@ -68,10 +196,9 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
             </div>
           </div>
         </div>
-        
       </div>
 
-      {/* 2. Smart Expert Matches (Hero Grid) */}
+      {/* 2. Smart Expert Matches (Hero Grid) - ALWAYS VISIBLE */}
       <div id="expert-grid" className="bg-primary p-10 rounded-2xl text-white">
         <div className="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
           <div>
@@ -110,10 +237,6 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
                         onClick={() => openLightbox(expert.photo)}
                       />
                     </div>
-                    {/* Rank Badge */}
-                    {/* <div className="absolute -bottom-1 -right-1 bg-[#36013F] text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold border-2 border-white">
-                      {index + 1}
-                    </div> */}
                   </div>
                   <div className="flex-1 min-w-0 pt-1">
                     <h4 className="font-bold text-lg text-gray-900 leading-tight truncate">{expert.fullName}</h4>
@@ -157,153 +280,46 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
         </div>
       </div>
 
-      {/* 3. Travellers Also Asked (Teasers) */}
-      {context.relatedQuestions && context.relatedQuestions.length > 0 && (
-        <section>
-          <div className="mb-4">
-            <h3 className="text-2xl font-bold text-[#36013F]">Travellers also asked</h3>
-            <p className="text-sm text-gray-500">Common questions for {query}. Answers vary by your specific case.</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {context.relatedQuestions.slice(0, 3).map((item, idx) => (
-              <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-200 hover:border-[#F4D35E] transition-colors group cursor-default">
-                <h4 className="font-semibold text-gray-800 mb-2 leading-snug">"{item.question}"</h4>
-                <p className="text-sm text-gray-500 mb-4 italic line-clamp-2">"{item.teaserAnswer}"</p>
-                <button 
-                    onClick={() => document.getElementById('expert-grid').scrollIntoView({ behavior: 'smooth' })}
-                    className="text-[#36013F] text-sm font-bold flex items-center gap-2 group-hover:underline"
-                >
-                  Get exact guidance <FaArrowRight size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      {/* 3. Lazy Load Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <LazySection 
+              title="Related Questions" 
+              description="See what others are asking about this."
+              icon={<FaUsers />}
+              type="related_questions"
+              loadSectionData={loadSectionData}
+          />
+          <LazySection 
+              title="Critical Insights" 
+              description="Important factors before you plan."
+              icon={<FaLightbulb />}
+              type="insights"
+              loadSectionData={loadSectionData}
+          />
+          <LazySection 
+              title="Visa Snapshot" 
+              description="Quick check on documentation needs."
+              icon={<FaPassport />}
+              type="visa"
+              loadSectionData={loadSectionData}
+          />
+          <LazySection 
+              title="Common Mistakes" 
+              description="Avoid pitfalls other travelers face."
+              icon={<FaExclamationTriangle />}
+              type="mistakes"
+              loadSectionData={loadSectionData}
+          />
+          <LazySection 
+              title="Peer Plans" 
+              description="Browse itineraries from similar trips."
+              icon={<FaGlobeAmericas />}
+              type="peer_plans"
+              loadSectionData={loadSectionData}
+          />
+      </div>
 
-      {/* 4. Mini Insights */}
-      {context.insights && (
-        <section className="bg-gray-100 rounded-3xl p-6 md:p-8">
-          <div className="mb-6">
-            <h3 className="text-2xl font-bold text-[#36013F]">Before you plan, know these 4 things</h3>
-            <p className="text-sm text-gray-600">These factors change frequently. Verify with an expert.</p>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {context.insights.map((insight, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-xl shadow-sm flex items-start gap-3">
-                <div className="mt-1 text-[#F4D35E]"><FaExclamationTriangle /></div>
-                <div>
-                  <p className="text-gray-800 font-medium text-sm">{insight}</p>
-                  <button 
-                    onClick={() => document.getElementById('expert-grid').scrollIntoView({ behavior: 'smooth' })}
-                    className="text-xs text-[#36013F] font-semibold mt-1 hover:underline"
-                  >
-                    Check how this applies to you
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 5. Visa Snapshot */}
-      {context.visaSnapshot && (
-        <section className="bg-white border-l-4 border-[#36013F] rounded-r-2xl shadow-sm p-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-            <div>
-              <h3 className="text-xl font-bold text-[#36013F] flex items-center gap-2">
-                <FaPassport /> {context.visaSnapshot.title || "Visa Requirements"}
-              </h3>
-              <ul className="mt-3 space-y-2">
-                {context.visaSnapshot.points?.map((point, idx) => (
-                  <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-[#F4D35E] mt-1">●</span> {point}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <button 
-                onClick={() => document.getElementById('expert-grid').scrollIntoView({ behavior: 'smooth' })}
-                className="bg-white border-2 border-[#36013F] text-[#36013F] px-6 py-2 rounded-full font-bold hover:bg-[#36013F] hover:text-white transition whitespace-nowrap"
-            >
-              Check Documents
-            </button>
-          </div>
-        </section>
-      )}
-
-      {/* 6. Peer Planning (Social Proof Mock) */}
-      {context.peerPlans && context.peerPlans.length > 0 && (
-        <section>
-          <h3 className="text-2xl font-bold text-[#36013F] mb-4">What travellers like you are planning</h3>
-          <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-            {context.peerPlans.map((plan, idx) => (
-              <div key={idx} className="min-w-[280px] bg-white p-4 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                <div>
-                    <div className="w-full h-32 bg-gray-200 rounded-xl mb-3 relative overflow-hidden flex items-center justify-center">
-                        <div className="w-full h-full bg-gradient-to-br from-purple-100 to-yellow-100 flex items-center justify-center text-gray-400">
-                           <span className="text-2xl">✈️</span>
-                        </div>
-                    </div>
-                    <h4 className="font-bold text-gray-800 text-sm">{plan.title}</h4>
-                    <p className="text-xs text-gray-500 mt-1">{plan.desc}</p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1">Guided by expert</p>
-                    <button 
-                        onClick={() => document.getElementById('expert-grid').scrollIntoView({ behavior: 'smooth' })}
-                        className="text-[#36013F] text-xs font-bold hover:underline"
-                    >
-                        Book similar guidance
-                    </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 7. Mistakes to Avoid */}
-      {context.mistakes && (
-        <section className="bg-red-50 rounded-3xl p-6 md:p-8">
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-red-900">Avoid these common mistakes</h3>
-            <p className="text-red-700 text-sm">Don't rely on outdated blog posts. Ask an expert.</p>
-          </div>
-          <div className="space-y-3 max-w-3xl mx-auto">
-            {context.mistakes.map((mistake, idx) => (
-              <div key={idx} className="bg-white p-4 rounded-xl flex items-center justify-between shadow-sm">
-                <span className="text-gray-800 font-medium text-sm flex-1">{mistake}</span>
-                <button 
-                    onClick={() => document.getElementById('expert-grid').scrollIntoView({ behavior: 'smooth' })}
-                    className="text-red-600 text-xs font-bold uppercase tracking-wider ml-4 hover:underline whitespace-nowrap"
-                >
-                    Fix This
-                </button>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 8. Trending Destinations */}
-      <section>
-        <h3 className="text-xl font-bold text-[#36013F] mb-4">Trending destinations for Indians</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {['Dubai', 'Bali', 'Vietnam', 'Japan', 'Turkey', 'Thailand'].map((place) => (
-                <div key={place} className="relative h-24 rounded-xl overflow-hidden group cursor-pointer bg-gray-200">
-                    <div className="absolute inset-0 bg-[#36013F] opacity-80 group-hover:opacity-90 transition-opacity"></div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-white font-bold text-sm">{place}</span>
-                        <span className="text-[10px] text-white opacity-0 group-hover:opacity-100 transition-opacity mt-1">Talk to expert</span>
-                    </div>
-                </div>
-            ))}
-        </div>
-      </section>
-
-      {/* 9. Bottom Conversion Strip */}
+      {/* 4. Bottom Conversion Strip */}
       <div className="fixed bottom-0 left-0 w-full bg-[#36013F] text-white p-4 z-40 shadow-2xl border-t border-white/10 md:hidden">
         <div className="flex justify-between items-center">
             <div>

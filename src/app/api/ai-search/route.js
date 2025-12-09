@@ -44,7 +44,7 @@ function calculateYearsOfExperience(experience) {
 
 export async function POST(request) {
   try {
-    const { query } = await request.json();
+    const { query, action = 'initial', sectionType } = await request.json();
 
     if (!query) {
       return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -55,156 +55,198 @@ export async function POST(request) {
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
     }
 
-    // 1. Fetch all public expert profiles
-    const profilesRef = db.collection("Profiles");
-    const snapshot = await profilesRef.where("isPublic", "==", true).get();
-
-    const profiles = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      
-      const yearsExp = data.profileType === 'agency' 
-        ? (parseInt(data.yearsActive) || 0) 
-        : calculateYearsOfExperience(data.experience);
-
-      // Sanitize data to save tokens and avoid errors
-      return {
-        id: doc.id,
-        name: data.fullName || "Unknown",
-        tagline: data.tagline || "",
-        about: (data.about || "").substring(0, 300), // Truncate long descriptions
-        location: data.location || "Global",
-        expertise: (data.expertise || []).slice(0, 5), // Limit array items
-        services: (data.services || []).slice(0, 5),
-        regions: (data.regions || []).slice(0, 5),
-        profileType: data.profileType || "expert",
-        pricing: data.pricing || "Not specified",
-        yearsOfExperience: yearsExp,
-      };
-    });
-
-    if (profiles.length === 0) {
-      return NextResponse.json({ matches: [], context: null });
-    }
-
-    // 2. Initialize Gemini
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // 3. Construct Prompt
-    const prompt = `
-      Act as an intelligent travel consultant matchmaker for Xmytravel.
-      
-      User Query: "${query}"
+    // --- ACTION: INITIAL SEARCH (Match Experts + Basic Summary) ---
+    if (action === 'initial') {
+      // 1. Fetch all public expert profiles
+      const profilesRef = db.collection("Profiles");
+      const snapshot = await profilesRef.where("isPublic", "==", true).get();
 
-      Your Goal: 
-      1. Identify the best travel experts from the list based on expertise, location, and services.
-      2. For EACH matched expert, assign a "Match Score" (percentage 0-100) based on relevance to the query.
-      3. Write a short, specific "Match Reason" for EACH expert explaining exactly why they fit this user's specific request.
-      4. Generate specific "Consultation Context" to convince the user they need an expert. 
-      
-      IMPORTANT: For the context (insights, answers, visa), DO NOT give the full helpful answer. 
-      Instead, give a "Teaser" answer that implies complexity and ends with a reason to ask an expert.
-      
-      Available Profiles:
-      ${JSON.stringify(profiles)}
-    `;
+      const profiles = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        const yearsExp = data.profileType === 'agency' 
+          ? (parseInt(data.yearsActive) || 0) 
+          : calculateYearsOfExperience(data.experience);
 
-    // 4. Call Gemini with Schema
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            matches: {
-              type: Type.ARRAY,
-              items: { 
-                type: Type.OBJECT,
-                properties: {
-                  id: { type: Type.STRING },
-                  score: { type: Type.INTEGER, description: "Relevance score from 0 to 100" },
-                  reason: { type: Type.STRING, description: "Specific 1-sentence reason why this expert matches the query" }
-                },
-                required: ["id", "score", "reason"]
-              },
-              description: "List of matched experts sorted by score descending (max 10)"
-            },
-            context: {
-              type: Type.OBJECT,
-              properties: {
-                querySummary: {
+        return {
+          id: doc.id,
+          name: data.fullName || "Unknown",
+          tagline: data.tagline || "",
+          about: (data.about || "").substring(0, 300),
+          location: data.location || "Global",
+          expertise: (data.expertise || []).slice(0, 5),
+          services: (data.services || []).slice(0, 5),
+          regions: (data.regions || []).slice(0, 5),
+          profileType: data.profileType || "expert",
+          pricing: data.pricing || "Not specified",
+          yearsOfExperience: yearsExp,
+        };
+      });
+
+      if (profiles.length === 0) {
+        return NextResponse.json({ matches: [], context: null });
+      }
+
+      const prompt = `
+        Act as an intelligent travel consultant matchmaker.
+        User Query: "${query}"
+
+        Goal: 
+        1. Identify the best travel experts from the provided list.
+        2. Assign a "Match Score" (0-100) and a short "Match Reason".
+        3. Provide a very brief "Query Summary" (Budget, Season, Visa Hint).
+
+        Available Profiles:
+        ${JSON.stringify(profiles)}
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              matches: {
+                type: Type.ARRAY,
+                items: { 
                   type: Type.OBJECT,
                   properties: {
-                    budgetRange: { type: Type.STRING, description: "Short budget hint (e.g. '₹1.5L - ₹2.5L varies by route')" },
-                    bestSeason: { type: Type.STRING, description: "Best time to visit" },
-                    visaStatus: { type: Type.STRING, description: "Short visa hint (e.g. 'Schengen Required')" }
+                    id: { type: Type.STRING },
+                    score: { type: Type.INTEGER },
+                    reason: { type: Type.STRING }
                   },
-                  required: ["budgetRange", "bestSeason", "visaStatus"]
-                },
-                matchReason: { type: Type.STRING, description: "One sentence general summary of why experts were chosen." },
-                relatedQuestions: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      question: { type: Type.STRING },
-                      teaserAnswer: { type: Type.STRING }
-                    },
-                    required: ["question", "teaserAnswer"]
-                  }
-                },
-                insights: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                  description: "4 short bullet points about complexity."
-                },
-                visaSnapshot: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    points: { type: Type.ARRAY, items: { type: Type.STRING } }
-                  },
-                  required: ["title", "points"]
-                },
-                mistakes: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING }
-                },
-                peerPlans: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      title: { type: Type.STRING },
-                      desc: { type: Type.STRING }
-                    },
-                    required: ["title", "desc"]
-                  }
+                  required: ["id", "score", "reason"]
                 }
               },
-              required: ["querySummary", "matchReason", "relatedQuestions", "insights", "visaSnapshot", "mistakes"]
-            }
-          },
-          required: ["matches", "context"]
+              context: {
+                type: Type.OBJECT,
+                properties: {
+                  querySummary: {
+                    type: Type.OBJECT,
+                    properties: {
+                      budgetRange: { type: Type.STRING },
+                      bestSeason: { type: Type.STRING },
+                      visaStatus: { type: Type.STRING }
+                    },
+                    required: ["budgetRange", "bestSeason", "visaStatus"]
+                  },
+                  matchReason: { type: Type.STRING, description: "General summary of why experts were chosen." }
+                },
+                required: ["querySummary", "matchReason"]
+              }
+            },
+            required: ["matches", "context"]
+          }
         }
-      }
-    });
+      });
 
-    // 5. Parse and Return
-    let jsonText = response.text;
-    // Remove markdown code blocks if present
-    if (jsonText.startsWith("```json")) {
-      jsonText = jsonText.replace(/^```json\n/, "").replace(/\n```$/, "");
-    } else if (jsonText.startsWith("```")) {
-      jsonText = jsonText.replace(/^```\n/, "").replace(/\n```$/, "");
+      return NextResponse.json(JSON.parse(response.text));
     }
 
-    const result = JSON.parse(jsonText);
-    return NextResponse.json({ 
-      matches: result.matches || [],
-      context: result.context
-    });
+    // --- ACTION: SECTION GENERATION (On Demand) ---
+    if (action === 'section') {
+      let sectionPrompt = "";
+      let schemaProperties = {};
+      let requiredFields = [];
+
+      switch (sectionType) {
+        case 'related_questions':
+          sectionPrompt = `Generate 3 related travel questions for: "${query}". just small and medium lenght of question not big pormpt and all.`;
+          schemaProperties = {
+            relatedQuestions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  question: { type: Type.STRING },
+                  teaserAnswer: { type: Type.STRING }
+                },
+                required: ["question", "teaserAnswer"]
+              }
+            }
+          };
+          requiredFields = ["relatedQuestions"];
+          break;
+
+        case 'insights':
+          sectionPrompt = `Provide 6 short, critical insights or "things to know before planning" for: "${query}". Keep them punchy. max character limit is 50 `;
+          schemaProperties = {
+            insights: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          };
+          requiredFields = ["insights"];
+          break;
+
+        case 'visa':
+          sectionPrompt = `Provide a specific "Visa Snapshot" for: "${query}". Give a title and 3-4 bullet points about requirements/complexity.max character limit is 100 `;
+          schemaProperties = {
+            visaSnapshot: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                points: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["title", "points"]
+            }
+          };
+          requiredFields = ["visaSnapshot"];
+          break;
+
+        case 'mistakes':
+          sectionPrompt = `List 3 common travel mistakes people make regarding: "${query}". just bullet points not big answer. max character limit is 150 `;
+          schemaProperties = {
+            mistakes: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            }
+          };
+          requiredFields = ["mistakes"];
+          break;
+
+        case 'peer_plans':
+          sectionPrompt = `Generate 3 hypothetical "Peer Plans" (what other travelers are booking) relevant to: "${query}".just bullet points not big answer. max character limit is 150`;
+          schemaProperties = {
+            peerPlans: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  title: { type: Type.STRING },
+                  desc: { type: Type.STRING }
+                },
+                required: ["title", "desc"]
+              }
+            }
+          };
+          requiredFields = ["peerPlans"];
+          break;
+
+        default:
+          return NextResponse.json({ error: "Invalid section type" }, { status: 400 });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: sectionPrompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: schemaProperties,
+            required: requiredFields
+          }
+        }
+      });
+
+      return NextResponse.json(JSON.parse(response.text));
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 
   } catch (error) {
     console.error("AI Search Error:", error);
