@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getFirestore, collection, getDocs, query, limit, startAfter, where, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import { FaSearch, FaPlane, FaCompass, FaTimes, FaMapMarkerAlt, FaRupeeSign } from "react-icons/fa";
+import { FaSearch, FaPlane, FaTimes, FaMapMarkerAlt, FaStar, FaFilter, FaRupeeSign, FaSuitcase, FaPassport, FaCheckCircle, FaUserTie, FaBuilding, FaArrowRight, FaCommentDots, FaRegidCard } from "react-icons/fa";
 import { useSearchParams, useRouter } from "next/navigation";
 import AskQuestionModal from "@/app/components/AskQuestionModal";
 import SearchLayout from "./SearchLayout";
@@ -15,6 +15,60 @@ import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 
 const db = getFirestore(app);
+
+// Skeleton Component for better UX during AI Search
+const SearchSkeleton = () => (
+  <div className="w-full space-y-8 animate-pulse max-w-7xl mx-auto px-4">
+    {/* Progress Bar Container */}
+    <div className="w-full max-w-2xl mx-auto mb-8 text-center space-y-2">
+       <span className="text-[#36013F] text-sm font-medium">Finding the best experts for you...</span>
+       <div className="h-1.5 w-full bg-gray-200 rounded-full overflow-hidden">
+         <div className="h-full bg-[#36013F] w-1/3 animate-progress-bar"></div>
+       </div>
+    </div>
+
+    {/* 1. Query Summary Skeleton */}
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+        <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-12 bg-gray-200 rounded-full w-full md:w-1/2 mt-4"></div>
+      </div>
+      <div className="flex flex-col gap-4 pl-0 md:pl-10">
+        {[1, 2, 3].map(i => (
+            <div key={i} className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-100"></div>
+                <div className="space-y-2 flex-1">
+                    <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                </div>
+            </div>
+        ))}
+      </div>
+    </div>
+
+    {/* 2. Expert Grid Skeleton */}
+    <div className="bg-[#36013F] p-8 md:p-10 rounded-2xl opacity-90">
+      <div className="flex justify-between items-center mb-8">
+        <div className="h-8 bg-white/20 rounded w-1/3"></div>
+        <div className="h-6 bg-white/20 rounded w-1/6"></div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="bg-white rounded-3xl p-5 h-[180px] flex flex-row relative overflow-hidden gap-4">
+             <div className="w-32 bg-gray-200 rounded-xl h-full flex-shrink-0"></div>
+             <div className="flex-1 space-y-3 py-2">
+                 <div className="h-5 bg-gray-200 rounded w-3/4"></div>
+                 <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                 <div className="h-10 bg-gray-50 rounded-xl mt-auto"></div>
+             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 export default function ExpertsDirectory() {
   const [experts, setExperts] = useState([]);
@@ -31,12 +85,10 @@ export default function ExpertsDirectory() {
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [aiContext, setAiContext] = useState(null); 
   const [hasMore, setHasMore] = useState(true);
-  const [visibleCards, setVisibleCards] = useState({});
   const searchParams = useSearchParams();
   const router = useRouter();
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
-  const cardRefs = useRef({});
 
   // Capture search query from URL
   const searchQuery = useMemo(() => {
@@ -79,9 +131,9 @@ export default function ExpertsDirectory() {
   };
 
   const formatPricing = (pricing) => {
-    if (!pricing) return "799/session";
+    if (!pricing) return "799";
     const numeric = pricing.match(/\d+(\.\d+)?/)?.[0] || "799";
-    return `${numeric}/session`;
+    return `${numeric}`;
   };
 
   const handleSearchSubmit = (e) => {
@@ -126,7 +178,6 @@ export default function ExpertsDirectory() {
     };
   };
 
-  // --- Initial Fast Search (Matches + Summary) ---
   const performAiSearch = async (queryText) => {
     setIsAiSearching(true);
     setLoading(true);
@@ -139,7 +190,7 @@ export default function ExpertsDirectory() {
       const response = await fetch('/api/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: queryText, action: 'initial' }) // Action: initial
+        body: JSON.stringify({ query: queryText, action: 'initial' })
       });
 
       if (!response.ok) {
@@ -165,7 +216,6 @@ export default function ExpertsDirectory() {
             allAiExperts = [...allAiExperts, ...chunkData];
         }
 
-        // Merge search metadata (score/reason) and sort
         const sortedAiExperts = matches
             .map(match => {
                 const profile = allAiExperts.find(e => e.id === match.id);
@@ -181,7 +231,7 @@ export default function ExpertsDirectory() {
 
         setExperts(sortedAiExperts);
         setFilteredExperts(sortedAiExperts);
-        setAiContext(context); // Initial context with summary only
+        setAiContext(context);
       } else {
         setExperts([]);
         setFilteredExperts([]);
@@ -190,7 +240,6 @@ export default function ExpertsDirectory() {
 
     } catch (error) {
       console.error("Search Error:", error.message);
-      // Fallback to standard fetching if semantic search fails
       fetchExperts(true); 
     } finally {
       setIsAiSearching(false);
@@ -198,7 +247,6 @@ export default function ExpertsDirectory() {
     }
   };
 
-  // --- On-Demand Section Loading ---
   const loadSectionData = async (sectionType) => {
     try {
       const response = await fetch('/api/ai-search', {
@@ -298,7 +346,6 @@ export default function ExpertsDirectory() {
     }
 
     setFilteredExperts(result);
-    setVisibleCards({});
   }, [languageFilter, locationFilter, specializationFilter, experts]);
 
   const uniqueLanguages = [...new Set(experts.flatMap((expert) => expert.languages || []))].map(toSentenceCase);
@@ -307,7 +354,7 @@ export default function ExpertsDirectory() {
 
   const truncateTagline = (tagline) => {
     if (!tagline) return "";
-    return tagline.length > 150 ? `${tagline.substring(0, 130)}...` : tagline;
+    return tagline.length > 70 ? `${tagline.substring(0, 70)}...` : tagline;
   };
 
   const handleClearFilters = () => {
@@ -319,27 +366,6 @@ export default function ExpertsDirectory() {
     router.push("/ask-an-expert");
     fetchExperts(true);
   };
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const id = entry.target.dataset.id;
-          setVisibleCards((prev) => ({
-            ...prev,
-            [id]: entry.isIntersecting,
-          }));
-        });
-      },
-      { threshold: 0.1 }
-    );
-
-    Object.values(cardRefs.current).forEach((ref) => {
-      if (ref) observer.observe(ref);
-    });
-
-    return () => observer.disconnect();
-  }, [filteredExperts]);
 
   useEffect(() => {
     if (searchQuery) return; 
@@ -358,7 +384,7 @@ export default function ExpertsDirectory() {
   }, [hasMore, loading, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 mt-16">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-4 lg:px-2 mt-16">
       {modalExpert && (
         <AskQuestionModal
           expert={modalExpert}
@@ -376,103 +402,81 @@ export default function ExpertsDirectory() {
       <div className="max-w-7xl mx-auto mt-5">
         
         {/* Header */}
-        {!aiContext && (
-            <div className="mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold text-primary mb-4 text-center">
-                Real Experts. Real Answers.
+        {!aiContext && !isAiSearching && (
+            <div className="mb-8 text-center">
+                <h1 className="text-3xl sm:text-3xl font-bold text-[#36013F] mb-3 tracking-tight">
+               Real Experts. Real Answers. For Your Real Travel Plans.
                 </h1>
-                <p className="text-center text-muted-foreground mb-4 text-sm sm:text-base">
-                Get answers from a trusted circle of verified travel experts across every domain.
+                <p className="text-gray-500 max-w-2xl mx-auto text-sm sm:text-sm">
+               Get answers from a trusted circle of verified travel experts across every domain from visas to vacations.
                 </p>
             </div>
         )}
 
-        <div className="mb-6">
-          <div className="relative flex items-center gap-2 mb-4">
-            <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground text-sm" />
-            <form onSubmit={handleSearchSubmit} className="flex w-full gap-2">
-              <input
-                type="text"
-                placeholder="Search queries (e.g., family trip to dubai, visa for usa)"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-3 py-3 text-sm border border-input rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-              />
-              <button
-                type="submit"
-                className="bg-[#36013F] text-white py-2 px-6 rounded-full hover:bg-opacity-90 transition-all text-sm flex items-center gap-2 whitespace-nowrap"
-              >
-                <FaPlane className="text-yellow-400 rotate-315" />
-                <span className="hidden sm:inline">Find Experts</span>
-              </button>
-            </form>
+        {/* Search & Filter Bar - Non Sticky */}
+        <div className="mb-8 bg-gray-50 py-2 relative">
+          <div className="relative flex items-center gap-2 mb-4 max-w-3xl mx-auto">
+            <div className="relative w-full shadow-sm rounded-full group focus-within:shadow-md transition-shadow">
+                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-[#36013F]">
+                    <FaSearch />
+                </div>
+                <form onSubmit={handleSearchSubmit} className="flex w-full">
+                <input
+                    type="text"
+                    placeholder="Where do you want to go? (e.g., Dubai Visa, Bali Honeymoon)"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-12 pr-32 py-4 text-sm bg-white border border-gray-200 rounded-full focus:outline-none focus:border-[#36013F] transition-all"
+                />
+                <button
+                    type="submit"
+                    className="absolute right-1.5 top-1.5 bottom-1.5 bg-[#36013F] text-white px-6 rounded-full hover:bg-[#4a0150] transition-colors text-sm font-semibold flex items-center gap-2"
+                >
+                    <Image src="/favicon.svg" alt="xmytravel search" width={25} height={25} />
+                    <span className="hidden sm:inline">Search</span>
+                </button>
+                </form>
+            </div>
           </div>
 
-          {!aiContext && (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                <div className="flex-1 relative">
-                <select
-                    value={languageFilter}
-                    onChange={(e) => setLanguageFilter(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-white"
-                >
-                    <option value="">Language</option>
-                    {uniqueLanguages.map((lang) => (
-                    <option key={lang} value={lang}>{lang}</option>
-                    ))}
-                </select>
-                </div>
-                <div className="flex-1 relative">
-                <select
-                    value={locationFilter}
-                    onChange={(e) => setLocationFilter(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-white"
-                >
-                    <option value="">Location</option>
-                    {uniqueLocations.map((loc) => (
-                    <option key={loc} value={loc}>{loc}</option>
-                    ))}
-                </select>
-                </div>
-                <div className="flex-1 relative">
-                <select
-                    value={specializationFilter}
-                    onChange={(e) => setSpecializationFilter(e.target.value)}
-                    className="w-full pl-3 pr-8 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary bg-white"
-                >
-                    <option value="">Expertise</option>
-                    {uniqueSpecializations.map((spec) => (
-                    <option key={spec} value={spec}>{spec}</option>
-                    ))}
-                </select>
-                </div>
-                <div className="flex-1 flex items-center">
-                <button
-                    onClick={handleClearFilters}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all text-xs font-semibold"
-                >
-                    <FaTimes />
-                    Reset
-                </button>
-                </div>
+          {!aiContext && !isAiSearching && (
+            <div className="flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
+                {[
+                    { val: languageFilter, set: setLanguageFilter, opts: uniqueLanguages, ph: "Language" },
+                    { val: locationFilter, set: setLocationFilter, opts: uniqueLocations, ph: "Location" },
+                    { val: specializationFilter, set: setSpecializationFilter, opts: uniqueSpecializations, ph: "Expertise" }
+                ].map((filter, idx) => (
+                    <div key={idx} className="relative group">
+                        <select
+                            value={filter.val}
+                            onChange={(e) => filter.set(e.target.value)}
+                            className="appearance-none bg-white pl-4 pr-10 py-2.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-full focus:outline-none focus:border-[#36013F] hover:border-gray-300 shadow-sm cursor-pointer min-w-[120px]"
+                        >
+                            <option value="">{filter.ph}</option>
+                            {filter.opts.map((opt) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </select>
+                        <FaFilter className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 text-xs pointer-events-none" />
+                    </div>
+                ))}
+                
+                {(languageFilter || locationFilter || specializationFilter) && (
+                    <button
+                        onClick={handleClearFilters}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-all text-xs font-semibold"
+                    >
+                        <FaTimes /> Clear
+                    </button>
+                )}
             </div>
           )}
         </div>
 
-        {/* Search Loading */}
-        {isAiSearching && (
-            <div className="flex flex-col justify-center items-center py-12 gap-4">
-                <div className="relative">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#36013F] border-t-transparent"></div>
-                    <FaCompass className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#36013F] w-6 h-6 animate-pulse" />
-                </div>
-                <span className="text-[#36013F] font-medium animate-pulse text-lg">
-                    Finding the best experts for you...
-                </span>
-            </div>
-        )}
+        {/* Search Skeleton Loader */}
+        {isAiSearching && <SearchSkeleton />}
 
-        {/* Context Layout with Lazy Loading */}
+        {/* Context Layout */}
         {!isAiSearching && aiContext && filteredExperts.length > 0 && (
             <SearchLayout 
                 experts={filteredExperts} 
@@ -480,195 +484,138 @@ export default function ExpertsDirectory() {
                 query={searchTerm}
                 onBookClick={setModalExpert}
                 openLightbox={(src) => openLightbox(src && src !== "" ? src : "/default.jpg")}
-                loadSectionData={loadSectionData} // Pass the loader function
+                loadSectionData={loadSectionData}
             />
         )}
 
-        {/* Standard Directory Layout (Fallback or No Search) */}
+        {/* Standard Directory Layout */}
         {!isAiSearching && !aiContext && (
             <>
                 {filteredExperts.length === 0 && (
-                <div className="text-center text-muted-foreground py-12 text-sm bg-white rounded-xl border border-dashed border-gray-300">
-                    <p className="text-lg text-gray-600 mb-2">No experts found matching your criteria.</p>
-                    <button onClick={handleClearFilters} className="text-primary hover:underline">Clear filters and try again</button>
+                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200 mx-auto max-w-lg">
+                    <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400 text-2xl">
+                        <FaSearch />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-800 mb-1">No experts found</h3>
+                    <p className="text-gray-500 text-sm mb-4">Try adjusting your filters or search term.</p>
+                    <button onClick={handleClearFilters} className="text-[#36013F] font-semibold text-sm hover:underline">Reset all filters</button>
                 </div>
                 )}
 
-                {/* Desktop View */}
-                <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+                {/* Grid Layout - Responsive: 1 col mobile, 2 col tablet, 3 col desktop */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 max-w-7xl mx-auto px-2">
                 <AnimatePresence>
                     {filteredExperts.map((expert, index) => (
                     <motion.div
-                        key={`desktop-expert-${expert.id}`}
-                        initial={{ opacity: 0, y: 50 }}
+                        key={`expert-${expert.id}`}
+                        initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -50 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.3, delay: index * 0.05 }}
-                        className="rounded-2xl shadow-md p-5 border border-gray-100 hover:shadow-xl transition-all duration-300 bg-white group hover:-translate-y-1"
                     >
-                        <div className="flex items-center gap-4 mb-4">
-                        <button
-                            onClick={() => openLightbox(expert.photo && expert.photo !== "" ? expert.photo : "/default.jpg")}
-                            className="relative w-[70px] h-[70px] shrink-0 overflow-hidden rounded-full border-2 border-[#F4D35E] shadow-sm group-hover:border-[#36013F] transition-colors"
-                        >
-                            <Image
-                            src={expert.photo && expert.photo !== "" ? expert.photo : "/default.jpg"}
-                            alt={expert.fullName || "Expert Profile"}
-                            fill
-                            sizes="70px"
-                            className="object-cover object-center rounded-full"
-                            priority={false}
-                            />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                            <h2 className="text-lg font-bold text-gray-900 truncate">
-                                {expert.fullName || "Unknown Expert"}
-                            </h2>
-                            <span className={`capitalize text-[10px] font-bold px-2 py-0.5 rounded-full border ${expert.profileType === 'agency' ? 'bg-purple-100 text-purple-700 border-purple-200' : 'bg-blue-100 text-blue-700 border-blue-200'}`}>
-                                {expert.profileType}
-                            </span>
+                        {/* Revised Card Design - Horizontal Ticket Style with Left Accent */}
+                        <div className="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-row gap-0 h-full min-h-[170px] border-l-4 border-l-[#36013F]">
+                            
+                            {/* Left Section: Avatar & Verified */}
+                            <div className="w-[85px] sm:w-[100px] flex flex-col items-center pt-5 pb-3 px-2 bg-gray-50/50 border-r border-gray-100 shrink-0">
+                                <div className="relative w-14 h-14 sm:w-16 sm:h-16 mb-2">
+                                    <Image
+                                        src={expert.photo || "/default.jpg"}
+                                        alt={expert.fullName}
+                                        fill
+                                        className="rounded-full object-cover border-2 border-white shadow-md group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                    {/* Verified Badge Icon */}
+                                    <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm" title="Verified">
+                                        <FaCheckCircle className="text-blue-500 w-4 h-4" />
+                                    </div>
+                                </div>
+                                
+                                <div className="text-center mt-auto">
+                                    <span className="block text-sm font-bold text-[#36013F] leading-none">
+                                        {expert.profileType === 'agency' ? getYears(expert.yearsActive) : calculateTotalExperience(expert.experience)}
+                                    </span>
+                                    <span className="text-[9px] text-gray-400 uppercase font-semibold tracking-wider">Years Exp</span>
+                                </div>
                             </div>
-                            <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                            {truncateTagline(expert.tagline) || "No tagline provided"}
-                            </p>
-                        </div>
-                        </div>
-                        
-                        <div className="flex justify-between items-center bg-gray-50 p-2 rounded-lg mb-4">
-                            <div className="text-center px-2 border-r border-gray-200 w-1/2">
-                                <span className="block text-xs text-gray-500 uppercase tracking-wide">Experience</span>
-                                <span className="block font-bold text-gray-900">
-                                    {expert.profileType === 'agency' ? getYears(expert.yearsActive) : (calculateTotalExperience(expert.experience) || "0+")} Yrs
-                                </span>
-                            </div>
-                            <div className="text-center px-2 w-1/2">
-                                <span className="block text-xs text-gray-500 uppercase tracking-wide">Rate</span>
-                                <span className="block font-bold text-gray-900 flex items-center justify-center gap-1">
-                                    <FaRupeeSign size={10}/> {formatPricing(expert.pricing).split('/')[0]}
-                                </span>
-                            </div>
-                        </div>
 
-                        <div className="space-y-3 mb-4">
-                        <div className="flex flex-wrap gap-1.5 h-14 overflow-hidden">
-                            {expert.expertise?.slice(0, 5).map((expertise) => (
-                            <span
-                                key={expertise}
-                                className="bg-gray-100 text-gray-700 border border-gray-200 text-xs px-2 py-1 rounded-md"
-                            >
-                                {expertise}
-                            </span>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <FaMapMarkerAlt className="text-[#36013F]" />
-                            <span className="truncate">{expert.location || "Location N/A"}</span>
-                        </div>
-                        </div>
+                            {/* Right Section: Content */}
+                            <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+                                {/* Header Info */}
+                                <div>
+                                    <div className="flex justify-between items-start gap-2">
+                                        <div className="min-w-0">
+                                            <h3 className="text-base font-bold text-gray-900 leading-tight truncate group-hover:text-[#36013F] transition-colors">
+                                                {expert.fullName}
+                                            </h3>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${expert.profileType === 'agency' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-yellow-50 text-yellow-700 border-yellow-100'}`}>
+                                                    {expert.profileType === 'agency' ? 'Agency' : 'Expert'}
+                                                </span>
+                                                <div className="flex items-center gap-1 text-xs text-gray-500 truncate">
+                                                    <FaMapMarkerAlt className="text-gray-400 w-3 h-3 shrink-0" />
+                                                    <span className="truncate max-w-[100px]">{toSentenceCase(expert.location) || "Global"}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div className="flex gap-2 pt-2 border-t border-gray-100">
-                        <Link href={expert.profileType === 'agency' ? `/agency/${expert.username}` : `/experts/${expert.username}`} className="flex-1">
-                            <button className="w-full border border-[#36013F] text-[#36013F] py-2 rounded-xl hover:bg-[#36013F] hover:text-white transition-all text-sm font-medium">
-                            View Profile
-                            </button>
-                        </Link>
-                        <button
-                            onClick={() => setModalExpert(expert)}
-                            className="flex-1 bg-[#F4D35E] text-[#36013F] py-2 rounded-xl hover:bg-[#e0c040] transition-all text-sm font-bold shadow-sm"
-                        >
-                            {expert.profileType === 'agency' ? 'Get Quote' : 'Ask Query'}
-                        </button>
+                                    {/* Tagline */}
+                                    <p className="text-xs text-gray-500 mt-2 line-clamp-2 leading-relaxed">
+                                        {truncateTagline(expert.tagline || expert.about)}
+                                    </p>
+
+                                    {/* Expertise Pills */}
+                                    <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                        {expert.expertise && expert.expertise.slice(0, 2).map((tag, idx) => (
+                                            <span key={idx} className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-md border border-gray-200 truncate max-w-[100px]">
+                                                {tag}
+                                            </span>
+                                        ))}
+                                        {expert.expertise && expert.expertise.length > 2 && (
+                                            <span className="text-[10px] px-1.5 py-0.5 text-gray-400 font-medium">+{expert.expertise.length - 2}</span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer: Price & Action */}
+                                <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex items-end justify-between gap-2">
+                                    <div>
+                                        <p className="text-[9px] text-gray-400 uppercase tracking-wide">Consultation</p>
+                                        <div className="flex items-center text-sm font-bold text-[#36013F]">
+                                            <FaRupeeSign className="w-2.5 h-2.5 mr-0.5" />
+                                            {formatPricing(expert.pricing)}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex gap-2">
+                                        <Link href={expert.profileType === 'agency' ? `/agency/${expert.username}` : `/experts/${expert.username}`}>
+                                            <button className="px-3 py-1.5 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-[#36013F] transition-colors">
+                                                View
+                                            </button>
+                                        </Link>
+                                        <button
+                                            onClick={() => setModalExpert(expert)}
+                                            className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#36013F] to-[#5a1066] rounded-lg shadow-sm hover:shadow-md hover:to-[#36013F] transition-all flex items-center gap-1.5"
+                                        >
+                                            {expert.profileType === 'agency' ? 'Quote' : 'Ask'}
+                                            <FaArrowRight className="w-2 h-2 opacity-80" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                     ))}
                 </AnimatePresence>
                 </div>
 
-                {/* Mobile View */}
-                <div className="sm:hidden space-y-4 max-w-7xl mx-auto">
-                <AnimatePresence>
-                    {filteredExperts.map((expert, index) => (
-                    <motion.aside
-                        key={`mobile-expert-${expert.id}`}
-                        ref={(el) => (cardRefs.current[expert.id] = el)}
-                        data-id={expert.id}
-                        initial={{ opacity: 0, y: 50 }}
-                        animate={visibleCards[expert.id] ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
-                        exit={{ opacity: 0, y: -50 }}
-                        transition={{ duration: 0.5, delay: index * 0.1 }}
-                        className="space-y-4"
-                    >
-                        <div
-                        className={`${
-                            expert.profileType === 'agency' ? 'animate-gradientShift2' : 'animate-gradientShift'
-                        } text-primary-foreground rounded-3xl shadow-lg p-6 text-center relative overflow-hidden`}
-                        >
-                        <div className="absolute top-0 right-0 bg-white/10 w-24 h-24 rounded-bl-full z-0"></div>
-                        <span className="absolute top-3 left-3 bg-white/20 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider z-10">
-                            {expert.profileType === 'agency' ? 'Agency' : 'Expert'}
-                        </span>
-                        
-                        <div className="mb-4 relative z-10 mt-4">
-                            <button
-                            onClick={() => openLightbox(expert.photo && expert.photo !== "" ? expert.photo : "/default.jpg")}
-                            className="w-24 h-24 rounded-full border-4 border-white/30 object-cover mx-auto shadow-xl overflow-hidden"
-                            >
-                            <Image
-                                src={expert.photo && expert.photo !== "" ? expert.photo : "/default.jpg"}
-                                alt={expert.fullName || "Expert Profile"}
-                                width={96}
-                                height={96}
-                                className="rounded-full object-cover mx-auto"
-                                priority={false}
-                            />
-                            </button>
-                        </div>
-
-                        <h1 className="text-xl font-bold font-serif relative z-10">
-                            {expert.fullName || "Unknown Expert"}
-                        </h1>
-                        <p className="text-xs opacity-90 mt-1 relative z-10 mb-3 line-clamp-2 px-4">
-                            {truncateTagline(expert.tagline)}
-                        </p>
-
-                        <div className="flex justify-center gap-4 my-4 relative z-10">
-                            <div className="text-center">
-                                <p className="text-lg font-bold leading-none">{expert.profileType === 'agency' ? getYears(expert.yearsActive) : (calculateTotalExperience(expert.experience) || "0+")}</p>
-                                <p className="text-[10px] opacity-75 uppercase">Years Exp</p>
-                            </div>
-                            <div className="w-px bg-white/30"></div>
-                            <div className="text-center">
-                                <p className="text-lg font-bold leading-none flex items-center gap-0.5"><FaRupeeSign size={12}/>{formatPricing(expert.pricing).split('/')[0]}</p>
-                                <p className="text-[10px] opacity-75 uppercase">Per Session</p>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2 mt-4 relative z-10">
-                            <Link href={expert.profileType === 'agency' ? `/agency/${expert.username}` : `/experts/${expert.username}`} className="flex-1">
-                            <button className="w-full bg-white/20 backdrop-blur-sm border border-white/40 text-white py-2.5 rounded-xl hover:bg-white/30 transition-all text-sm font-semibold">
-                                View Profile
-                            </button>
-                            </Link>
-                            <button
-                            onClick={() => setModalExpert(expert)}
-                            className="flex-1 bg-white text-[#36013F] py-2.5 rounded-xl hover:bg-opacity-90 transition-all text-sm font-bold shadow-md"
-                            >
-                            {expert.profileType === 'agency' ? 'Get Quote' : 'Ask Query'}
-                            </button>
-                        </div>
-                        </div>
-                    </motion.aside>
-                    ))}
-                </AnimatePresence>
-                </div>
-
                 {hasMore && !searchQuery && (
-                <div ref={loadMoreRef} className="h-10 flex justify-center items-center mt-8">
+                <div ref={loadMoreRef} className="h-20 flex justify-center items-center mt-4">
                     {loading && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
-                            Loading more...
+                        <div className="flex flex-col items-center gap-2 text-gray-400">
+                            <div className="animate-spin h-6 w-6 border-2 border-[#36013F] border-t-transparent rounded-full"></div>
+                            <span className="text-xs font-medium">Loading more experts...</span>
                         </div>
                     )}
                 </div>
