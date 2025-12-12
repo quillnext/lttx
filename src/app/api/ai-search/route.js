@@ -27,7 +27,7 @@ function calculateYearsOfExperience(experience) {
   experience.forEach((exp) => {
     if (exp.startDate) {
       const startDate = new Date(exp.startDate);
-      if (!isNaN(startDate.getTime())) { // Check if date is valid
+      if (!isNaN(startDate.getTime())) { 
         if (startDate.getTime() < earliestStart.getTime()) {
           earliestStart = startDate;
           hasValidDate = true;
@@ -42,6 +42,25 @@ function calculateYearsOfExperience(experience) {
   return diffYears;
 }
 
+// Helper to handle AI retries with exponential backoff
+const retryDelay = (ms) => new Promise(res => setTimeout(res, ms));
+
+async function generateWithRetry(ai, params, retries = 2) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error) {
+      // Retry on 503 Service Unavailable or 429 Too Many Requests
+      if ((error.status === 503 || error.status === 429 || error.message?.includes('overloaded')) && i < retries - 1) {
+        console.warn(`AI Model overloaded. Retrying attempt ${i + 1}...`);
+        await retryDelay(2000 * (i + 1)); // 2s, 4s wait
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
 export async function POST(request) {
   try {
     const { query, action = 'initial', sectionType } = await request.json();
@@ -51,19 +70,18 @@ export async function POST(request) {
     }
 
     if (!process.env.API_KEY) {
-      console.error("API_KEY is missing in environment variables");
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
     }
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-    // --- ACTION: INITIAL SEARCH (Match Experts + Basic Summary) ---
+    // --- ACTION: INITIAL SEARCH ---
     if (action === 'initial') {
-      // 1. Fetch all public expert profiles
       const profilesRef = db.collection("Profiles");
       const snapshot = await profilesRef.where("isPublic", "==", true).get();
 
-      const profiles = snapshot.docs.map((doc) => {
+      // 1. Fetch Full Data for Client Response
+      const fullProfiles = snapshot.docs.map((doc) => {
         const data = doc.data();
         const yearsExp = data.profileType === 'agency' 
           ? (parseInt(data.yearsActive) || 0) 
@@ -71,9 +89,8 @@ export async function POST(request) {
 
         return {
           id: doc.id,
-          name: data.fullName || "Unknown",
+          fullName: data.fullName || "Unknown",
           tagline: data.tagline || "",
-          about: (data.about || "").substring(0, 300),
           location: data.location || "Global",
           expertise: (data.expertise || []).slice(0, 5),
           services: (data.services || []).slice(0, 5),
@@ -81,27 +98,39 @@ export async function POST(request) {
           profileType: data.profileType || "expert",
           pricing: data.pricing || "Not specified",
           yearsOfExperience: yearsExp,
+          photo: data.photo,
+          username: data.username
         };
       });
 
-      if (profiles.length === 0) {
+      if (fullProfiles.length === 0) {
         return NextResponse.json({ matches: [], context: null });
       }
 
+      // 2. TOKEN OPTIMIZATION: Send minimal data to AI to prevent Rate Limits/Overload
+      // Only sending fields relevant for matching. Removing bio, contacts, images.
+      const simplifiedProfiles = fullProfiles.map(p => ({
+        id: p.id,
+        loc: p.location, // Abbreviated keys to save tokens
+        tags: p.expertise,
+        svc: p.services,
+        tag: p.tagline?.substring(0, 50) // Truncate tagline
+      }));
+
       const prompt = `
-        Act as an intelligent travel consultant matchmaker.
-        User Query: "${query}"
+        Query: "${query}"
+        Task: Match top 6 experts & analyze intent.
+        
+        1. Context: Give succinct 'budgetRange' (e.g. "$50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
+        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'itinerary', 'related_questions'].
+           - "Dubai Visa" -> ['visa', 'related_questions']
+           - "Bali Trip" -> All.
+        3. Matches: Return 'id', 'score' (0-100), 'reason' (max 8 words).
 
-        Goal: 
-        1. Identify the best travel experts from the provided list.
-        2. Assign a "Match Score" (0-100) and a short "Match Reason".
-        3. Provide a very brief "Query Summary" (Budget, Season, Visa Hint).
-
-        Available Profiles:
-        ${JSON.stringify(profiles)}
+        Experts: ${JSON.stringify(simplifiedProfiles)}
       `;
 
-      const response = await ai.models.generateContent({
+      const response = await generateWithRetry(ai, {
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
@@ -133,9 +162,13 @@ export async function POST(request) {
                     },
                     required: ["budgetRange", "bestSeason", "visaStatus"]
                   },
-                  matchReason: { type: Type.STRING, description: "General summary of why experts were chosen." }
+                  relevantPointers: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                  },
+                  matchReason: { type: Type.STRING }
                 },
-                required: ["querySummary", "matchReason"]
+                required: ["querySummary", "matchReason", "relevantPointers"]
               }
             },
             required: ["matches", "context"]
@@ -146,15 +179,28 @@ export async function POST(request) {
       return NextResponse.json(JSON.parse(response.text));
     }
 
-    // --- ACTION: SECTION GENERATION (On Demand) ---
+    // --- ACTION: SECTION GENERATION ---
     if (action === 'section') {
       let sectionPrompt = "";
       let schemaProperties = {};
       let requiredFields = [];
 
+      // Constraint: Dispute text MUST NOT contain the percentage number.
+      // Instruction: "Keep it short" to save tokens.
+      const disputeInst = "Estimate 'dispute' object: 'percentage' (int) of misleading generic/AI info vs reality, and 'text' (string). IMPORTANT: 'text' MUST describe the discrepancy WITHOUT stating the number/percentage again. Keep text under 10 words.";
+
+      const disputeSchema = {
+        type: Type.OBJECT,
+        properties: {
+            percentage: { type: Type.INTEGER },
+            text: { type: Type.STRING }
+        },
+        required: ["percentage", "text"]
+      };
+
       switch (sectionType) {
         case 'related_questions':
-          sectionPrompt = `Generate 3 related travel questions for: "${query}". just small and medium lenght of question not big pormpt and all.`;
+          sectionPrompt = `Query: "${query}". 3 FAQs with extremely short teaser answers (max 12 words). ${disputeInst}`;
           schemaProperties = {
             relatedQuestions: {
               type: Type.ARRAY,
@@ -166,24 +212,14 @@ export async function POST(request) {
                 },
                 required: ["question", "teaserAnswer"]
               }
-            }
+            },
+            dispute: disputeSchema
           };
-          requiredFields = ["relatedQuestions"];
-          break;
-
-        case 'insights':
-          sectionPrompt = `Provide 6 short, critical insights or "things to know before planning" for: "${query}". Keep them punchy. max character limit is 50 `;
-          schemaProperties = {
-            insights: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
-          };
-          requiredFields = ["insights"];
+          requiredFields = ["relatedQuestions", "dispute"];
           break;
 
         case 'visa':
-          sectionPrompt = `Provide a specific "Visa Snapshot" for: "${query}". Give a title and 3-4 bullet points about requirements/complexity.max character limit is 100 `;
+          sectionPrompt = `Query: "${query}". Visa Status (2 words) + 3 brief rules (max 6 words each). ${disputeInst}`;
           schemaProperties = {
             visaSnapshot: {
               type: Type.OBJECT,
@@ -192,45 +228,84 @@ export async function POST(request) {
                 points: { type: Type.ARRAY, items: { type: Type.STRING } }
               },
               required: ["title", "points"]
-            }
+            },
+            dispute: disputeSchema
           };
-          requiredFields = ["visaSnapshot"];
+          requiredFields = ["visaSnapshot", "dispute"];
           break;
 
-        case 'mistakes':
-          sectionPrompt = `List 3 common travel mistakes people make regarding: "${query}". just bullet points not big answer. max character limit is 150 `;
+        case 'weather':
+          sectionPrompt = `Query: "${query}". Season, Temp, 3 packing keywords. ${disputeInst}`;
           schemaProperties = {
-            mistakes: {
-              type: Type.ARRAY,
-              items: { type: Type.STRING }
-            }
-          };
-          requiredFields = ["mistakes"];
-          break;
-
-        case 'peer_plans':
-          sectionPrompt = `Generate 3 hypothetical "Peer Plans" (what other travelers are booking) relevant to: "${query}".just bullet points not big answer. max character limit is 150`;
-          schemaProperties = {
-            peerPlans: {
-              type: Type.ARRAY,
-              items: {
+            weatherInfo: {
                 type: Type.OBJECT,
                 properties: {
-                  title: { type: Type.STRING },
-                  desc: { type: Type.STRING }
+                    season: { type: Type.STRING },
+                    temperature: { type: Type.STRING },
+                    advice: { type: Type.ARRAY, items: { type: Type.STRING } }
                 },
-                required: ["title", "desc"]
-              }
-            }
+                required: ["season", "temperature", "advice"]
+            },
+            dispute: disputeSchema
           };
-          requiredFields = ["peerPlans"];
+          requiredFields = ["weatherInfo", "dispute"];
+          break;
+
+        case 'budget':
+          sectionPrompt = `Query: "${query}". Currency, Daily Spend, 3 short cost tips (max 5 words). ${disputeInst}`;
+          schemaProperties = {
+            budgetInfo: {
+                type: Type.OBJECT,
+                properties: {
+                    currency: { type: Type.STRING },
+                    dailyEstimate: { type: Type.STRING },
+                    tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["currency", "dailyEstimate", "tips"]
+            },
+            dispute: disputeSchema
+          };
+          requiredFields = ["budgetInfo", "dispute"];
+          break;
+
+        case 'transport':
+          sectionPrompt = `Query: "${query}". Best Route (short), Local Travel (short). ${disputeInst}`;
+          schemaProperties = {
+            transportInfo: {
+                type: Type.OBJECT,
+                properties: {
+                    bestRoute: { type: Type.STRING },
+                    localTravel: { type: Type.STRING }
+                },
+                required: ["bestRoute", "localTravel"]
+            },
+            dispute: disputeSchema
+          };
+          requiredFields = ["transportInfo", "dispute"];
+          break;
+
+        case 'itinerary':
+          sectionPrompt = `Query: "${query}". Duration, Focus, 3 day highlights (very brief). ${disputeInst}`;
+          schemaProperties = {
+            itinerarySuggestion: {
+                type: Type.OBJECT,
+                properties: {
+                    duration: { type: Type.STRING },
+                    focus: { type: Type.STRING },
+                    dayByDay: { type: Type.ARRAY, items: { type: Type.STRING } }
+                },
+                required: ["duration", "focus", "dayByDay"]
+            },
+            dispute: disputeSchema
+          };
+          requiredFields = ["itinerarySuggestion", "dispute"];
           break;
 
         default:
-          return NextResponse.json({ error: "Invalid section type" }, { status: 400 });
+          return NextResponse.json({ error: "Invalid section" }, { status: 400 });
       }
 
-      const response = await ai.models.generateContent({
+      const response = await generateWithRetry(ai, {
         model: "gemini-2.5-flash",
         contents: sectionPrompt,
         config: {
@@ -250,9 +325,10 @@ export async function POST(request) {
 
   } catch (error) {
     console.error("AI Search Error:", error);
+    const isOverloaded = error.status === 503 || error.message?.includes('overloaded');
     return NextResponse.json({ 
-      error: "Failed to perform AI search", 
-      details: error.message 
-    }, { status: 500 });
+      error: isOverloaded ? "Service Busy" : "Search Failed", 
+      details: isOverloaded ? "Server busy, please retry." : error.message 
+    }, { status: isOverloaded ? 503 : 500 });
   }
 }
