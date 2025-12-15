@@ -45,7 +45,7 @@ const Footer = () => {
               Joining Process
             </Link>
             <Link href="/news-and-media" className="hover:underline">
-             News and Media
+              Joining Process
             </Link>
             
           </div>

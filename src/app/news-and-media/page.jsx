@@ -14,7 +14,7 @@ export default function BlogPage() {
       date: "16 Sept 2025",
       source: "TravTalk India",
       title: "XmyTravel: Redefining Trust, Creating Jobs & Building New Travel Ecosystem",
-      description: "In an era where travellers are flooded with online content, anonymous advice, and AI-generated itineraries, trust has become the missing link in the travel ecosystem..... ",
+      description: "In an era where travellers are flooded with online content, anonymous advice, and AI-generated itineraries, trust has become the missing link in the travel ecosystem. Rishabh Vyas, Founder, Xmytravel, observed this gap while running his travel management company .... ",
       url: "https://travtalkindia.com/xmytravel-redefining-trust-creating-jobs-building-new-travel-ecosystem/",
       hours: "Monday to Sunday<br />9 AM — 9 PM",
       imageUrl: "/rishab.jpeg", // Image from public folder
@@ -22,8 +22,8 @@ export default function BlogPage() {
     {
       date: "13 Sept 2025",
       source: "Travel Trade Journal (TTJ)",
-      title: "XmyTravel: Why Human Expertise Matters More Than Ever in an Age of Travel Misinformation",
-      description: "In an age where algorithms, AI tools, and online marketplaces dominate the travel landscape, one truth remains constant: travellers need accountability, expertise.... ",
+      title: "XmyTravel: Why Human Expertise Matters More Than Ever in an Age of Travel Misinformation XmyTravel: Why Human Expertise Matters More Than Ever in an Age of Travel Misinformation",
+      description: "In an age where algorithms, AI tools, and online marketplaces dominate the travel landscape, one truth remains constant: travellers need accountability, expertise, and trust. Rishabh Vyas, Founder of Xmytravel, believes that the growing reliance on half-verified online .... ",
       url: "https://traveltradejournal.com/xmytravel-why-human-expertise-matters-more-than-ever-in-an-age-of-travel-misinformation/",
       hours: "Monday to Sunday<br />9 AM — 9 PM",
       imageUrl: "https://traveltradejournal.com/wp-content/uploads/2025/09/Rishabh-Vyas-Founder-Xmytravel.jpg",
@@ -77,7 +77,7 @@ export default function BlogPage() {
                     <span className="font-medium">{article.date}</span>
                   </div>
 
-                  <h3 className="text-2xl font-bold mb-3">{article.title}</h3>
+                  <h3 className="text-2xl font-bold mb-3">{article.source}</h3>
 
                   <p
                     className="text-lg leading-relaxed mb-6 opacity-95"
