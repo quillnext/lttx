@@ -29,6 +29,12 @@ const emailTemplate = ({ expertName, question, suggestedAnswer, profileType, yea
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
     .content { padding: 32px; }
+    .header-text {
+      text-align: center;
+      font-size: 14px;
+      color: #555;
+      margin: 16px 0;
+    }
     .footer {
       font-size: 13px;
       color: #888;
@@ -59,9 +65,12 @@ const emailTemplate = ({ expertName, question, suggestedAnswer, profileType, yea
 <body>
   <div class="container">
     <img src="https://www.xmytravel.com/emailbanner.jpeg" style="width:100%; display:block; border-radius:16px 16px 0 0;" alt="Banner" />
+    <div class="header-text">
+      Powered by the X - Project T.R.U.T.H. (Travel Reliability & Unified Truth Hub)
+    </div>
     <div class="content">
       <h2>Hello ${expertName},</h2>
-      <p>You've received an admin prompt on your XMyTravel ${profileType} profile.</p>
+      <p>Here’s today’s TRUTH question - part of Xmytravel’s mission to remove travel misinformation and highlight authentic, experience-backed answers from real experts like you.</p>
       <div class="question-box">
         <p><strong>Question:</strong><br/>"${question}"</p>
       </div>
@@ -124,7 +133,7 @@ export async function POST(request) {
     await transporter.sendMail({
       from: `"XMyTravel Admin" <${process.env.EMAIL_USER}>`,
       to: expertEmail,
-      subject: `Admin Prompt: Respond to "${question.substring(0, 50)}..." on XMyTravel`,
+      subject: `Today’s T.R.U.T.H. Question: ${question.substring(0, 50)}${question.length > 50 ? '...' : ''}`,
       html: emailTemplate({
         expertName,
         question,
