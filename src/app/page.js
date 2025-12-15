@@ -476,7 +476,7 @@ export default function Home() {
                   e.preventDefault();
                   if (searchTermFaq.trim()) {
                     const slug = toSlug(searchTermFaq);
-                    router.push(`/faq/${slug}`);
+                    router.push(`/aaq/${slug}`);
                   }
                 }}
                 className="relative w-full max-w-2xl mx-auto mt-8"
@@ -663,7 +663,7 @@ export default function Home() {
             </main>
 
             <div className="text-center mt-8">
-              <Link href="/faq" className="text-[#36013F] font-semibold hover:underline">
+              <Link href="/aaq" className="text-[#36013F] font-semibold hover:underline">
                 View all Questions
               </Link>
             </div>

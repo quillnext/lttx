@@ -44,6 +44,10 @@ const Footer = () => {
             <Link href="/about/#joining-process" className="hover:underline">
               Joining Process
             </Link>
+            <Link href="/news-and-media" className="hover:underline">
+              Joining Process
+            </Link>
+            
           </div>
 
 

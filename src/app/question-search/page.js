@@ -404,7 +404,7 @@ export default function QuestionSearchPage() {
         </main>
 
         <div className="text-center mt-8">
-          <Link href="/faq" className="text-[#36013F] font-semibold hover:underline">
+          <Link href="/aaq" className="text-[#36013F] font-semibold hover:underline">
             View all Questions
           </Link>
         </div>

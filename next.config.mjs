@@ -15,6 +15,16 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'i.ytimg.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'traveltradejournal.com',  // ← Fixed: removed leading space
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
         pathname: '/**',
       },
@@ -24,7 +34,7 @@ const nextConfig = {
     return [
       {
         source: '/question-search',
-        destination: '/faq/:search*',
+        destination: '/aaq/:search*',
         has: [{ type: 'query', key: 'search' }],
       },
     ];

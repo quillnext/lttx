@@ -58,9 +58,10 @@ const Navbar = () => {
         <div className="hidden md:flex space-x-6 text-white text-xl">
           <Link href="/" className="hover:underline">Home</Link>
           <Link href="/#about" className="hover:underline">About </Link>
-          <Link href="/#why-us" className="hover:underline">Why us</Link>
-           <Link href="/#features" className="hover:underline">Features</Link>
-          <Link href="/#joining-process" className="hover:underline">Joining Process</Link>
+          <Link href="/about#why-us" className="hover:underline">Why us</Link>
+           <Link href="/about#features" className="hover:underline">Features</Link>
+          <Link href="/about#joining-process" className="hover:underline">Joining Process</Link>
+          <Link href='/news-and-media'className="hover:underline">news-and-media</Link>
          
         </div>
 
@@ -85,9 +86,10 @@ const Navbar = () => {
           </button>
           <Link href="/" className="text-2xl hover:underline" onClick={toggleMenu}>Home</Link>
           <Link href="/#about" className="text-2xl hover:underline" onClick={toggleMenu}>About</Link>
-          <Link href="/#why-us" className="text-2xl hover:underline" onClick={toggleMenu}>Why us</Link>
-                <Link href="/#features" className="text-2xl hover:underline" onClick={toggleMenu}>Features</Link>
-          <Link href="/#joining-process" className="text-2xl hover:underline" onClick={toggleMenu}>Joining Process</Link>
+          <Link href="/about#why-us" className="text-2xl hover:underline" onClick={toggleMenu}>Why us</Link>
+                <Link href="/about#features" className="text-2xl hover:underline" onClick={toggleMenu}>Features</Link>
+          <Link href="/about#joining-process" className="text-2xl hover:underline" onClick={toggleMenu}>Joining Process</Link>
+          <Link href='/news-and-media' className="text-2xl hover:underline" onClick={toggleMenu}>news-and-media</Link>
           {/* <Link href="#aoetc" className="text-2xl hover:underline" onClick={toggleMenu}>ASSOTEC</Link> */}
           <Button btn="Explore" />
         </div>
