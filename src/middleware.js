@@ -13,8 +13,8 @@ export function middleware(request) {
   }
 
   // FAQ URL cleaning logic
-  if (pathname.startsWith('/faq/')) {
-    const slug = pathname.replace('/faq/', '');
+  if (pathname.startsWith('/aaq/')) {
+    const slug = pathname.replace('/aaq/', '');
     // Check if the slug contains % or is not already clean
     if (slug.includes('%') || /[^a-z0-9-]/.test(decodeURIComponent(slug))) {
       // Convert to hyphenated slug using slugify
@@ -27,7 +27,7 @@ export function middleware(request) {
       }).substring(0, 100); // Limit slug length
 
       // Preserve query parameters if any
-      const newUrl = new URL(`/faq/${cleanSlug}`, request.url);
+      const newUrl = new URL(`/aaq/${cleanSlug}`, request.url);
       searchParams.forEach((value, key) => {
         newUrl.searchParams.set(key, value);
       });
@@ -40,5 +40,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/faq/:path*'],
+  matcher: ['/dashboard/:path*', '/aaq/:path*'],
 };

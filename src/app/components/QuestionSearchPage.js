@@ -42,7 +42,7 @@ export default function QuestionSearchPage() {
   const pathname = usePathname();
   // Extract search term from either ?search= or /faq/:slug
   const searchTermFromQuery = searchParams.get("search") || "";
-  const searchTermFromSlug = pathname.startsWith('/faq/') ? fromSlug(pathname.replace('/faq/', '')) : "";
+  const searchTermFromSlug = pathname.startsWith('/aaq/') ? fromSlug(pathname.replace('/aaq/', '')) : "";
   const searchTermFromUrl = searchTermFromQuery || searchTermFromSlug;
   const [questions, setQuestions] = useState([]);
   const [topExperts, setTopExperts] = useState([]);
@@ -172,7 +172,7 @@ export default function QuestionSearchPage() {
     e.preventDefault();
     if (searchTerm.trim()) {
       const slug = toSlug(searchTerm);
-      router.push(`/faq/${slug}`);
+      router.push(`/aaq/${slug}`);
     }
   };
 
@@ -448,7 +448,7 @@ export default function QuestionSearchPage() {
         </main>
 
         <div className="text-center mt-8">
-          <Link href="/faq" className="text-[#36013F] font-semibold hover:underline">
+          <Link href="/aaq" className="text-[#36013F] font-semibold hover:underline">
             View all Questions
           </Link>
         </div>
