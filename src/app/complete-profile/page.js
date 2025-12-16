@@ -16,6 +16,7 @@ import Step1_BasicInfo from './components/Step1_BasicInfo';
 import Step2_Services from './components/Step2_Services';
 import Step3_Experience from './components/Step3_Experience';
 import Image from 'next/image';
+import { FileText, Loader2, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 
 // Dynamically import components with error handling
 const loadComponent = (importFn, name) =>
@@ -25,11 +26,11 @@ const loadComponent = (importFn, name) =>
         .then((mod) => mod.default || mod)
         .catch((err) => {
           console.error(`Failed to load ${name}:`, err);
-          return { default: () => <div className="text-red-500">Error loading ${name} component.</div> };
+          return { default: () => <div className="text-red-500">Error loading {name} component.</div> };
         }),
     {
       ssr: false,
-      loading: () => <div>Loading ${name}...</div>,
+      loading: () => <div>Loading {name}...</div>,
     }
   );
 
@@ -43,7 +44,6 @@ export default function CompleteProfile() {
   const searchParams = useSearchParams();
   const profileId = searchParams.get('profileId');
 
-  const [currentStep, setCurrentStep] = useState(0);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [savedProfileId, setSavedProfileId] = useState(null);
   const [formData, setFormData] = useState({
@@ -79,6 +79,7 @@ export default function CompleteProfile() {
   const [errors, setErrors] = useState({});
   const [agreed, setAgreed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isParsingResume, setIsParsingResume] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState('');
   const [referralCodeStatus, setReferralCodeStatus] = useState('');
   const [referrerUsername, setReferrerUsername] = useState('');
@@ -97,29 +98,9 @@ export default function CompleteProfile() {
 
   // Profile write-ups
   const profileWriteUps = {
-    expert: (
-      <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-[var(--primary)] mb-2 text-left">Individual Expert Profile</h2>
-        <p className="text-sm text-gray-700 text-left">
-          Become a recognised travel authority on the world’s first platform dedicated to human expertise in travel. As an Individual Expert, you showcase your specialised knowledge, from destinations and cultures to niche travel themes, while building credibility with a global audience that values authentic guidance over generic content. This is not just another listing; it’s your chance to join an exclusive network of verified travel professionals shaping the future of ethical and expert-led travel advice. Become a recognised travel authority on the world’s first platform dedicated to human expertise in travel. As an Individual Expert, you showcase your specialised knowledge, from destinations and cultures to niche travel themes, while building credibility with a global audience that values authentic guidance over generic content. This is not just another listing; it’s your chance to join an exclusive network of verified travel professionals shaping the future of ethical and expert-led travel advice.
-        </p>
-      </div>
-    ),
-    agency: (
-      <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-[var(--primary)] mb-2 text-left">Travel Agency Profile</h2>
-        <p className="text-sm text-gray-700 text-left">
-          Position your agency as a trusted voice in the global travel community by creating your official profile on Xmytravel. Unlike traditional directories, this is a curated ecosystem where agencies stand out for their expertise, not just their offerings. By joining, you gain visibility as a credible, verified travel partner while connecting with travellers actively seeking professional consultation. This is the only platform that transforms your agency’s knowledge into influence and authority.
-        </p>
-      </div>
-    ),
+    expert: "Become a recognised travel authority on the world’s first platform dedicated to human expertise in travel. As an Individual Expert, you showcase your specialised knowledge, from destinations and cultures to niche travel themes.",
+    agency: "Position your agency as a trusted voice in the global travel community. By joining, you gain visibility as a credible, verified travel partner while connecting with travellers actively seeking professional consultation."
   };
-
-  // Main description for truncation
-  const mainDescription = "Create your professional profile and join the world’s only platform dedicated to authentic travel expertise. Whether you are an individual expert or a travel agency, this is your gateway to global recognition, credibility, and meaningful traveller connections.";
-  const words = mainDescription.split(/\s+/).filter(word => word.trim());
-  const isTruncated = words.length > 20 && !isMainDescriptionExpanded;
-  const displayText = isTruncated ? words.slice(0, 20).join(' ') : mainDescription;
 
   useEffect(() => {
     const loadCSS = (href, fallback) => {
@@ -172,6 +153,83 @@ export default function CompleteProfile() {
       return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     }
     return null;
+  };
+
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setApiError("File size exceeds 5MB.");
+      return;
+    }
+
+    const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
+    if (!validTypes.includes(file.type)) {
+      setApiError("Please upload a PDF, DOCX, or Image file.");
+      return;
+    }
+
+    setIsParsingResume(true);
+    setApiError("");
+
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("resume", file);
+
+      const response = await fetch("/api/parse-resume", {
+        method: "POST",
+        body: formDataUpload,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to parse resume");
+      }
+
+      const { data } = result;
+
+      // Merge data into state
+      setFormData(prev => ({
+        ...prev,
+        fullName: data.fullName || prev.fullName,
+        email: data.email || prev.email,
+        phone: data.phone || prev.phone,
+        location: data.location || prev.location,
+        tagline: data.tagline || prev.tagline,
+        about: data.about || prev.about,
+        languages: data.languages && data.languages.length > 0 ? data.languages : prev.languages,
+        expertise: data.expertise && data.expertise.length > 0 ? data.expertise : prev.expertise,
+        experience: data.experience && data.experience.length > 0
+          ? data.experience.map(exp => ({
+              title: exp.title,
+              company: exp.company,
+              startDate: exp.startDate ? parseDate(exp.startDate, 'YYYY-MM') : null,
+              endDate: exp.endDate === 'Present' ? 'Present' : (exp.endDate ? parseDate(exp.endDate, 'YYYY-MM') : null),
+            }))
+          : prev.experience,
+      }));
+
+      // Update City Options if location is new
+      if (data.location && !cityOptions.some(opt => opt.value === data.location)) {
+        setCityOptions(prev => [{ value: data.location, label: data.location }, ...prev]);
+      }
+
+      // Update Language Options if new
+      if (data.languages && data.languages.length > 0) {
+        setLanguageOptions(prev => {
+          const newLangs = data.languages.filter(l => !prev.some(opt => opt.value === l)).map(l => ({ value: l, label: l }));
+          return [...prev, ...newLangs];
+        });
+      }
+
+    } catch (error) {
+      console.error("Resume parsing error:", error);
+      setApiError(error.message);
+    } finally {
+      setIsParsingResume(false);
+    }
   };
 
   useEffect(() => {
@@ -549,82 +607,81 @@ export default function CompleteProfile() {
     return '';
   };
 
-  const validateStep = () => {
+  const validateForm = () => {
     const newErrors = {};
     const { profileType } = formData;
 
-    if (currentStep === 0) {
-      ['username', 'fullName', 'email', 'phone', 'responseTime', 'pricing'].forEach(field => {
-        if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
-      });
+    // Basic Info
+    ['username', 'fullName', 'email', 'phone', 'responseTime', 'pricing'].forEach(field => {
+      if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
+    });
 
-      if (profileType === 'expert') {
-        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
-        if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
-          newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old and not in the future.';
-        }
-      } else {
-        if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
+    if (profileType === 'expert') {
+      if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
+      else if (!validateDateOfBirth(formData.dateOfBirth)) {
+        newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old.';
       }
-
-      if (!formData.location) newErrors.location = 'Location is required';
-      if (!formData.languages.length) newErrors.languages = 'At least one language is required';
-      if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
-      if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
-      if (formData.username && !validateUsername(formData.username)) {
-        newErrors.username = 'Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores';
-      }
-      if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
+    } else {
+      if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
     }
 
-    if (currentStep === 1) {
-      if (!formData.services.length || formData.services.some(s => !s.trim())) {
-        newErrors.services = 'At least one valid service is required';
+    if (!formData.location) newErrors.location = 'Location is required';
+    if (!formData.languages.length) newErrors.languages = 'At least one language is required';
+    if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
+    if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
+    if (formData.username && !validateUsername(formData.username)) {
+      newErrors.username = 'Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores';
+    }
+    if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
+
+    // Services
+    if (!formData.services.length || formData.services.some(s => !s.trim())) {
+      newErrors.services = 'At least one valid service is required';
+    }
+    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
+    if (!formData.expertise.length) newErrors.expertise = 'At least one expertise area is required';
+    
+    // Experience & Details
+    if (profileType === 'expert') {
+      if (!formData.experience.length || formData.experience.some(exp => !exp.title.trim() || !exp.company.trim())) {
+        newErrors.experience = 'All experience fields (title, company) are required';
       }
-      if (!formData.regions.length) newErrors.regions = 'At least one region is required';
-      if (!formData.expertise.length) newErrors.expertise = 'At least one expertise area is required';
-      if (formData.expertise.length > 5) newErrors.expertise = 'You can add up to 5 expertise areas';
+      const dateError = validateExperienceDates(formData.experience);
+      if (dateError) newErrors.experience = dateError;
+      if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
+    } else {
+      if (!formData.registeredAddress.trim()) newErrors.registeredAddress = 'Registered address is required';
+      if (!formData.employeeCount.trim()) newErrors.employeeCount = 'Number of employees is required';
+      if (!profileId && !formData.officePhotos.length) newErrors.officePhotos = 'At least one office photo is required';
+      if (formData.website && !validateWebsite(formData.website)) newErrors.website = 'Invalid website URL';
     }
 
-    if (currentStep === 2) {
-      if (profileType === 'expert') {
-        if (!formData.experience.length || formData.experience.some(exp => !exp.title.trim() || !exp.company.trim())) {
-          newErrors.experience = 'All experience fields (title, company) are required';
-        }
-        const dateError = validateExperienceDates(formData.experience);
-        if (dateError) newErrors.experience = dateError;
-        if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
-      } else {
-        if (!formData.registeredAddress.trim()) newErrors.registeredAddress = 'Registered address is required';
-        if (!formData.employeeCount.trim()) newErrors.employeeCount = 'Number of employees is required';
-        if (!profileId && !formData.officePhotos.length) newErrors.officePhotos = 'At least one office photo is required';
-        if (formData.website && !validateWebsite(formData.website)) newErrors.website = 'Invalid website URL';
-      }
-
-      if (!formData.tagline?.trim()) newErrors.tagline = 'This field is required';
-      if (!formData.about?.trim()) newErrors.about = 'This field is required';
-      if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
-      if (!agreed) newErrors.agreed = 'You must agree to the terms';
-      if (!formData.referred) newErrors.referred = 'Please select whether you were referred';
-      if (formData.referred === 'Yes' && !formData.referralCode.trim()) {
-        newErrors.referralCode = 'Referral code is required';
-      }
-      if (formData.referred === 'Yes' && referralCodeStatus === 'Invalid referral code') {
-        newErrors.referralCode = 'Invalid referral code';
-      }
+    if (!formData.tagline?.trim()) newErrors.tagline = 'This field is required';
+    if (!formData.about?.trim()) newErrors.about = 'This field is required';
+    if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
+    if (!agreed) newErrors.agreed = 'You must agree to the terms';
+    if (!formData.referred) newErrors.referred = 'Please select whether you were referred';
+    if (formData.referred === 'Yes' && !formData.referralCode.trim()) {
+      newErrors.referralCode = 'Referral code is required';
+    }
+    if (formData.referred === 'Yes' && referralCodeStatus === 'Invalid referral code') {
+      newErrors.referralCode = 'Invalid referral code';
     }
 
     setErrors(newErrors);
+    
+    // Find the first error and scroll to it
+    if (Object.keys(newErrors).length > 0) {
+      const firstError = Object.keys(newErrors)[0];
+      const element = document.getElementsByName(firstError)[0] || document.getElementById(firstError);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Fallback to top if specific element not found
+      }
+    }
+
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleNext = () => {
-    if (!validateStep()) return;
-    if (currentStep < 2) setCurrentStep(currentStep + 1);
-  };
-
-  const handleBack = () => {
-    if (currentStep > 0) setCurrentStep(currentStep - 1);
   };
 
   const resetForm = () => {
@@ -664,7 +721,6 @@ export default function CompleteProfile() {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
     setCroppedAreaPixels(null);
-    setCurrentStep(0);
     setErrors({});
     setAgreed(false);
     setOriginalProfile(null);
@@ -678,7 +734,13 @@ export default function CompleteProfile() {
   };
 
   const handleSubmit = async () => {
-    if (!validateStep()) return;
+    if (!validateForm()) {
+        const errorKeys = Object.keys(errors);
+        if (errorKeys.length > 0) {
+            setApiError(`Please fix the errors in the form: ${errorKeys.join(', ')}`);
+        }
+        return;
+    }
 
     setIsSubmitting(true);
 
@@ -786,140 +848,93 @@ export default function CompleteProfile() {
     }
   };
 
-  const progress = Math.round(((currentStep + 1) / 3) * 100);
-
   return (
     <>
       <Navbar />
-      <div className="bg-[#F4D35E] flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden mt-20">
-          <Image src="/emailbanner.jpeg" alt="Logo"  width={400} height={40} className="mx-auto mb-4 w-full" />
-          <div className="p-6 text-center">
-            
-            <h1 className="text-2xl font-bold text-[var(--primary)] mb-2 text-left">
-              Create Your Professional Profile
+      <div className="bg-[#F4D35E] min-h-screen flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-9xl bg-white rounded-3xl shadow-2xl overflow-hidden mt-20 relative">
+          
+          {/* Header Section */}
+          <div className="bg-gray-50 border-b border-gray-100 p-6 md:p-8">
+             <div className="flex justify-between items-center mb-6">
+                <Image src="/emailbanner.jpeg" alt="Logo" width={200} height={40} className="object-contain" />
+                
+                {/* Profile Type Toggle - moved here for better visibility */}
+                <div className="flex bg-gray-200 rounded-lg p-1">
+                    <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, profileType: 'expert' }))}
+                        className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                        formData.profileType === 'expert' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Expert
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, profileType: 'agency' }))}
+                        className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                        formData.profileType === 'agency' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                    >
+                        Agency
+                    </button>
+                </div>
+             </div>
+
+             <h1 className="text-3xl md:text-4xl font-extrabold text-[var(--primary)] mb-3">
+              {formData.profileType === 'expert' ? 'Join as an Expert' : 'Partner as an Agency'}
             </h1>
-            <p className="text-sm text-gray-700 mb-6 text-left">
-              {displayText}
-              {isTruncated && (
-                <span
-                  className="text-[var(--primary)] underline cursor-pointer ml-1"
-                  onClick={() => setIsMainDescriptionExpanded(true)}
-                >
-                  ...read more
-                </span>
-              )}
-              {!isTruncated && words.length > 20 && (
-                <span
-                  className="text-[var(--primary)] underline cursor-pointer ml-1"
-                  onClick={() => setIsMainDescriptionExpanded(false)}
-                >
-                  ...read less
-                </span>
-              )}
+            <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-2xl">
+                {profileWriteUps[formData.profileType]}
             </p>
           </div>
-          <div className="relative">
-            <div className="bg-[#D8E7EC] h-3 w-full">
-              <div
-                id="progress-bar"
-                className="bg-[var(--primary)] h-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-            <div className="absolute right-4 top-[-1.75rem] text-sm font-semibold text-[var(--primary)]">
-              Step {currentStep + 1} of 3 ({progress}%)
-            </div>
-          </div>
-          {showSuccessModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full shadow-xl">
-                <h2 className="text-xl font-semibold text-[var(--primary)] mb-3">
-                  🎉 Profile {profileId ? 'Updated' : 'Submitted'}!
-                </h2>
-                <p className="text-gray-700 mb-6 text-sm">
-                  Your profile has been successfully {profileId ? 'updated' : 'submitted'}.<br />
-                  {profileId
-                    ? 'Changes have been saved.'
-                    : 'Our team will review the details and reach out if anything more is needed.'}
-                </p>
-                <button
-                  onClick={() => {
-                    setShowSuccessModal(false);
-                    resetForm();
-                    const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-                    router.push(formData.profileType === 'agency' ? `/agency/${slug}` : `/experts/${slug}`);
-                  }}
-                  className="px-6 py-2 rounded-full text-white bg-[var(--primary)] hover:bg-green-700 transition"
-                >
-                  Got it!
-                </button>
-              </div>
+
+          {/* Resume Upload - Hero Section */}
+          {!profileId && (
+            <div className="bg-[var(--primary)] p-6 md:p-8 text-white relative overflow-hidden">
+                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Sparkles className="text-yellow-400 w-5 h-5 animate-pulse" />
+                            <span className="text-yellow-400 font-bold text-sm uppercase tracking-wider">AI Fast Track</span>
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Auto-fill with Resume</h3>
+                        <p className="text-white/80 text-sm">Upload your CV/Resume (PDF/DOCX) and let our AI populate your profile instantly.</p>
+                    </div>
+                    
+                    <label className={`cursor-pointer bg-white text-[var(--primary)] px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2 ${isParsingResume ? 'opacity-75 pointer-events-none' : ''}`}>
+                        {isParsingResume ? <Loader2 className="animate-spin w-5 h-5" /> : <FileText className="w-5 h-5" />}
+                        <span>{isParsingResume ? 'Analyzing...' : 'Upload Resume'}</span>
+                        <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            onChange={handleResumeUpload}
+                            className="hidden"
+                            disabled={isParsingResume}
+                        />
+                    </label>
+                </div>
+                {/* Decorative Elements */}
+                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
+                <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-yellow-400/20 rounded-full blur-2xl"></div>
             </div>
           )}
-          {showCropModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
-                <h3 className="text-lg font-semibold text-[var(--primary)] mb-4">Crop Your Photo</h3>
-                <div className="relative w-full h-64">
-                  <Cropper
-                    image={imagePreview}
-                    crop={crop}
-                    zoom={zoom}
-                    aspect={1}
-                    onCropChange={setCrop}
-                    onZoomChange={setZoom}
-                    onCropComplete={onCropComplete}
-                    cropShape="round"
-                    showGrid={true}
-                    style={{
-                      containerStyle: { height: '100%', width: '100%' },
-                    }}
-                  />
-                </div>
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Zoom</label>
-                  <input
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.1"
-                    value={zoom}
-                    onChange={e => setZoom(parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 mt-4">
-                  <button
-                    type="button"
-                    className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
-                    onClick={() => {
-                      setShowCropModal(false);
-                      setImagePreview(originalProfile?.photo || null);
-                      setFormData(prev => ({ ...prev, photo: null }));
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="px-4 py-2 text-sm text-white bg-[var(--primary)] rounded-xl hover:bg-opacity-90"
-                    onClick={handleCropConfirm}
-                  >
-                    Confirm Crop
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          <form className="p-6 md:p-8 space-y-8">
+
+          {/* Form Content - Scrolling Single Page */}
+          <div className="p-6 md:p-10 space-y-12">
+            
             {apiError && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-                {apiError}
+              <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <p>{apiError}</p>
               </div>
             )}
-            {currentStep === 0 && (
-              <Step1_BasicInfo
+
+            {/* Section 1: Basic Info */}
+            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
+               <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--primary)] rounded-l-2xl"></div>
+               <Step1_BasicInfo
                 formData={formData}
                 errors={errors}
                 handleChange={handleChange}
@@ -934,11 +949,14 @@ export default function CompleteProfile() {
                 setFormData={setFormData}
                 setErrors={setErrors}
                 setApiError={setApiError}
-                profileWriteUp={profileWriteUps[formData.profileType]}
+                profileWriteUp={<span></span>} // Passing empty span as we handle writeup in header now
               />
-            )}
-            {currentStep === 1 && (
-              <Step2_Services
+            </section>
+
+            {/* Section 2: Services */}
+            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
+               <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
+               <Step2_Services
                 formData={formData}
                 errors={errors}
                 setFormData={setFormData}
@@ -953,9 +971,12 @@ export default function CompleteProfile() {
                 addExpertise={addExpertise}
                 removeExpertise={removeExpertise}
               />
-            )}
-            {currentStep === 2 && (
-              <Step3_Experience
+            </section>
+
+            {/* Section 3: Experience */}
+            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
+               <div className="absolute top-0 left-0 w-1.5 h-full bg-green-500 rounded-l-2xl"></div>
+               <Step3_Experience
                 formData={formData}
                 errors={errors}
                 handleExperienceChange={handleExperienceChange}
@@ -973,44 +994,121 @@ export default function CompleteProfile() {
                 profileId={profileId}
                 setShowCropModal={setShowCropModal}
               />
-            )}
-            <div className="flex justify-between pt-6">
-              {currentStep > 0 && (
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  className="px-6 py-2 text-sm font-semibold text-[var(--primary)] hover:text-gray-800"
-                >
-                  Back
-                </button>
-              )}
-              <div className="flex-1"></div>
-              {currentStep < 2 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="px-6 py-2 text-sm font-semibold text-white bg-[var(--primary)] rounded-xl cursor-pointer transition"
-                >
-                  Next
-                </button>
-              ) : (
+            </section>
+
+            {/* Submit Action */}
+            <div className="pt-6">
                 <button
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting}
-                  className={`px-6 py-2 text-sm font-semibold text-white rounded-xl transition cursor-pointer ${
-                    isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--primary)] '
+                  className={`w-full py-4 text-lg font-bold text-white rounded-xl shadow-lg transition-all transform hover:-translate-y-1 ${
+                    isSubmitting 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-[var(--primary)] to-purple-800 hover:shadow-xl'
                   }`}
                 >
-                  {isSubmitting ? 'Submitting...' : profileId ? 'Update Profile' : 'Submit'}
+                  {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="animate-spin" /> Submitting...
+                      </span>
+                  ) : (
+                      <span>{profileId ? 'Update Profile' : 'Submit Application'}</span>
+                  )}
                 </button>
-              )}
+                {errors.submit && <p className="text-center text-red-600 mt-3 font-medium">{errors.submit}</p>}
             </div>
-            {errors.submit && <p className="text-sm text-red-600 mt-2">{errors.submit}</p>}
-          </form>
+
+          </div>
         </div>
       </div>
-      <div className="-mt-20">
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 text-center max-w-md w-full shadow-2xl transform scale-100 transition-transform">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-10 h-10 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              🎉 Application Received!
+            </h2>
+            <p className="text-gray-600 mb-8 text-sm leading-relaxed">
+              Your profile has been successfully {profileId ? 'updated' : 'submitted'}. Our team will review your details and get back to you shortly.
+            </p>
+            <button
+              onClick={() => {
+                setShowSuccessModal(false);
+                resetForm();
+                const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
+                router.push(formData.profileType === 'agency' ? `/agency/${slug}` : `/experts/${slug}`);
+              }}
+              className="w-full py-3 rounded-xl text-white font-bold bg-[var(--primary)] hover:bg-opacity-90 transition shadow-lg"
+            >
+              Go to Profile
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Crop Modal */}
+      {showCropModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Adjust Photo</h3>
+            <div className="relative w-full h-72 bg-gray-100 rounded-xl overflow-hidden mb-6">
+              <Cropper
+                image={imagePreview}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={onCropComplete}
+                cropShape="round"
+                showGrid={true}
+                style={{ containerStyle: { height: '100%', width: '100%' } }}
+              />
+            </div>
+            <div className="space-y-4">
+                <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zoom</label>
+                    <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.1"
+                        value={zoom}
+                        onChange={e => setZoom(parseFloat(e.target.value))}
+                        className="w-full accent-[var(--primary)]"
+                    />
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        type="button"
+                        className="flex-1 py-3 text-gray-700 bg-gray-100 rounded-xl font-semibold hover:bg-gray-200 transition"
+                        onClick={() => {
+                        setShowCropModal(false);
+                        setImagePreview(originalProfile?.photo || null);
+                        setFormData(prev => ({ ...prev, photo: null }));
+                        }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        className="flex-1 py-3 text-white bg-[var(--primary)] rounded-xl font-semibold hover:bg-opacity-90 transition shadow-md"
+                        onClick={handleCropConfirm}
+                    >
+                        Save Crop
+                    </button>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="-mt-20 relative z-0">
         <Footer />
       </div>
     </>

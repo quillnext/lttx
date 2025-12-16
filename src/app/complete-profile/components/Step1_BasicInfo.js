@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -11,18 +12,17 @@ const loadComponent = (importFn, name) =>
         .then((mod) => mod.default || mod)
         .catch((err) => {
           console.error(`Failed to load ${name}:`, err);
-          return { default: () => <div className="text-red-500">Error loading ${name} component.</div> };
+          return { default: () => <div className="text-red-500">Error loading {name} component.</div> };
         }),
     {
       ssr: false,
-      loading: () => <div>Loading ${name}...</div>,
+      loading: () => <div>Loading {name}...</div>,
     }
   );
 
 const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInput");
 const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
 const Select = loadComponent(() => import('react-select'), "Select");
-const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
 
 export default function Step1_BasicInfo({
   formData,
@@ -39,73 +39,20 @@ export default function Step1_BasicInfo({
   setFormData,
   setErrors,
   setApiError,
-  profileWriteUp,
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // Extract text content from profileWriteUp for truncation
-  const getTextContent = (element) => {
-    if (!element) return '';
-    const pElement = element.props?.children?.find(child => child.type === 'p')?.props?.children || '';
-    return typeof pElement === 'string' ? pElement : '';
-  };
-
-  const textContent = getTextContent(profileWriteUp);
-  const words = textContent.split(/\s+/).filter(word => word.trim());
-  const isTruncated = words.length > 30 && !isExpanded;
-  const displayText = isTruncated ? words.slice(0, 30).join(' ') : textContent;
-
   return (
     <div className="space-y-6">
-      <div className="mb-6">
-        <div className="flex border border-gray-300 rounded-xl p-1 bg-gray-100">
-          <button
-            type="button"
-            onClick={() => setFormData(prev => ({ ...prev, profileType: 'expert' }))}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${
-              formData.profileType === 'expert' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Individual Expert
-          </button>
-          <button
-            type="button"
-            onClick={() => setFormData(prev => ({ ...prev, profileType: 'agency' }))}
-            className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-colors ${
-              formData.profileType === 'agency' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            Travel Agency
-          </button>
-        </div>
-      </div>
-      <div className="mb-6 text-left">
-        {profileWriteUp.props.children[0]}
-        <p className="text-sm text-gray-700">
-          {displayText}
-          {isTruncated && (
-            <span
-              className="text-[var(--primary)] underline cursor-pointer ml-1"
-              onClick={() => setIsExpanded(true)}
-            >
-              ...read more
-            </span>
-          )}
-          {!isTruncated && words.length > 30 && (
-            <span
-              className="text-[var(--primary)] underline cursor-pointer ml-1"
-              onClick={() => setIsExpanded(false)}
-            >
-              ...read less
-            </span>
-          )}
-        </p>
-      </div>
-      <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Phone Number */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+      <h2 className="text-2xl font-semibold text-[var(--primary)] mb-6 flex items-center gap-2">
+        <span className="bg-[var(--primary)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+        Basic Information
+      </h2>
+      
+      {/* 12 Column Grid System */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        
+        {/* Row 1: Phone (4), Username (4), Full Name (4) */}
+        <div className="md:col-span-4">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Phone Number <span className="text-red-500">*</span></label>
           <PhoneInput
             country={"in"}
             value={formData.phone}
@@ -113,68 +60,72 @@ export default function Step1_BasicInfo({
               setFormData(prev => ({ ...prev, phone }));
               fetchLeadByPhone(phone);
             }}
-            placeholder="Enter phone number (e.g., +91 9876543210)"
+            placeholder="Enter phone"
             inputProps={{
               id: 'phone',
-              className: `w-full p-3 px-12 border rounded-xl bg-white ${errors.phone ? 'border-red-500' : ''}`,
+              className: `w-full p-3 pl-14 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all ${errors.phone ? 'border-red-500' : 'border-gray-200'}`,
               required: true,
-              autoFocus: false,
             }}
+            containerClass="!w-full"
+            buttonClass="!bg-gray-100 !border-gray-200 !rounded-l-xl hover:!bg-gray-200"
           />
-          {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
+          {errors.phone && <p className="text-xs text-red-600 mt-1 font-medium">{errors.phone}</p>}
         </div>
-        {/* Username */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+
+        <div className="md:col-span-4">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Username <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="username"
-            placeholder="Enter username (e.g., travelwithjohn)"
-            className={`w-full px-4 py-3 border rounded-xl ${errors.username ? 'border-red-500' : ''}`}
+            placeholder="e.g., travelwithjohn"
+            className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.username ? 'border-red-500' : 'border-gray-200'}`}
             value={formData.username}
             onChange={handleChange}
             disabled={!!profileId}
           />
-          {usernameStatus && (
-            <p className={`text-sm mt-1 ${usernameStatus.includes('available') ? 'text-green-600' : 'text-red-600'}`}>
-              {usernameStatus}
-            </p>
-          )}
+          <div className="flex justify-between mt-1 h-4">
+             <p className="text-[10px] text-gray-400 truncate max-w-[60%]">xmytravel.com/experts/...</p>
+             {usernameStatus && (
+                <p className={`text-[10px] font-medium ${usernameStatus.includes('available') ? 'text-green-600' : 'text-red-600'}`}>
+                {usernameStatus}
+                </p>
+            )}
+          </div>
           {errors.username && errors.username !== 'Username is already taken' && (
-            <p className="text-sm text-red-600 mt-1">{errors.username}</p>
+            <p className="text-xs text-red-600 mt-0 font-medium">{errors.username}</p>
           )}
-          <p className="text-sm text-gray-500 mt-1">e.g., travelwithjohn</p>
         </div>
-        {/* Full Name / Agency Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'expert' ? 'Full Name' : 'Agency Name'}</label>
+
+        <div className="md:col-span-4">
+          <label className="block text-sm font-bold text-gray-700 mb-1">{formData.profileType === 'expert' ? 'Full Name' : 'Agency Name'} <span className="text-red-500">*</span></label>
           <input
             type="text"
             name="fullName"
-            placeholder={formData.profileType === 'expert' ? "Enter full name (e.g., John Doe)" : "Enter agency name"}
-            className={`w-full px-4 py-3 border rounded-xl ${errors.fullName ? 'border-red-500' : ''}`}
+            placeholder={formData.profileType === 'expert' ? "John Doe" : "Agency Name"}
+            className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.fullName ? 'border-red-500' : 'border-gray-200'}`}
             value={formData.fullName}
             onChange={handleChange}
           />
-          {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
+          {errors.fullName && <p className="text-xs text-red-600 mt-1 font-medium">{errors.fullName}</p>}
         </div>
-        {/* Email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+
+        {/* Row 2: Email (4), DOB/Years (3), Response (2), Pricing (3) */}
+        <div className="md:col-span-4">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
           <input
             type="email"
             name="email"
-            placeholder="Enter email (e.g., john@example.com)"
-            className={`w-full px-4 py-3 border rounded-xl ${errors.email ? 'border-red-500' : ''}`}
+            placeholder="john@example.com"
+            className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.email ? 'border-red-500' : 'border-gray-200'}`}
             value={formData.email}
             onChange={handleChange}
           />
-          {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
+          {errors.email && <p className="text-xs text-red-600 mt-1 font-medium">{errors.email}</p>}
         </div>
-        {/* Date of Birth or Years Active */}
-        {formData.profileType === 'expert' ? (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+
+        <div className="md:col-span-3">
+          <label className="block text-sm font-bold text-gray-700 mb-1">{formData.profileType === 'expert' ? 'Date of Birth' : 'Years Active'} <span className="text-red-500">*</span></label>
+          {formData.profileType === 'expert' ? (
             <DatePicker
               selected={formData.dateOfBirth}
               onChange={date => {
@@ -182,102 +133,121 @@ export default function Step1_BasicInfo({
                 setErrors(prev => ({ ...prev, dateOfBirth: '' }));
               }}
               dateFormat="yyyy-MM-dd"
-              placeholderText="Select date of birth (YYYY-MM-DD)"
-              className={`w-full px-4 py-3 border rounded-xl ${errors.dateOfBirth ? 'border-red-500' : ''}`}
+              placeholderText="YYYY-MM-DD"
+              className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.dateOfBirth ? 'border-red-500' : 'border-gray-200'}`}
               maxDate={new Date()}
               showYearDropdown
               yearDropdownItemNumber={100}
               scrollableYearDropdown
             />
-            {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
-          </div>
-        ) : (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Years Active</label>
+          ) : (
             <input
               type="text"
               name="yearsActive"
-              placeholder="e.g., 5+ years"
-              className={`w-full px-4 py-3 border rounded-xl ${errors.yearsActive ? 'border-red-500' : ''}`}
+              placeholder="e.g., 5+"
+              className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.yearsActive ? 'border-red-500' : 'border-gray-200'}`}
               value={formData.yearsActive}
               onChange={handleChange}
             />
-            {errors.yearsActive && <p className="text-sm text-red-600 mt-1">{errors.yearsActive}</p>}
-          </div>
-        )}
-        {/* Location */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+          )}
+          {formData.profileType === 'expert' && errors.dateOfBirth && <p className="text-xs text-red-600 mt-1 font-medium">{errors.dateOfBirth}</p>}
+          {formData.profileType !== 'expert' && errors.yearsActive && <p className="text-xs text-red-600 mt-1 font-medium">{errors.yearsActive}</p>}
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Response Time <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            name="responseTime"
+            placeholder="e.g. 2h"
+            className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.responseTime ? 'border-red-500' : 'border-gray-200'}`}
+            value={formData.responseTime}
+            onChange={handleChange}
+          />
+          {errors.responseTime && <p className="text-xs text-red-600 mt-1 font-medium">{errors.responseTime}</p>}
+        </div>
+
+        <div className="md:col-span-3">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Pricing <span className="text-red-500">*</span></label>
+          <input
+            type="text"
+            name="pricing"
+            placeholder="e.g. ₹500/call"
+            className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-[var(--primary)] transition-all outline-none ${errors.pricing ? 'border-red-500' : 'border-gray-200'}`}
+            value={formData.pricing}
+            onChange={handleChange}
+          />
+          {errors.pricing && <p className="text-xs text-red-600 mt-1 font-medium">{errors.pricing}</p>}
+        </div>
+
+        {/* Row 3: Location (6), Languages (6) */}
+        <div className="md:col-span-6">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Location <span className="text-red-500">*</span></label>
           <Select
             instanceId="location-select"
             options={cityOptions}
             value={cityOptions.find(option => option.value === formData.location) || null}
             onChange={selected => handleSingleChange(selected, 'location')}
-            placeholder="Select a location (e.g., Mumbai, India)"
-            className={`w-full ${errors.location ? 'border-red-500' : ''}`}
-            classNamePrefix="react-select"
+            placeholder="Search City..."
+            className={`w-full ${errors.location ? 'border-red-500 rounded-xl' : ''}`}
+            styles={{
+                control: (base) => ({
+                    ...base,
+                    borderRadius: '0.75rem',
+                    padding: '0.2rem',
+                    borderColor: errors.location ? '#ef4444' : '#e5e7eb',
+                    backgroundColor: '#f9fafb',
+                    boxShadow: 'none',
+                    '&:hover': { borderColor: '#d1d5db' },
+                    '&:focus-within': { borderColor: 'var(--primary)', boxShadow: '0 0 0 2px var(--primary)' }
+                })
+            }}
             isDisabled={cityOptions.length === 0 && !formData.location}
             isSearchable={true}
             onInputChange={inputValue => {
               if (inputValue) {
                 fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
-                  .then(res => res.ok ? res.json() : Promise.reject(new Error(`Failed to fetch: ${res.status}`)))
+                  .then(res => res.ok ? res.json() : Promise.reject(new Error(`Failed`)))
                   .then(data => {
-                    if (data.error) throw new Error(data.error);
-                    const sortedCities = [...data].sort((a, b) => a.label.localeCompare(b.label));
-                    setCityOptions(sortedCities);
+                    if (!data.error) {
+                        const sortedCities = [...data].sort((a, b) => a.label.localeCompare(b.label));
+                        setCityOptions(sortedCities);
+                    }
                   })
-                  .catch(err => {
-                    console.error('Error fetching cities:', err);
-                    setApiError(`Failed to load city options: ${err.message}. Using fallback options.`);
-                  });
+                  .catch(err => console.error(err));
               }
             }}
           />
-          {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
+          {errors.location && <p className="text-xs text-red-600 mt-1 font-medium">{errors.location}</p>}
         </div>
-        {/* Languages */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
+
+        <div className="md:col-span-6">
+          <label className="block text-sm font-bold text-gray-700 mb-1">Languages Spoken <span className="text-red-500">*</span></label>
           <Select
             instanceId="language-select"
             isMulti
             options={languageOptions}
             value={languageOptions.filter(option => formData.languages.includes(option.value))}
             onChange={selected => handleMultiChange(selected, 'languages')}
-            placeholder="Select up to 5 languages (e.g., English, Hindi)"
-            className={`w-full ${errors.languages ? 'border-red-500' : ''}`}
-            classNamePrefix="react-select"
+            placeholder="Select languages..."
+            className={`w-full ${errors.languages ? 'border-red-500 rounded-xl' : ''}`}
+            styles={{
+                control: (base) => ({
+                    ...base,
+                    borderRadius: '0.75rem',
+                    padding: '0.2rem',
+                    borderColor: errors.languages ? '#ef4444' : '#e5e7eb',
+                    backgroundColor: '#f9fafb',
+                    boxShadow: 'none',
+                    '&:hover': { borderColor: '#d1d5db' },
+                    '&:focus-within': { borderColor: 'var(--primary)', boxShadow: '0 0 0 2px var(--primary)' }
+                })
+            }}
             isDisabled={languageOptions.length === 0}
           />
-          {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
+          {errors.languages && <p className="text-xs text-red-600 mt-1 font-medium">{errors.languages}</p>}
         </div>
-        {/* Response Time */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
-          <input
-            type="text"
-            name="responseTime"
-            placeholder="Enter response time (e.g., Within 12 hours)"
-            className={`w-full px-4 py-3 border rounded-xl ${errors.responseTime ? 'border-red-500' : ''}`}
-            value={formData.responseTime}
-            onChange={handleChange}
-          />
-          {errors.responseTime && <p className="text-sm text-red-600 mt-1">{errors.responseTime}</p>}
-        </div>
-        {/* Pricing */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Pricing</label>
-          <input
-            type="text"
-            name="pricing"
-            placeholder="Enter pricing (e.g., ₹2000/session)"
-            className={`w-full px-4 py-3 border rounded-xl ${errors.pricing ? 'border-red-500' : ''}`}
-            value={formData.pricing}
-            onChange={handleChange}
-          />
-          {errors.pricing && <p className="text-sm text-red-600 mt-1">{errors.pricing}</p>}
-        </div>
+
       </div>
     </div>
   );
