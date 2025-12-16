@@ -45,17 +45,32 @@ function calculateYearsOfExperience(experience) {
 // Helper to handle AI retries with exponential backoff
 const retryDelay = (ms) => new Promise(res => setTimeout(res, ms));
 
-async function generateWithRetry(ai, params, retries = 2) {
+async function generateWithRetry(ai, params, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
       return await ai.models.generateContent(params);
     } catch (error) {
-      // Retry on 503 Service Unavailable or 429 Too Many Requests
-      if ((error.status === 503 || error.status === 429 || error.message?.includes('overloaded')) && i < retries - 1) {
-        console.warn(`AI Model overloaded. Retrying attempt ${i + 1}...`);
-        await retryDelay(2000 * (i + 1)); // 2s, 4s wait
+      const isOverloaded = error.status === 503 || error.status === 429 || error.message?.includes('overloaded');
+      
+      // If overloaded, log warning and retry
+      if (isOverloaded && i < retries - 1) {
+        const delay = 3000 * Math.pow(2, i); // 3s, 6s, 12s...
+        console.warn(`AI Model ${params.model} overloaded. Retrying attempt ${i + 1} in ${delay}ms...`);
+        await retryDelay(delay);
         continue;
       }
+      
+      // If overloaded and it's the last retry for the primary model, try fallback
+      if (isOverloaded && i === retries - 1 && params.model === "gemini-2.5-flash") {
+         console.warn(`AI Model overloaded after ${retries} attempts. Fallback to gemini-flash-lite-latest.`);
+         try {
+            return await ai.models.generateContent({ ...params, model: "gemini-flash-lite-latest" });
+         } catch (fallbackError) {
+            console.error("Fallback model also failed.");
+            throw fallbackError; 
+         }
+      }
+      
       throw error;
     }
   }
@@ -108,20 +123,19 @@ export async function POST(request) {
       }
 
       // 2. TOKEN OPTIMIZATION: Send minimal data to AI to prevent Rate Limits/Overload
-      // Only sending fields relevant for matching. Removing bio, contacts, images.
       const simplifiedProfiles = fullProfiles.map(p => ({
         id: p.id,
-        loc: p.location, // Abbreviated keys to save tokens
+        loc: p.location, 
         tags: p.expertise,
         svc: p.services,
-        tag: p.tagline?.substring(0, 50) // Truncate tagline
+        tag: p.tagline?.substring(0, 50) 
       }));
 
       const prompt = `
         Query: "${query}"
-        Task: Match top 6 experts & analyze intent.
+        Task: Match top  experts & analyze intent.
         
-        1. Context: Give succinct 'budgetRange' (e.g. "$50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
+        1. Context: Give succinct 'budgetRange' (e.g. "ruppee 50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
         2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'itinerary', 'related_questions'].
            - "Dubai Visa" -> ['visa', 'related_questions']
            - "Bali Trip" -> All.
@@ -185,10 +199,6 @@ export async function POST(request) {
       let schemaProperties = {};
       let requiredFields = [];
 
-      // Constraint: Dispute text MUST NOT contain the percentage number.
-      // Instruction: "Keep it short" to save tokens.
-      const disputeInst = "Estimate 'dispute' object: 'percentage' (int) of misleading generic/AI info vs reality, and 'text' (string). IMPORTANT: 'text' MUST describe the discrepancy WITHOUT stating the number/percentage again. Keep text under 10 words.";
-
       const disputeSchema = {
         type: Type.OBJECT,
         properties: {
@@ -198,9 +208,19 @@ export async function POST(request) {
         required: ["percentage", "text"]
       };
 
+      // Helper for specific dispute instructions based on section
+      // Designed to create cohesive sentences combining percentage + reasoning
+      const getDisputeInst = (topic) => `
+        Estimate 'dispute' object: 
+        1. 'percentage' (int 20-95): How much online info is generic vs. reality for ${topic}.
+        2. 'text' (string): A single, unified sentence. and it should be relavant with currect section as well."
+        Agenda: Mention specific pain points (e.g. scams, delays, hidden costs) found in internet reviews.  keep max 15 words.
+        Context: ${topic}.
+      `;
+
       switch (sectionType) {
         case 'related_questions':
-          sectionPrompt = `Query: "${query}". 3 FAQs with extremely short teaser answers (max 12 words). ${disputeInst}`;
+          sectionPrompt = `Query: "${query}". max 5 FAQs with extremely short teaser answers (max 12 words).`;
           schemaProperties = {
             relatedQuestions: {
               type: Type.ARRAY,
@@ -212,14 +232,13 @@ export async function POST(request) {
                 },
                 required: ["question", "teaserAnswer"]
               }
-            },
-            dispute: disputeSchema
+            }
           };
-          requiredFields = ["relatedQuestions", "dispute"];
+          requiredFields = ["relatedQuestions"];
           break;
 
         case 'visa':
-          sectionPrompt = `Query: "${query}". Visa Status (2 words) + 3 brief rules (max 6 words each). ${disputeInst}`;
+          sectionPrompt = `Query: "${query}". Visa Status (2 words) + 3 brief rules (max 6 words each). ${getDisputeInst('visa on arrival rejection rates or hidden documentation')}`;
           schemaProperties = {
             visaSnapshot: {
               type: Type.OBJECT,
@@ -235,7 +254,12 @@ export async function POST(request) {
           break;
 
         case 'weather':
-          sectionPrompt = `Query: "${query}". Season, Temp, 3 packing keywords. ${disputeInst}`;
+          sectionPrompt = `Query: "${query}". 
+          1. 'season': Explicitly state the "Best Time to Visit" (e.g., "Best: Nov-Feb"). 
+          2. 'temperature': Range in Celsius.
+          3. 'advice': 3 to 5 packing keywords. 
+          ${getDisputeInst('unpredictable micro-climates or extreme seasonal severity')}`;
+          
           schemaProperties = {
             weatherInfo: {
                 type: Type.OBJECT,
@@ -252,7 +276,7 @@ export async function POST(request) {
           break;
 
         case 'budget':
-          sectionPrompt = `Query: "${query}". Currency, Daily Spend, 3 short cost tips (max 5 words). ${disputeInst}`;
+          sectionPrompt = `Query: "${query}". Currency, Daily Spend, 3 short cost tips (max 5 words). ${getDisputeInst('tourist pricing scams or hidden taxes')}`;
           schemaProperties = {
             budgetInfo: {
                 type: Type.OBJECT,
@@ -269,7 +293,7 @@ export async function POST(request) {
           break;
 
         case 'transport':
-          sectionPrompt = `Query: "${query}". Best Route (short), Local Travel (short). ${disputeInst}`;
+          sectionPrompt = `Query: "${query}". Best Route (short), Local Travel (short). ${getDisputeInst('unreliable timetables or taxi mafia issues')}`;
           schemaProperties = {
             transportInfo: {
                 type: Type.OBJECT,
@@ -285,7 +309,12 @@ export async function POST(request) {
           break;
 
         case 'itinerary':
-          sectionPrompt = `Query: "${query}". Duration, Focus, 3 day highlights (very brief). ${disputeInst}`;
+          sectionPrompt = `Query: "${query}".
+          1. Analyze destination scale. If it's a City (e.g. Paris, Dubai), set 'duration' to 3-5 Days. If it's a Country/Region (e.g. Vietnam, Bali, Europe), set 'duration' to 7-14 Days.
+          2. Focus: A short theme (e.g. "Adventure & Culture").
+          3. DayByDay: Generate an array of strings covering the FULL calculated duration.
+          ${getDisputeInst('rushed itineraries or unrealistic travel times')}`;
+          
           schemaProperties = {
             itinerarySuggestion: {
                 type: Type.OBJECT,

@@ -19,7 +19,7 @@ const POINTER_CONFIG = {
     'visa': { title: 'Visa & Entry', icon: <FaPassport />, desc: 'Check requirements & docs', color: 'text-blue-600' },
     'weather': { title: 'Weather & Time', icon: <FaCloudSun />, desc: 'Best season & packing', color: 'text-orange-500' },
     'budget': { title: 'Budget & Costs', icon: <FaWallet />, desc: 'Currency & daily spend', color: 'text-green-600' },
-    'transport': { title: 'Flights & Transit', icon: <FaPlane />, desc: 'Routes & local travel', color: 'text-sky-600' },
+    'transport': { title: 'Transport', icon: <FaPlane />, desc: 'Routes & local travel', color: 'text-sky-600' },
     'itinerary': { title: 'Smart Itinerary', icon: <FaMapMarkedAlt />, desc: 'Suggested flow & stops', color: 'text-purple-600' },
     'related_questions': { title: 'Common FAQs', icon: <FaQuestionCircle />, desc: 'What others ask', color: 'text-red-500' },
 };
@@ -307,7 +307,7 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
     : ['visa', 'related_questions']; 
 
   return (
-    <div className="w-full space-y-8 md:space-y-12 pb-20">
+    <div className="w-full space-y-8 md:space-y-12 md:pb-20">
       
       {/* 1. Query Summary Strip */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -451,10 +451,10 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
       )}
 
       {/* 4. Bottom Conversion Strip (Mobile) */}
-      <div className="fixed bottom-0 left-0 w-full bg-[#36013F] text-white p-3 z-40 shadow-2xl border-t border-white/10 md:hidden">
+      <div className=" w-full bg-[#36013F] rounded-2xl text-white p-5 z-40 shadow-2xl border-t border-white/10 md:hidden">
         <div className="flex justify-between items-center gap-2">
             <div className="min-w-0">
-                <p className="text-[10px] opacity-80 truncate">Planning {query}?</p>
+                <p className="text-[10px] opacity-80 truncate">Travel is too expensive to guess.</p>
                 <p className="font-bold text-xs">Don't guess. Ask an expert.</p>
             </div>
             <button 
