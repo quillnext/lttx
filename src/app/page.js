@@ -343,6 +343,7 @@ export default function Home() {
               <Link href="/" className="p-2">Home</Link>
               <Link href="/about" className="p-2">About</Link>
               <Link href="/about#why-us" className="p-2">Why us</Link>
+              <Link href="/news-and-media" className="p-2">News and Media</Link>
             </div>
             <div className="flex flex-wrap justify-center gap-4">
               <Link href="/about#features" className="p-2">Features</Link>
