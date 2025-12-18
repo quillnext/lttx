@@ -7,7 +7,7 @@ import {
     FaExclamationTriangle, FaSuitcaseRolling, FaUnlock, 
     FaGlobeAmericas, FaUsers, FaLightbulb, FaPlane, 
     FaCloudSun, FaWallet, FaMapMarkedAlt, FaQuestionCircle,
-    FaChartLine
+    FaChartLine, FaCheckCircle, FaTimesCircle
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
@@ -22,6 +22,7 @@ const POINTER_CONFIG = {
     'transport': { title: 'Transport', icon: <FaPlane />, desc: 'Routes & local travel', color: 'text-sky-600' },
     'itinerary': { title: 'Smart Itinerary', icon: <FaMapMarkedAlt />, desc: 'Suggested flow & stops', color: 'text-purple-600' },
     'related_questions': { title: 'Common FAQs', icon: <FaQuestionCircle />, desc: 'What others ask', color: 'text-red-500' },
+    'indian_perspective': { title: 'Indian Perspective', icon: <FaUsers />, desc: 'How it is for indian travelers', color: 'text-orange-600' },
 };
 
 const getYears = (yearsStr) => {
@@ -178,6 +179,36 @@ const LazySection = ({ title, description, icon, type, loadSectionData, query, c
 
             <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar text-sm">
                 
+                {/* Indian Perspective */}
+                {type === 'indian_perspective' && data.indianPerspective && (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                             <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Pros for Indians</p>
+                             <ul className="space-y-1">
+                                {data.indianPerspective.pros?.map((p, i) => (
+                                    <li key={i} className="text-xs text-gray-700 flex items-center gap-2">
+                                        <FaCheckCircle className="text-green-500 shrink-0" size={10} /> {p}
+                                    </li>
+                                ))}
+                             </ul>
+                        </div>
+                        <div className="space-y-2">
+                             <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Pain Points</p>
+                             <ul className="space-y-1">
+                                {data.indianPerspective.cons?.map((c, i) => (
+                                    <li key={i} className="text-xs text-gray-700 flex items-center gap-2">
+                                        <FaTimesCircle className="text-red-400 shrink-0" size={10} /> {c}
+                                    </li>
+                                ))}
+                             </ul>
+                        </div>
+                        <div className="bg-orange-50 p-2.5 rounded-xl border border-orange-100 mt-2">
+                            <p className="text-[10px] font-bold text-orange-800 uppercase mb-1">Expert Verdict</p>
+                            <p className="text-xs text-orange-900 font-medium italic">"{data.indianPerspective.verdict}"</p>
+                        </div>
+                    </div>
+                )}
+
                 {/* Related Questions */}
                 {type === 'related_questions' && data.relatedQuestions && (
                     <div className="space-y-3">
@@ -300,8 +331,6 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
   if (!context) return null;
 
   // Determine valid pointers to show. Default to a subset if API didn't return any (fallback).
-  // The API is expected to return `relevantPointers` array in context.
-  // Fallback to basic visa/faq if not provided to handle older cached responses.
   const relevantPointerIds = context.relevantPointers && context.relevantPointers.length > 0 
     ? context.relevantPointers 
     : ['visa', 'related_questions']; 

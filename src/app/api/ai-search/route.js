@@ -133,11 +133,12 @@ export async function POST(request) {
 
       const prompt = `
         Query: "${query}"
-        Task: Match top  experts & analyze intent.
+        Task: Match top experts & analyze intent.
         
         1. Context: Give succinct 'budgetRange' (e.g. "ruppee 50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
-        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'itinerary', 'related_questions'].
-           - "Dubai Visa" -> ['visa', 'related_questions']
+        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'itinerary', 'related_questions', 'indian_perspective'].
+           - If query mentions a location (City/Country), ALWAYS include 'indian_perspective'.
+           - "Dubai Visa" -> ['visa', 'related_questions', 'indian_perspective']
            - "Bali Trip" -> All.
         3. Matches: Return 'id', 'score' (0-100), 'reason' (max 8 words).
 
@@ -209,16 +210,36 @@ export async function POST(request) {
       };
 
       // Helper for specific dispute instructions based on section
-      // Designed to create cohesive sentences combining percentage + reasoning
       const getDisputeInst = (topic) => `
         Estimate 'dispute' object: 
         1. 'percentage' (int 20-95): How much online info is generic vs. reality for ${topic}.
         2. 'text' (string): A single, unified sentence. and it should be relavant with currect section as well."
-        Agenda: Mention specific pain points (e.g. scams, delays, hidden costs) found in internet reviews.  keep max 15 words.
+        Agenda: Mention specific pain points (e.g. scams, delays, hidden costs) found in internet reviews. keep max 15 words.
         Context: ${topic}.
       `;
 
       switch (sectionType) {
+        case 'indian_perspective':
+          sectionPrompt = `Query: "${query}". Analyze how this location/topic is for Indian Travelers.
+          1. 'pros': 3 items (e.g. "Vegetarian food available", "Desi community", "Easy visa").
+          2. 'cons': 3 items (e.g. "High flight costs", "Cultural gap", "Strict laws").
+          3. 'verdict': A single feedback summary from an Indian perspective (max 15 words).
+          ${getDisputeInst('misconceptions about safety or food for Indians')}`;
+          schemaProperties = {
+            indianPerspective: {
+              type: Type.OBJECT,
+              properties: {
+                pros: { type: Type.ARRAY, items: { type: Type.STRING } },
+                cons: { type: Type.ARRAY, items: { type: Type.STRING } },
+                verdict: { type: Type.STRING }
+              },
+              required: ["pros", "cons", "verdict"]
+            },
+            dispute: disputeSchema
+          };
+          requiredFields = ["indianPerspective", "dispute"];
+          break;
+
         case 'related_questions':
           sectionPrompt = `Query: "${query}". max 5 FAQs with extremely short teaser answers (max 12 words).`;
           schemaProperties = {
