@@ -211,10 +211,32 @@ export async function POST(request) {
 
       // Helper for specific dispute instructions based on section
       const getDisputeInst = (topic) => `
-        Estimate 'dispute' object: 
-        1. 'percentage' (int 20-95): How much online info is generic vs. reality for ${topic}.
-        2. 'text' (string): A single, unified sentence. and it should be relavant with currect section as well."
-        Agenda: Mention specific pain points (e.g. scams, delays, hidden costs) found in internet reviews. keep max 15 words.
+        Estimate dispute object:
+	1.	percentage (int 20.00–95.99):
+Actual estimated percentage of Indian travellers dissatisfied or misled by online information for ${topic}.
+Derive this by analysing Indian user discussions on Reddit and Quora, where users relied on online information and later reported mismatch, confusion, loss, or negative outcomes.
+	2.	text (string, max 15 words):
+A single, unified sentence relevant to the current section, summarising the primary reason for dispute.
+
+Agenda:
+	•	Identify dissatisfaction patterns by scraping and analysing Reddit and Quora threads from an Indian traveller perspective.
+	•	Focus on posts mentioning:
+	•	Online information being misleading, generic, or incomplete
+	•	Visa rejection or delays despite following online advice
+	•	Hidden costs, scams, or pricing shocks
+	•	Season, weather, or itinerary mismatch
+	•	Family travel constraints ignored by online guides
+	•	Exclude promotional, influencer, blog, or OTA content.
+	•	Estimate percentage based on the ratio of dissatisfied users to total relevant discussions.
+	•	Prioritise the most financially or emotionally damaging pain point.
+	•	If multiple pain points exist, select the dominant one.
+	•	If data is limited, infer conservatively but still return a value within range.
+
+Rules:
+	•	percentage must reflect real user sentiment, not generic assumptions.
+	•	text must be sharp, factual, and uncomfortable.
+	•	Do not generalise. Do not soften language.
+	•	Do not exceed 15 words for text.
         Context: ${topic}.
       `;
 
@@ -223,7 +245,6 @@ export async function POST(request) {
           sectionPrompt = `Query: "${query}". Analyze how this location/topic is for Indian Travelers.
           1. 'pros': 3 items (e.g. "Vegetarian food available", "Desi community", "Easy visa").
           2. 'cons': 3 items (e.g. "High flight costs", "Cultural gap", "Strict laws").
-          3. 'verdict': A single feedback summary from an Indian perspective (max 15 words).
           ${getDisputeInst('misconceptions about safety or food for Indians')}`;
           schemaProperties = {
             indianPerspective: {
@@ -233,7 +254,7 @@ export async function POST(request) {
                 cons: { type: Type.ARRAY, items: { type: Type.STRING } },
                 verdict: { type: Type.STRING }
               },
-              required: ["pros", "cons", "verdict"]
+              required: ["pros", "cons"]
             },
             dispute: disputeSchema
           };
