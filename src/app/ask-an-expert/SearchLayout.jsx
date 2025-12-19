@@ -202,10 +202,10 @@ const LazySection = ({ title, description, icon, type, loadSectionData, query, c
                                 ))}
                              </ul>
                         </div>
-                        <div className="bg-orange-50 p-2.5 rounded-xl border border-orange-100 mt-2">
+                        {/* <div className="bg-orange-50 p-2.5 rounded-xl border border-orange-100 mt-2">
                             <p className="text-[10px] font-bold text-orange-800 uppercase mb-1">Expert Verdict</p>
                             <p className="text-xs text-orange-900 font-medium italic">"{data.indianPerspective.verdict}"</p>
-                        </div>
+                        </div> */}
                     </div>
                 )}
 
