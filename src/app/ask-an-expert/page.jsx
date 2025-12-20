@@ -13,6 +13,7 @@ import SearchLayout from "./SearchLayout";
 import { motion, AnimatePresence } from "framer-motion";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
+import { toast } from "react-toastify";
 
 const db = getFirestore(app);
 
@@ -193,12 +194,22 @@ export default function ExpertsDirectory() {
         body: JSON.stringify({ query: queryText, action: 'initial' })
       });
 
+      // Handle serverless timeouts (504) or bad gateway (502)
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.details || err.error || 'Search failed');
+        let errorMessage = "Search failed";
+        try {
+          const err = await response.json();
+          errorMessage = err.details || err.error || errorMessage;
+        } catch (e) {
+          // If response is not JSON (e.g., Vercel's timeout HTML page)
+          if (response.status === 504) errorMessage = "Search timed out. Showing all experts instead.";
+          else errorMessage = `Server error (${response.status})`;
+        }
+        throw new Error(errorMessage);
       }
       
-      const { matches, context } = await response.json();
+      const result = await response.json();
+      const { matches, context } = result;
 
       if (matches && matches.length > 0) {
         const expertIds = matches.map(m => m.id);
@@ -240,7 +251,8 @@ export default function ExpertsDirectory() {
 
     } catch (error) {
       console.error("Search Error:", error.message);
-      fetchExperts(true); 
+      toast.error(error.message);
+      fetchExperts(true); // Fallback to standard directory view
     } finally {
       setIsAiSearching(false);
       setLoading(false);
@@ -491,7 +503,7 @@ export default function ExpertsDirectory() {
         {/* Standard Directory Layout */}
         {!isAiSearching && !aiContext && (
             <>
-                {filteredExperts.length === 0 && (
+                {filteredExperts.length === 0 && !loading && (
                 <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200 mx-auto max-w-lg">
                     <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400 text-2xl">
                         <FaSearch />
