@@ -7,7 +7,7 @@ import {
     FaExclamationTriangle, FaSuitcaseRolling, FaUnlock, 
     FaGlobeAmericas, FaUsers, FaLightbulb, FaPlane, 
     FaCloudSun, FaWallet, FaMapMarkedAlt, FaQuestionCircle,
-    FaChartLine, FaCheckCircle, FaTimesCircle
+    FaChartLine, FaCheckCircle, FaTimesCircle, FaExclamationCircle
 } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
@@ -20,7 +20,7 @@ const POINTER_CONFIG = {
     'weather': { title: 'Weather & Time', icon: <FaCloudSun />, desc: 'Best season & packing', color: 'text-orange-500' },
     'budget': { title: 'Budget & Costs', icon: <FaWallet />, desc: 'Currency & daily spend', color: 'text-green-600' },
     'transport': { title: 'Transport', icon: <FaPlane />, desc: 'Routes & local travel', color: 'text-sky-600' },
-    'itinerary': { title: 'Smart Itinerary', icon: <FaMapMarkedAlt />, desc: 'Suggested flow & stops', color: 'text-purple-600' },
+    'common_problems': { title: 'Common Problems', icon: <FaExclamationCircle />, desc: 'Known issues & scams', color: 'text-red-600' },
     'related_questions': { title: 'Common FAQs', icon: <FaQuestionCircle />, desc: 'What others ask', color: 'text-red-500' },
     'indian_perspective': { title: 'Indian Perspective', icon: <FaUsers />, desc: 'How it is for indian travelers', color: 'text-orange-600' },
 };
@@ -202,10 +202,6 @@ const LazySection = ({ title, description, icon, type, loadSectionData, query, c
                                 ))}
                              </ul>
                         </div>
-                        {/* <div className="bg-orange-50 p-2.5 rounded-xl border border-orange-100 mt-2">
-                            <p className="text-[10px] font-bold text-orange-800 uppercase mb-1">Expert Verdict</p>
-                            <p className="text-xs text-orange-900 font-medium italic">"{data.indianPerspective.verdict}"</p>
-                        </div> */}
                     </div>
                 )}
 
@@ -299,21 +295,18 @@ const LazySection = ({ title, description, icon, type, loadSectionData, query, c
                     </div>
                 )}
 
-                {/* Itinerary */}
-                {type === 'itinerary' && data.itinerarySuggestion && (
+                {/* Common Problems */}
+                {type === 'common_problems' && data.commonProblems && (
                     <div className="space-y-3">
-                        <div className="flex gap-2 mb-2">
-                            <span className="bg-purple-100 text-purple-800 text-[10px] font-bold px-2 py-1 rounded">{data.itinerarySuggestion.duration}</span>
-                            <span className="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-1 rounded truncate max-w-[150px]">{data.itinerarySuggestion.focus}</span>
-                        </div>
-                        <div className="relative border-l-2 border-dashed border-gray-200 ml-1.5 pl-3 space-y-3">
-                            {data.itinerarySuggestion.dayByDay?.map((day, idx) => (
-                                <div key={idx} className="relative">
-                                    <span className="absolute -left-[17px] top-1 w-2 h-2 rounded-full bg-[#36013F]"></span>
-                                    <p className="text-xs text-gray-700 leading-snug">{day}</p>
-                                </div>
-                            ))}
-                        </div>
+                        <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider mb-2">Avoid these issues</p>
+                        {data.commonProblems.list?.map((item, idx) => (
+                            <div key={idx} className="   rounded-lg ">
+                                <p className=" text-xs flex items-center gap-1.5 ">
+                                    <FaExclamationCircle className="shrink-0" /> {item.problem}
+                                </p>
+                               
+                            </div>
+                        ))}
                     </div>
                 )}
 
@@ -333,7 +326,7 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
   // Determine valid pointers to show. Default to a subset if API didn't return any (fallback).
   const relevantPointerIds = context.relevantPointers && context.relevantPointers.length > 0 
     ? context.relevantPointers 
-    : ['visa', 'related_questions']; 
+    : ['visa', 'common_problems', 'related_questions']; 
 
   return (
     <div className="w-full space-y-8 md:space-y-12 md:pb-20">
@@ -420,7 +413,10 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
                     <h4 className="font-bold text-base md:text-lg text-gray-900 leading-tight truncate pr-14">{expert.fullName || 'Unnamed Expert'}</h4>
                     <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{expert.tagline}</p>
                     <div className="flex gap-2 mt-2 flex-wrap">
-                        <span className="text-[10px] bg-gray-50 px-2 py-0.5 rounded text-gray-600 font-medium border border-gray-200">
+                        <span className={`text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${expert.profileType === 'agency' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-yellow-50 text-yellow-700 border-yellow-100'}`}>
+                                                    {expert.profileType === 'agency' ? 'Agency' : 'Expert'}
+                                                </span>
+                         <span className="text-[10px] bg-gray-50 px-2 py-0.5 rounded text-gray-600 font-medium border border-gray-200">
                             {expert.profileType === 'agency' ? getYears(expert.yearsActive) : (calculateTotalExperience(expert.experience) || "0+")} Yrs Exp
                         </span>
                         <span className="text-[10px] bg-gray-50 px-2 py-0.5 rounded text-gray-600 font-medium border border-gray-200 flex items-center">

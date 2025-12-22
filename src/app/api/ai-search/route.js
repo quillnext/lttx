@@ -127,8 +127,8 @@ export async function POST(request) {
         Task: Match top experts & analyze intent.
         
         1. Context: Give succinct 'budgetRange' (e.g. "ruppee 50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
-        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'itinerary', 'related_questions', 'indian_perspective'].
-           - If query mentions a location (City/Country), ALWAYS include 'indian_perspective'.
+        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'common_problems', 'related_questions', 'indian_perspective'].
+           - If query mentions a location (City/Country), ALWAYS include 'indian_perspective' and 'common_problems'.
         3. Matches: Return 'id', 'score' (0-100), 'reason' (max 8 words).
 
         Experts: ${JSON.stringify(simplifiedProfiles)}
@@ -308,21 +308,30 @@ export async function POST(request) {
           requiredFields = ["transportInfo", "dispute"];
           break;
 
-        case 'itinerary':
-          sectionPrompt = `Query: "${query}". 3-7 day split. ${getDisputeInst('unrealistic travel times')}`;
+        case 'common_problems':
+          sectionPrompt = `Query: "${query}". List 5 common problems, pitfalls or scams travelers face here. ${getDisputeInst('common travel scams')}`;
           schemaProperties = {
-            itinerarySuggestion: {
-                type: Type.OBJECT,
-                properties: {
-                    duration: { type: Type.STRING },
-                    focus: { type: Type.STRING },
-                    dayByDay: { type: Type.ARRAY, items: { type: Type.STRING } }
-                },
-                required: ["duration", "focus", "dayByDay"]
+            commonProblems: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                list: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      problem: { type: Type.STRING },
+                      solution: { type: Type.STRING }
+                    },
+                    required: ["problem", "solution"]
+                  }
+                }
+              },
+              required: ["title", "list"]
             },
             dispute: disputeSchema
           };
-          requiredFields = ["itinerarySuggestion", "dispute"];
+          requiredFields = ["commonProblems", "dispute"];
           break;
 
         default:
@@ -332,6 +341,8 @@ export async function POST(request) {
       const response = await generateWithRetry(ai, {
         contents: sectionPrompt,
         config: {
+          // Use gemini-3-flash-preview for section generation too
+          model: "gemini-3-flash-preview",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
