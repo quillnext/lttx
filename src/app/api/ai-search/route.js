@@ -42,35 +42,26 @@ function calculateYearsOfExperience(experience) {
   return diffYears;
 }
 
-// Helper to handle AI retries with exponential backoff
-const retryDelay = (ms) => new Promise(res => setTimeout(res, ms));
-
-async function generateWithRetry(ai, params, retries = 3) {
-  for (let i = 0; i < retries; i++) {
+// Optimized helper for serverless timeouts
+async function generateWithRetry(ai, params, retries = 1) {
+  for (let i = 0; i <= retries; i++) {
     try {
-      return await ai.models.generateContent(params);
+      // Use gemini-3-flash-preview for maximum speed to avoid Vercel 10s limit
+      const response = await ai.models.generateContent({
+        ...params,
+        model: "gemini-3-flash-preview",
+        config: {
+          ...params.config,
+          thinkingConfig: { thinkingBudget: 0 } // Disable thinking to reduce latency
+        }
+      });
+      return response;
     } catch (error) {
-      const isOverloaded = error.status === 503 || error.status === 429 || error.message?.includes('overloaded');
-      
-      // If overloaded, log warning and retry
-      if (isOverloaded && i < retries - 1) {
-        const delay = 3000 * Math.pow(2, i); // 3s, 6s, 12s...
-        console.warn(`AI Model ${params.model} overloaded. Retrying attempt ${i + 1} in ${delay}ms...`);
-        await retryDelay(delay);
-        continue;
+      const isRetryable = error.status === 503 || error.status === 429 || error.message?.includes('overloaded');
+      if (isRetryable && i < retries) {
+        console.warn(`AI Busy. Retrying immediately... Attempt ${i + 1}`);
+        continue; 
       }
-      
-      // If overloaded and it's the last retry for the primary model, try fallback
-      if (isOverloaded && i === retries - 1 && params.model === "gemini-2.5-flash") {
-         console.warn(`AI Model overloaded after ${retries} attempts. Fallback to gemini-flash-lite-latest.`);
-         try {
-            return await ai.models.generateContent({ ...params, model: "gemini-flash-lite-latest" });
-         } catch (fallbackError) {
-            console.error("Fallback model also failed.");
-            throw fallbackError; 
-         }
-      }
-      
       throw error;
     }
   }
@@ -122,7 +113,7 @@ export async function POST(request) {
         return NextResponse.json({ matches: [], context: null });
       }
 
-      // 2. TOKEN OPTIMIZATION: Send minimal data to AI to prevent Rate Limits/Overload
+      // 2. TOKEN OPTIMIZATION: Send minimal data to AI
       const simplifiedProfiles = fullProfiles.map(p => ({
         id: p.id,
         loc: p.location, 
@@ -136,17 +127,14 @@ export async function POST(request) {
         Task: Match top experts & analyze intent.
         
         1. Context: Give succinct 'budgetRange' (e.g. "ruppee 50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
-        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'itinerary', 'related_questions', 'indian_perspective'].
-           - If query mentions a location (City/Country), ALWAYS include 'indian_perspective'.
-           - "Dubai Visa" -> ['visa', 'related_questions', 'indian_perspective']
-           - "Bali Trip" -> All.
+        2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'common_problems', 'related_questions', 'indian_perspective'].
+           - If query mentions a location (City/Country), ALWAYS include 'indian_perspective' and 'common_problems'.
         3. Matches: Return 'id', 'score' (0-100), 'reason' (max 8 words).
 
         Experts: ${JSON.stringify(simplifiedProfiles)}
       `;
 
       const response = await generateWithRetry(ai, {
-        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -209,43 +197,18 @@ export async function POST(request) {
         required: ["percentage", "text"]
       };
 
-      // Helper for specific dispute instructions based on section
       const getDisputeInst = (topic) => `
         Estimate dispute object:
-	1.	percentage (int 20.00–95.99):
-Actual estimated percentage of Indian travellers dissatisfied or misled by online information for ${topic}.
-Derive this by analysing Indian user discussions on Reddit and Quora, where users relied on online information and later reported mismatch, confusion, loss, or negative outcomes.
-	2.	text (string, max 15 words):
-A single, unified sentence relevant to the current section, summarising the primary reason for dispute.
-
-Agenda:
-	•	Identify dissatisfaction patterns by scraping and analysing Reddit and Quora threads from an Indian traveller perspective.
-	•	Focus on posts mentioning:
-	•	Online information being misleading, generic, or incomplete
-	•	Visa rejection or delays despite following online advice
-	•	Hidden costs, scams, or pricing shocks
-	•	Season, weather, or itinerary mismatch
-	•	Family travel constraints ignored by online guides
-	•	Exclude promotional, influencer, blog, or OTA content.
-	•	Estimate percentage based on the ratio of dissatisfied users to total relevant discussions.
-	•	Prioritise the most financially or emotionally damaging pain point.
-	•	If multiple pain points exist, select the dominant one.
-	•	If data is limited, infer conservatively but still return a value within range.
-
-Rules:
-	•	percentage must reflect real user sentiment, not generic assumptions.
-	•	text must be sharp, factual, and uncomfortable.
-	•	Do not generalise. Do not soften language.
-	•	Do not exceed 15 words for text.
-        Context: ${topic}.
+        1. percentage (int 20–95): Indian travellers misled by online info for ${topic}.
+        2. text (string, max 15 words): Primary reason for dispute.
       `;
 
       switch (sectionType) {
         case 'indian_perspective':
-          sectionPrompt = `Query: "${query}". Analyze how this location/topic is for Indian Travelers.
-          1. 'pros': 3 items (e.g. "Vegetarian food available", "Desi community", "Easy visa").
-          2. 'cons': 3 items (e.g. "High flight costs", "Cultural gap", "Strict laws").
-          ${getDisputeInst('misconceptions about safety or food for Indians')}`;
+          sectionPrompt = `Query: "${query}". Analyze for Indian Travelers.
+          1. 'pros': 3 items.
+          2. 'cons': 3 items.
+          ${getDisputeInst('safety or food for Indians')}`;
           schemaProperties = {
             indianPerspective: {
               type: Type.OBJECT,
@@ -262,7 +225,7 @@ Rules:
           break;
 
         case 'related_questions':
-          sectionPrompt = `Query: "${query}". max 5 FAQs with extremely short teaser answers (max 12 words).`;
+          sectionPrompt = `Query: "${query}". max 3 FAQs with extremely short answers (max 10 words).`;
           schemaProperties = {
             relatedQuestions: {
               type: Type.ARRAY,
@@ -280,7 +243,7 @@ Rules:
           break;
 
         case 'visa':
-          sectionPrompt = `Query: "${query}". Visa Status (2 words) + 3 brief rules (max 6 words each). ${getDisputeInst('visa on arrival rejection rates or hidden documentation')}`;
+          sectionPrompt = `Query: "${query}". Visa Status (2 words) + 3 brief rules. ${getDisputeInst('visa rejection rates')}`;
           schemaProperties = {
             visaSnapshot: {
               type: Type.OBJECT,
@@ -296,12 +259,7 @@ Rules:
           break;
 
         case 'weather':
-          sectionPrompt = `Query: "${query}". 
-          1. 'season': Explicitly state the "Best Time to Visit" (e.g., "Best: Nov-Feb"). 
-          2. 'temperature': Range in Celsius.
-          3. 'advice': 3 to 5 packing keywords. 
-          ${getDisputeInst('unpredictable micro-climates or extreme seasonal severity')}`;
-          
+          sectionPrompt = `Query: "${query}". Best Time + Temp + Packing. ${getDisputeInst('unpredictable weather')}`;
           schemaProperties = {
             weatherInfo: {
                 type: Type.OBJECT,
@@ -318,7 +276,7 @@ Rules:
           break;
 
         case 'budget':
-          sectionPrompt = `Query: "${query}". Currency, Daily Spend, 3 short cost tips (max 5 words). ${getDisputeInst('tourist pricing scams or hidden taxes')}`;
+          sectionPrompt = `Query: "${query}". Currency, Daily Spend, 3 cost tips. ${getDisputeInst('pricing scams')}`;
           schemaProperties = {
             budgetInfo: {
                 type: Type.OBJECT,
@@ -335,7 +293,7 @@ Rules:
           break;
 
         case 'transport':
-          sectionPrompt = `Query: "${query}". Best Route (short), Local Travel (short). ${getDisputeInst('unreliable timetables or taxi mafia issues')}`;
+          sectionPrompt = `Query: "${query}". Best Route, Local Travel. ${getDisputeInst('transport issues')}`;
           schemaProperties = {
             transportInfo: {
                 type: Type.OBJECT,
@@ -350,26 +308,30 @@ Rules:
           requiredFields = ["transportInfo", "dispute"];
           break;
 
-        case 'itinerary':
-          sectionPrompt = `Query: "${query}".
-          1. Analyze destination scale. If it's a City (e.g. Paris, Dubai), set 'duration' to 3-5 Days. If it's a Country/Region (e.g. Vietnam, Bali, Europe), set 'duration' to 7-14 Days.
-          2. Focus: A short theme (e.g. "Adventure & Culture").
-          3. DayByDay: Generate an array of strings covering the FULL calculated duration.
-          ${getDisputeInst('rushed itineraries or unrealistic travel times')}`;
-          
+        case 'common_problems':
+          sectionPrompt = `Query: "${query}". List 5 common problems, pitfalls or scams travelers face here. ${getDisputeInst('common travel scams')}`;
           schemaProperties = {
-            itinerarySuggestion: {
-                type: Type.OBJECT,
-                properties: {
-                    duration: { type: Type.STRING },
-                    focus: { type: Type.STRING },
-                    dayByDay: { type: Type.ARRAY, items: { type: Type.STRING } }
-                },
-                required: ["duration", "focus", "dayByDay"]
+            commonProblems: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                list: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      problem: { type: Type.STRING },
+                      solution: { type: Type.STRING }
+                    },
+                    required: ["problem", "solution"]
+                  }
+                }
+              },
+              required: ["title", "list"]
             },
             dispute: disputeSchema
           };
-          requiredFields = ["itinerarySuggestion", "dispute"];
+          requiredFields = ["commonProblems", "dispute"];
           break;
 
         default:
@@ -377,9 +339,10 @@ Rules:
       }
 
       const response = await generateWithRetry(ai, {
-        model: "gemini-2.5-flash",
         contents: sectionPrompt,
         config: {
+          // Use gemini-3-flash-preview for section generation too
+          model: "gemini-3-flash-preview",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
