@@ -24,13 +24,14 @@ export async function POST(request) {
       Target Audience: The user is applying to be a Travel Expert or Agency.
       
       Guidelines:
-      1. Extract "fullName", "email", "phone" (if available).
-      2. Extract "tagline": A short professional headline (max 10 words) based on their role.
-      3. Extract "about": A professional summary (max 100 words).
-      4. Extract "languages": An array of languages spoken.
-      5. Extract "experience": An array of objects with "title", "company", "startDate" (YYYY-MM), and "endDate" (YYYY-MM or "Present"). Limit to top 3 most recent.
-      6. Extract "expertise": Map skills/areas of knowledge to an array of strings (e.g., "Luxury Travel", "Visa Services", "Europe"). Max 5 items.
-      7. Extract "location": City and Country string.
+      1. Extract "fullName", "email".
+      2. Extract "phone": The full international phone number including country code (e.g., +919876543210). Do not truncate.
+      3. Extract "tagline": A short professional headline (max 10 words) based on their role.
+      4. Extract "about": A professional summary (max 100 words).
+      5. Extract "languages": An array of languages spoken.
+      6. Extract "experience": An array of objects with "title", "company", "startDate" (YYYY-MM), and "endDate" (YYYY-MM or "Present"). Limit to top 3 most recent.
+      7. Extract "expertise": Map skills/areas of knowledge to an array of strings (e.g., "Luxury Travel", "Visa Services", "Europe"). Max 5 items.
+      8. Extract "location": City and Country string.
       
       Return ONLY valid JSON matching this schema:
       {
@@ -54,7 +55,7 @@ export async function POST(request) {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [
         {
           role: "user",
@@ -66,6 +67,7 @@ export async function POST(request) {
       ],
       config: {
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 } // Disable thinking for maximum speed/latency optimization
       },
     });
 

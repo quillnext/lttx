@@ -61,11 +61,11 @@ export default function CompleteProfile() {
     pricing: '',
     about: '',
     photo: null,
-    services: [''],
+    services: [], // Changed to tags
     regions: [],
     expertise: [],
     experience: [{ title: '', company: '', startDate: null, endDate: null }],
-    certifications: '',
+    certifications: [], // Changed to tags
     licenseNumber: '',
     referred: 'No',
     referralCode: '',
@@ -190,12 +190,15 @@ export default function CompleteProfile() {
 
       const { data } = result;
 
+      // Sanitize phone number
+      const sanitizedPhone = data.phone ? data.phone.replace(/[^\d+]/g, '') : formData.phone;
+
       // Merge data into state
       setFormData(prev => ({
         ...prev,
         fullName: data.fullName || prev.fullName,
         email: data.email || prev.email,
-        phone: data.phone || prev.phone,
+        phone: sanitizedPhone,
         location: data.location || prev.location,
         tagline: data.tagline || prev.tagline,
         about: data.about || prev.about,
@@ -211,12 +214,12 @@ export default function CompleteProfile() {
           : prev.experience,
       }));
 
-      // Update City Options if location is new
+      // Update City Options
       if (data.location && !cityOptions.some(opt => opt.value === data.location)) {
         setCityOptions(prev => [{ value: data.location, label: data.location }, ...prev]);
       }
 
-      // Update Language Options if new
+      // Update Language Options
       if (data.languages && data.languages.length > 0) {
         setLanguageOptions(prev => {
           const newLangs = data.languages.filter(l => !prev.some(opt => opt.value === l)).map(l => ({ value: l, label: l }));
@@ -298,7 +301,7 @@ export default function CompleteProfile() {
               pricing: data.pricing || '',
               about: data.about || '',
               photo: data.photo || null,
-              services: Array.isArray(data.services) && data.services.length > 0 ? data.services : [''],
+              services: Array.isArray(data.services) ? data.services : [],
               regions: Array.isArray(data.regions) ? data.regions : [],
               expertise: Array.isArray(data.expertise) ? data.expertise : [],
               experience: Array.isArray(data.experience) && data.experience.length > 0
@@ -309,7 +312,7 @@ export default function CompleteProfile() {
                     endDate: exp.endDate === 'Present' ? 'Present' : parseDate(exp.endDate, 'YYYY-MM'),
                   }))
                 : [{ title: '', company: '', startDate: null, endDate: null }],
-              certifications: data.certifications || '',
+              certifications: Array.isArray(data.certifications) ? data.certifications : [],
               licenseNumber: data.licenseNumber || '',
               referred: data.referred || 'No',
               referralCode: data.referralCode || '',
@@ -497,7 +500,7 @@ export default function CompleteProfile() {
 
   const handleMultiChange = (selectedOptions, field) => {
     const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-    if (values.length > 5) {
+    if (values.length > 5 && field !== 'services' && field !== 'certifications') {
       setErrors(prev => ({ ...prev, [field]: `You can select up to 5 ${field}.` }));
       return;
     }
@@ -553,7 +556,7 @@ export default function CompleteProfile() {
 
   const removeField = (key, index) => {
     const updated = formData[key].filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, [key]: updated.length > 0 ? updated : [''] }));
+    setFormData(prev => ({ ...prev, [key]: updated.length > 0 ? updated : (key === 'services' ? [] : ['']) }));
   };
 
   const handleExperienceChange = (index, field, value) => {
@@ -584,7 +587,7 @@ export default function CompleteProfile() {
   const validateWebsite = website => !website || /^https?:\/\/[^\s/$.?#].[^\s]*$/.test(website);
 
   const validateDateOfBirth = date => {
-    if (!date) return false;
+    if (!date) return true; // Optional now
     const today = new Date();
     const minAgeDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
     const minDate = new Date(1900, 0, 1);
@@ -611,22 +614,43 @@ export default function CompleteProfile() {
     const newErrors = {};
     const { profileType } = formData;
 
-    // Basic Info
-    ['username', 'fullName', 'email', 'phone', 'responseTime', 'pricing'].forEach(field => {
+    // Step 1 check
+    ['fullName', 'email', 'phone'].forEach(field => {
       if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
     });
-
-    if (profileType === 'expert') {
-      if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
-      else if (!validateDateOfBirth(formData.dateOfBirth)) {
-        newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old.';
-      }
-    } else {
-      if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
-    }
-
     if (!formData.location) newErrors.location = 'Location is required';
     if (!formData.languages.length) newErrors.languages = 'At least one language is required';
+
+    // Step 2 check
+    if (!formData.services.length) newErrors.services = 'At least one service is required';
+    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
+    if (!formData.expertise.length) newErrors.expertise = 'At least one expertise area is required';
+
+    // Step 3 check
+    ['username', 'responseTime', 'pricing'].forEach(field => {
+        if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
+    });
+    if (profileType === 'expert') {
+      if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) {
+        newErrors.dateOfBirth = 'Invalid date of birth. Must be at least 18 years old.';
+      }
+      if (!formData.experience.length || formData.experience.some(exp => !exp.title.trim() || !exp.company.trim())) {
+        newErrors.experience = 'All experience fields (title, company) are required';
+      }
+      const dateError = validateExperienceDates(formData.experience);
+      if (dateError) newErrors.experience = dateError;
+      if (!formData.certifications.length) newErrors.certifications = 'At least one certification tag is required';
+    } else {
+      if (!formData.registeredAddress.trim()) newErrors.registeredAddress = 'Registered address is required';
+      if (!formData.employeeCount.trim()) newErrors.employeeCount = 'Number of employees is required';
+      if (!profileId && !formData.officePhotos.length) newErrors.officePhotos = 'At least one office photo is required';
+    }
+
+    if (!formData.tagline?.trim()) newErrors.tagline = 'This field is required';
+    if (!formData.about?.trim()) newErrors.about = 'This field is required';
+    if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
+    if (!agreed) newErrors.agreed = 'You must agree to the terms';
+
     if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
     if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
     if (formData.username && !validateUsername(formData.username)) {
@@ -634,51 +658,10 @@ export default function CompleteProfile() {
     }
     if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
 
-    // Services
-    if (!formData.services.length || formData.services.some(s => !s.trim())) {
-      newErrors.services = 'At least one valid service is required';
-    }
-    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
-    if (!formData.expertise.length) newErrors.expertise = 'At least one expertise area is required';
-    
-    // Experience & Details
-    if (profileType === 'expert') {
-      if (!formData.experience.length || formData.experience.some(exp => !exp.title.trim() || !exp.company.trim())) {
-        newErrors.experience = 'All experience fields (title, company) are required';
-      }
-      const dateError = validateExperienceDates(formData.experience);
-      if (dateError) newErrors.experience = dateError;
-      if (!formData.certifications.trim()) newErrors.certifications = 'This field is required';
-    } else {
-      if (!formData.registeredAddress.trim()) newErrors.registeredAddress = 'Registered address is required';
-      if (!formData.employeeCount.trim()) newErrors.employeeCount = 'Number of employees is required';
-      if (!profileId && !formData.officePhotos.length) newErrors.officePhotos = 'At least one office photo is required';
-      if (formData.website && !validateWebsite(formData.website)) newErrors.website = 'Invalid website URL';
-    }
-
-    if (!formData.tagline?.trim()) newErrors.tagline = 'This field is required';
-    if (!formData.about?.trim()) newErrors.about = 'This field is required';
-    if (!profileId && !formData.photo) newErrors.photo = 'Profile photo is required';
-    if (!agreed) newErrors.agreed = 'You must agree to the terms';
-    if (!formData.referred) newErrors.referred = 'Please select whether you were referred';
-    if (formData.referred === 'Yes' && !formData.referralCode.trim()) {
-      newErrors.referralCode = 'Referral code is required';
-    }
-    if (formData.referred === 'Yes' && referralCodeStatus === 'Invalid referral code') {
-      newErrors.referralCode = 'Invalid referral code';
-    }
-
     setErrors(newErrors);
     
-    // Find the first error and scroll to it
     if (Object.keys(newErrors).length > 0) {
-      const firstError = Object.keys(newErrors)[0];
-      const element = document.getElementsByName(firstError)[0] || document.getElementById(firstError);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // Fallback to top if specific element not found
-      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     return Object.keys(newErrors).length === 0;
@@ -700,11 +683,11 @@ export default function CompleteProfile() {
       pricing: '',
       about: '',
       photo: null,
-      services: [''],
+      services: [],
       regions: [],
       expertise: [],
       experience: [{ title: '', company: '', startDate: null, endDate: null }],
-      certifications: '',
+      certifications: [],
       licenseNumber: '',
       referred: 'No',
       referralCode: '',
@@ -718,9 +701,6 @@ export default function CompleteProfile() {
     setCertificatePreviews([]);
     setOfficePhotoPreviews([]);
     setShowCropModal(false);
-    setCrop({ x: 0, y: 0 });
-    setZoom(1);
-    setCroppedAreaPixels(null);
     setErrors({});
     setAgreed(false);
     setOriginalProfile(null);
@@ -734,13 +714,7 @@ export default function CompleteProfile() {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) {
-        const errorKeys = Object.keys(errors);
-        if (errorKeys.length > 0) {
-            setApiError(`Please fix the errors in the form: ${errorKeys.join(', ')}`);
-        }
-        return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
@@ -803,7 +777,7 @@ export default function CompleteProfile() {
         pricing: formData.pricing,
         about: formData.about,
         photo: photoURL,
-        services: formData.services.filter(s => s.trim()),
+        services: formData.services,
         regions: formData.regions,
         expertise: formData.expertise,
         experience: formData.profileType === 'expert' ? formData.experience.map(exp => ({
@@ -842,7 +816,6 @@ export default function CompleteProfile() {
     } catch (error) {
       console.error('Submission error:', error);
       alert(error.message || 'Failed to submit profile. Please try again.');
-      setErrors(prev => ({ ...prev, submit: error.message || 'Failed to submit profile.' }));
     } finally {
       setIsSubmitting(false);
     }
@@ -854,34 +827,14 @@ export default function CompleteProfile() {
       <div className="bg-[#F4D35E] min-h-screen flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-9xl bg-white rounded-3xl shadow-2xl overflow-hidden mt-20 relative">
           
-          {/* Header Section */}
           <div className="bg-gray-50 border-b border-gray-100 p-6 md:p-8">
              <div className="flex justify-between items-center mb-6">
                 <Image src="/emailbanner.jpeg" alt="Logo" width={200} height={40} className="object-contain" />
-                
-                {/* Profile Type Toggle - moved here for better visibility */}
                 <div className="flex bg-gray-200 rounded-lg p-1">
-                    <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, profileType: 'expert' }))}
-                        className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
-                        formData.profileType === 'expert' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        Expert
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setFormData(prev => ({ ...prev, profileType: 'agency' }))}
-                        className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
-                        formData.profileType === 'agency' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                    >
-                        Agency
-                    </button>
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, profileType: 'expert' }))} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${formData.profileType === 'expert' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'}`}>Expert</button>
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, profileType: 'agency' }))} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${formData.profileType === 'agency' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'}`}>Agency</button>
                 </div>
              </div>
-
              <h1 className="text-3xl md:text-4xl font-extrabold text-[var(--primary)] mb-3">
               {formData.profileType === 'expert' ? 'Join as an Expert' : 'Partner as an Agency'}
             </h1>
@@ -890,7 +843,6 @@ export default function CompleteProfile() {
             </p>
           </div>
 
-          {/* Resume Upload - Hero Section */}
           {!profileId && (
             <div className="bg-[var(--primary)] p-6 md:p-8 text-white relative overflow-hidden">
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -902,28 +854,16 @@ export default function CompleteProfile() {
                         <h3 className="text-xl font-bold mb-2">Auto-fill with Resume</h3>
                         <p className="text-white/80 text-sm">Upload your CV/Resume (PDF/DOCX) and let our AI populate your profile instantly.</p>
                     </div>
-                    
                     <label className={`cursor-pointer bg-white text-[var(--primary)] px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2 ${isParsingResume ? 'opacity-75 pointer-events-none' : ''}`}>
                         {isParsingResume ? <Loader2 className="animate-spin w-5 h-5" /> : <FileText className="w-5 h-5" />}
                         <span>{isParsingResume ? 'Analyzing...' : 'Upload Resume'}</span>
-                        <input
-                            type="file"
-                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                            onChange={handleResumeUpload}
-                            className="hidden"
-                            disabled={isParsingResume}
-                        />
+                        <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={handleResumeUpload} className="hidden" disabled={isParsingResume} />
                     </label>
                 </div>
-                {/* Decorative Elements */}
-                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-3xl"></div>
-                <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-yellow-400/20 rounded-full blur-2xl"></div>
             </div>
           )}
 
-          {/* Form Content - Scrolling Single Page */}
           <div className="p-6 md:p-10 space-y-12">
-            
             {apiError && (
               <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r shadow-sm flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -931,7 +871,6 @@ export default function CompleteProfile() {
               </div>
             )}
 
-            {/* Section 1: Basic Info */}
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
                <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--primary)] rounded-l-2xl"></div>
                <Step1_BasicInfo
@@ -943,17 +882,13 @@ export default function CompleteProfile() {
                 cityOptions={cityOptions}
                 setCityOptions={setCityOptions}
                 languageOptions={languageOptions}
-                usernameStatus={usernameStatus}
                 profileId={profileId}
                 fetchLeadByPhone={fetchLeadByPhone}
                 setFormData={setFormData}
                 setErrors={setErrors}
-                setApiError={setApiError}
-                profileWriteUp={<span></span>} // Passing empty span as we handle writeup in header now
               />
             </section>
 
-            {/* Section 2: Services */}
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
                <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
                <Step2_Services
@@ -961,19 +896,10 @@ export default function CompleteProfile() {
                 errors={errors}
                 setFormData={setFormData}
                 setErrors={setErrors}
-                handleArrayChange={handleArrayChange}
-                removeField={removeField}
-                addField={addField}
-                selectedExpertise={selectedExpertise}
-                setSelectedExpertise={setSelectedExpertise}
-                handleExpertiseChange={handleExpertiseChange}
-                handleExpertiseKeyDown={handleExpertiseKeyDown}
-                addExpertise={addExpertise}
-                removeExpertise={removeExpertise}
+                handleMultiChange={handleMultiChange}
               />
             </section>
 
-            {/* Section 3: Experience */}
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
                <div className="absolute top-0 left-0 w-1.5 h-full bg-green-500 rounded-l-2xl"></div>
                <Step3_Experience
@@ -993,124 +919,52 @@ export default function CompleteProfile() {
                 referralCodeStatus={referralCodeStatus}
                 profileId={profileId}
                 setShowCropModal={setShowCropModal}
+                usernameStatus={usernameStatus}
+                handleMultiChange={handleMultiChange}
               />
             </section>
 
-            {/* Submit Action */}
             <div className="pt-6">
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className={`w-full py-4 text-lg font-bold text-white rounded-xl shadow-lg transition-all transform hover:-translate-y-1 ${
-                    isSubmitting 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-[var(--primary)] to-purple-800 hover:shadow-xl'
-                  }`}
-                >
-                  {isSubmitting ? (
-                      <span className="flex items-center justify-center gap-2">
-                          <Loader2 className="animate-spin" /> Submitting...
-                      </span>
-                  ) : (
-                      <span>{profileId ? 'Update Profile' : 'Submit Application'}</span>
-                  )}
+                <button type="button" onClick={handleSubmit} disabled={isSubmitting} className={`w-full py-4 text-lg font-bold text-white rounded-xl shadow-lg transition-all transform hover:-translate-y-1 ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-[var(--primary)] to-purple-800 hover:shadow-xl'}`}>
+                  {isSubmitting ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> Submitting...</span> : <span>{profileId ? 'Update Profile' : 'Submit Application'}</span>}
                 </button>
-                {errors.submit && <p className="text-center text-red-600 mt-3 font-medium">{errors.submit}</p>}
             </div>
-
           </div>
         </div>
       </div>
 
-      {/* Success Modal */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-8 text-center max-w-md w-full shadow-2xl transform scale-100 transition-transform">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              🎉 Application Received!
-            </h2>
-            <p className="text-gray-600 mb-8 text-sm leading-relaxed">
-              Your profile has been successfully {profileId ? 'updated' : 'submitted'}. Our team will review your details and get back to you shortly.
-            </p>
-            <button
-              onClick={() => {
-                setShowSuccessModal(false);
-                resetForm();
-                const slug = `${formData.username.toLowerCase().replace(/\s+/g, '-')}`;
-                router.push(formData.profileType === 'agency' ? `/agency/${slug}` : `/experts/${slug}`);
-              }}
-              className="w-full py-3 rounded-xl text-white font-bold bg-[var(--primary)] hover:bg-opacity-90 transition shadow-lg"
-            >
-              Go to Profile
-            </button>
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle className="w-10 h-10 text-green-600" /></div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">🎉 Application Received!</h2>
+            <p className="text-gray-600 mb-8 text-sm leading-relaxed">Your profile has been successfully {profileId ? 'updated' : 'submitted'}. Our team will review your details and get back to you shortly.</p>
+            <button onClick={() => { setShowSuccessModal(false); resetForm(); router.push('/'); }} className="w-full py-3 rounded-xl text-white font-bold bg-[var(--primary)] hover:bg-opacity-90 transition shadow-lg">Go to Home</button>
           </div>
         </div>
       )}
 
-      {/* Crop Modal */}
       {showCropModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl">
             <h3 className="text-xl font-bold text-gray-800 mb-4">Adjust Photo</h3>
             <div className="relative w-full h-72 bg-gray-100 rounded-xl overflow-hidden mb-6">
-              <Cropper
-                image={imagePreview}
-                crop={crop}
-                zoom={zoom}
-                aspect={1}
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onCropComplete={onCropComplete}
-                cropShape="round"
-                showGrid={true}
-                style={{ containerStyle: { height: '100%', width: '100%' } }}
-              />
+              <Cropper image={imagePreview} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} cropShape="round" showGrid={true} style={{ containerStyle: { height: '100%', width: '100%' } }} />
             </div>
             <div className="space-y-4">
                 <div>
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Zoom</label>
-                    <input
-                        type="range"
-                        min="1"
-                        max="3"
-                        step="0.1"
-                        value={zoom}
-                        onChange={e => setZoom(parseFloat(e.target.value))}
-                        className="w-full accent-[var(--primary)]"
-                    />
+                    <input type="range" min="1" max="3" step="0.1" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} className="w-full accent-[var(--primary)]" />
                 </div>
                 <div className="flex gap-3">
-                    <button
-                        type="button"
-                        className="flex-1 py-3 text-gray-700 bg-gray-100 rounded-xl font-semibold hover:bg-gray-200 transition"
-                        onClick={() => {
-                        setShowCropModal(false);
-                        setImagePreview(originalProfile?.photo || null);
-                        setFormData(prev => ({ ...prev, photo: null }));
-                        }}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        className="flex-1 py-3 text-white bg-[var(--primary)] rounded-xl font-semibold hover:bg-opacity-90 transition shadow-md"
-                        onClick={handleCropConfirm}
-                    >
-                        Save Crop
-                    </button>
+                    <button type="button" className="flex-1 py-3 text-gray-700 bg-gray-100 rounded-xl font-semibold hover:bg-gray-200 transition" onClick={() => { setShowCropModal(false); setImagePreview(originalProfile?.photo || null); setFormData(prev => ({ ...prev, photo: null })); }}>Cancel</button>
+                    <button type="button" className="flex-1 py-3 text-white bg-[var(--primary)] rounded-xl font-semibold hover:bg-opacity-90 transition shadow-md" onClick={handleCropConfirm}>Save Crop</button>
                 </div>
             </div>
           </div>
         </div>
       )}
-
-      <div className="-mt-20 relative z-0">
-        <Footer />
-      </div>
+      <div className="-mt-20 relative z-0"><Footer /></div>
     </>
   );
 }
