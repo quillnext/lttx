@@ -59,13 +59,13 @@ export default function Step2_Services({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--primary)] mb-6 flex items-center gap-2">
-        <span className="bg-blue-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+      <h2 className="text-2xl font-bold text-[var(--primary)] mb-6 flex items-center gap-2">
+        <span className="bg-[var(--secondary1)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
         {profileType === 'expert' ? 'Expertise & Regions' : 'Services & Specialisations'}
       </h2>
 
       {/* Services as Tags */}
-      <div>
+      <div >
         <label className="block text-sm font-bold text-gray-700 mb-2">
           {profileType === 'expert' ? 'What I Can Help You With' : 'Services Offered'} <span className="text-red-500">*</span>
         </label>
@@ -85,7 +85,7 @@ export default function Step2_Services({
                     backgroundColor: '#f9fafb',
                     boxShadow: 'none',
                     '&:hover': { borderColor: '#d1d5db' },
-                    '&:focus-within': { borderColor: '#3b82f6', boxShadow: '0 0 0 2px #3b82f6' }
+                    '&:focus-within': { borderColor: '#36013F', boxShadow: '0 0 0 2px #36013F' }
                 })
             }}
         />
@@ -114,7 +114,7 @@ export default function Step2_Services({
                     backgroundColor: '#f9fafb',
                     boxShadow: 'none',
                     '&:hover': { borderColor: '#d1d5db' },
-                    '&:focus-within': { borderColor: '#3b82f6', boxShadow: '0 0 0 2px #3b82f6' }
+                    '&:focus-within': { borderColor: '#36013F', boxShadow: '0 0 0 2px #36013F' }
                 })
             }}
             />
@@ -142,7 +142,7 @@ export default function Step2_Services({
                         backgroundColor: '#f9fafb',
                         boxShadow: 'none',
                         '&:hover': { borderColor: '#d1d5db' },
-                        '&:focus-within': { borderColor: '#3b82f6', boxShadow: '0 0 0 2px #3b82f6' }
+                        '&:focus-within': { borderColor: '#36013F', boxShadow: '0 0 0 2px #36013F' }
                     })
                 }}
             />

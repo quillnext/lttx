@@ -824,35 +824,34 @@ export default function CompleteProfile() {
   return (
     <>
       <Navbar />
-      <div className="bg-[#F4D35E] min-h-screen flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-9xl bg-white rounded-3xl shadow-2xl overflow-hidden mt-20 relative">
+      <div className=" min-h-screen flex items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-8xl  overflow-hidden mt-20 relative">
           
-          <div className="bg-gray-50 border-b border-gray-100 p-6 md:p-8">
-             <div className="flex justify-between items-center mb-6">
-                <Image src="/emailbanner.jpeg" alt="Logo" width={200} height={40} className="object-contain" />
-                <div className="flex bg-gray-200 rounded-lg p-1">
-                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, profileType: 'expert' }))} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${formData.profileType === 'expert' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'}`}>Expert</button>
-                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, profileType: 'agency' }))} className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${formData.profileType === 'agency' ? 'bg-white shadow text-[var(--primary)]' : 'text-gray-500 hover:text-gray-700'}`}>Agency</button>
+          <div className="p-6 md:p-8">
+             <div className="flex md:justify-end items-center  mb-6 ">
+                <div className="flex bg-primary shadow-xl rounded-lg p-1 ">
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, profileType: 'expert' }))} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${formData.profileType === 'expert' ? 'bg-yellow-50 text-yellow-700' : 'text-white hover:text-white'}`}>Expert</button>
+                    <button type="button" onClick={() => setFormData(prev => ({ ...prev, profileType: 'agency' }))} className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${formData.profileType === 'agency' ? 'bg-blue-50 text-blue-700' : 'text-white hover:text-white'}`}>Agency</button>
                 </div>
              </div>
              <h1 className="text-3xl md:text-4xl font-extrabold text-[var(--primary)] mb-3">
               {formData.profileType === 'expert' ? 'Join as an Expert' : 'Partner as an Agency'}
             </h1>
-            <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-2xl">
+            <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-4xl">
                 {profileWriteUps[formData.profileType]}
             </p>
           </div>
 
           {!profileId && (
-            <div className="bg-[var(--primary)] p-6 md:p-8 text-white relative overflow-hidden">
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+             <div className="bg-secondary p-6 md:p-8 text-primary  overflow-hidden rounded-2xl">
+                <div className="relative z-10 flex flex-col md:flex-row items-start  md:items-center md:justify-between gap-6">
                     <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                            <Sparkles className="text-yellow-400 w-5 h-5 animate-pulse" />
-                            <span className="text-yellow-400 font-bold text-sm uppercase tracking-wider">AI Fast Track</span>
+                            <Sparkles className="text-primary w-5 h-5 animate-pulse" />
+                            <span className="text-primary font-bold text-sm uppercase tracking-wider">AI Fast Track</span>
                         </div>
                         <h3 className="text-xl font-bold mb-2">Auto-fill with Resume</h3>
-                        <p className="text-white/80 text-sm">Upload your CV/Resume (PDF/DOCX) and let our AI populate your profile instantly.</p>
+                        <p className=" text-sm">Upload your CV/Resume (PDF/DOCX) and let our AI populate your profile instantly.</p>
                     </div>
                     <label className={`cursor-pointer bg-white text-[var(--primary)] px-6 py-3 rounded-xl font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2 ${isParsingResume ? 'opacity-75 pointer-events-none' : ''}`}>
                         {isParsingResume ? <Loader2 className="animate-spin w-5 h-5" /> : <FileText className="w-5 h-5" />}
@@ -890,7 +889,7 @@ export default function CompleteProfile() {
             </section>
 
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
-               <div className="absolute top-0 left-0 w-1.5 h-full bg-blue-500 rounded-l-2xl"></div>
+               <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--secondary1)] rounded-l-2xl"></div>
                <Step2_Services
                 formData={formData}
                 errors={errors}
@@ -901,7 +900,7 @@ export default function CompleteProfile() {
             </section>
 
             <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
-               <div className="absolute top-0 left-0 w-1.5 h-full bg-green-500 rounded-l-2xl"></div>
+               <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--secondary)] rounded-l-2xl"></div>
                <Step3_Experience
                 formData={formData}
                 errors={errors}
@@ -924,8 +923,8 @@ export default function CompleteProfile() {
               />
             </section>
 
-            <div className="pt-6">
-                <button type="button" onClick={handleSubmit} disabled={isSubmitting} className={`w-full py-4 text-lg font-bold text-white rounded-xl shadow-lg transition-all transform hover:-translate-y-1 ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-[var(--primary)] to-purple-800 hover:shadow-xl'}`}>
+            <div className="pt-6 text-center">
+                <button type="button" onClick={handleSubmit} disabled={isSubmitting} className={`w-50 py-4 text-lg font-bold text-white rounded-4xl shadow-lg transition-all transform hover:-translate-y-1 ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--primary)] hover:shadow-xl'}`}>
                   {isSubmitting ? <span className="flex items-center justify-center gap-2"><Loader2 className="animate-spin" /> Submitting...</span> : <span>{profileId ? 'Update Profile' : 'Submit Application'}</span>}
                 </button>
             </div>

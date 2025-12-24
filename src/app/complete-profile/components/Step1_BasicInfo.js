@@ -36,14 +36,14 @@ export default function Step1_BasicInfo({
 }) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--primary)] mb-6 flex items-center gap-2">
+      <h2 className="text-2xl font-bold text-[var(--primary)] mb-6 flex items-center gap-2">
         <span className="bg-[var(--primary)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
         Basic Information
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
         {/* Row 1: Phone (4), Full Name (8) */}
-        <div className="md:col-span-4">
+        <div className="md:col-span-6">
           <label className="block text-sm font-bold text-gray-700 mb-1">Phone Number <span className="text-red-500">*</span></label>
           <PhoneInput
             country={"in"}
@@ -64,7 +64,7 @@ export default function Step1_BasicInfo({
           {errors.phone && <p className="text-xs text-red-600 mt-1 font-medium">{errors.phone}</p>}
         </div>
 
-        <div className="md:col-span-8">
+        <div className="md:col-span-6">
           <label className="block text-sm font-bold text-gray-700 mb-1">{formData.profileType === 'expert' ? 'Full Name' : 'Agency Name'} <span className="text-red-500">*</span></label>
           <input
             type="text"
@@ -78,7 +78,7 @@ export default function Step1_BasicInfo({
         </div>
 
         {/* Row 2: Email (12) */}
-        <div className="md:col-span-12">
+        <div className="md:col-span-4">
           <label className="block text-sm font-bold text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
           <input
             type="email"
@@ -92,7 +92,7 @@ export default function Step1_BasicInfo({
         </div>
 
         {/* Row 3: Location (6), Languages (6) */}
-        <div className="md:col-span-6">
+        <div className="md:col-span-4">
           <label className="block text-sm font-bold text-gray-700 mb-1">Location <span className="text-red-500">*</span></label>
           <Select
             instanceId="location-select"
@@ -132,7 +132,7 @@ export default function Step1_BasicInfo({
           {errors.location && <p className="text-xs text-red-600 mt-1 font-medium">{errors.location}</p>}
         </div>
 
-        <div className="md:col-span-6">
+        <div className="md:col-span-4">
           <label className="block text-sm font-bold text-gray-700 mb-1">Languages Spoken <span className="text-red-500">*</span></label>
           <Select
             instanceId="language-select"
