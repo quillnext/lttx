@@ -53,8 +53,8 @@ export default function Step3_Experience({
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-[var(--primary)] mb-6 flex items-center gap-2">
-        <span className="bg-green-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+      <h2 className="text-2xl font-bold text-[var(--primary)] mb-6 flex items-center gap-2">
+        <span className="bg-[var(--secondary)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
         {profileType === 'expert' ? 'Experience & Professional Details' : 'Agency Details'}
       </h2>
 
@@ -66,7 +66,7 @@ export default function Step3_Experience({
             type="text"
             name="username"
             placeholder="e.g., travelwithjohn"
-            className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.username ? 'border-red-500' : 'border-gray-200'}`}
+            className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.username ? 'border-red-500' : 'border-gray-200'}`}
             value={formData.username}
             onChange={handleChange}
             disabled={!!profileId}
@@ -79,7 +79,7 @@ export default function Step3_Experience({
             type="text"
             name="responseTime"
             placeholder="e.g., 2h"
-            className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.responseTime ? 'border-red-500' : 'border-gray-200'}`}
+            className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.responseTime ? 'border-red-500' : 'border-gray-200'}`}
             value={formData.responseTime}
             onChange={handleChange}
           />
@@ -90,7 +90,7 @@ export default function Step3_Experience({
             type="text"
             name="pricing"
             placeholder="e.g., ₹799/session"
-            className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.pricing ? 'border-red-500' : 'border-gray-200'}`}
+            className={`w-full px-4 py-3 border rounded-xl bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.pricing ? 'border-red-500' : 'border-gray-200'}`}
             value={formData.pricing}
             onChange={handleChange}
           />
@@ -115,12 +115,12 @@ export default function Step3_Experience({
           <div className="flex-1 space-y-4">
              <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Tagline <span className="text-red-500">*</span></label>
-                <input type="text" name="tagline" placeholder="e.g., Expert in European Luxury Travel" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.tagline ? 'border-red-500' : 'border-gray-200'}`} value={formData.tagline} onChange={handleChange} />
+                <input type="text" name="tagline" placeholder="e.g., Expert in European Luxury Travel" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.tagline ? 'border-red-500' : 'border-gray-200'}`} value={formData.tagline} onChange={handleChange} />
                 <p className="text-xs text-gray-400 mt-1 text-right">{formData.tagline.length}/150</p>
             </div>
             <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">{profileType === 'expert' ? 'About Me' : 'About Agency'} <span className="text-red-500">*</span></label>
-                <textarea name="about" placeholder={profileType === 'expert' ? 'Briefly describe your experience and travel philosophy...' : 'Describe your agency history and mission...'} className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.about ? 'border-red-500' : 'border-gray-200'}`} value={formData.about} onChange={handleChange} rows={3} />
+                <textarea name="about" placeholder={profileType === 'expert' ? 'Briefly describe your experience and travel philosophy...' : 'Describe your agency history and mission...'} className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.about ? 'border-red-500' : 'border-gray-200'}`} value={formData.about} onChange={handleChange} rows={3} />
             </div>
           </div>
       </div>
@@ -174,7 +174,7 @@ export default function Step3_Experience({
                     onChange={date => handleChange({ target: { name: 'dateOfBirth', value: date } })}
                     dateFormat="yyyy-MM-dd"
                     placeholderText="YYYY-MM-DD"
-                    className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none border-gray-200`}
+                    className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none border-gray-200`}
                     maxDate={new Date()}
                     showYearDropdown
                     yearDropdownItemNumber={100}
@@ -188,11 +188,11 @@ export default function Step3_Experience({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
              <div className="md:col-span-12">
                 <label className="block text-sm font-bold text-gray-700 mb-1">Registered Address <span className="text-red-500">*</span></label>
-                <input type="text" name="registeredAddress" placeholder="Full registered address..." className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.registeredAddress ? 'border-red-500' : 'border-gray-200'}`} value={formData.registeredAddress} onChange={handleChange} />
+                <input type="text" name="registeredAddress" placeholder="Full registered address..." className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.registeredAddress ? 'border-red-500' : 'border-gray-200'}`} value={formData.registeredAddress} onChange={handleChange} />
              </div>
-             <div className="md:col-span-4"><label className="block text-sm font-bold text-gray-700 mb-1">Website</label><input type="url" name="website" placeholder="https://agency.com" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.website ? 'border-red-500' : 'border-gray-200'}`} value={formData.website} onChange={handleChange} /></div>
-             <div className="md:col-span-4"><label className="block text-sm font-bold text-gray-700 mb-1">No. of Employees <span className="text-red-500">*</span></label><input type="number" name="employeeCount" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.employeeCount ? 'border-red-500' : 'border-gray-200'}`} value={formData.employeeCount} onChange={handleChange} min="1" /></div>
-             <div className="md:col-span-4"><label className="block text-sm font-bold text-gray-700 mb-1">License (IATA/GST) <span className="text-red-500">*</span></label><input type="text" name="licenseNumber" placeholder="Registration Number" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500 transition-all outline-none ${errors.licenseNumber ? 'border-red-500' : 'border-gray-200'}`} value={formData.licenseNumber} onChange={handleChange} /></div>
+             <div className="md:col-span-4"><label className="block text-sm font-bold text-gray-700 mb-1">Website</label><input type="url" name="website" placeholder="https://agency.com" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.website ? 'border-red-500' : 'border-gray-200'}`} value={formData.website} onChange={handleChange} /></div>
+             <div className="md:col-span-4"><label className="block text-sm font-bold text-gray-700 mb-1">No. of Employees <span className="text-red-500">*</span></label><input type="number" name="employeeCount" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.employeeCount ? 'border-red-500' : 'border-gray-200'}`} value={formData.employeeCount} onChange={handleChange} min="1" /></div>
+             <div className="md:col-span-4"><label className="block text-sm font-bold text-gray-700 mb-1">License (IATA/GST) <span className="text-red-500">*</span></label><input type="text" name="licenseNumber" placeholder="Registration Number" className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none ${errors.licenseNumber ? 'border-red-500' : 'border-gray-200'}`} value={formData.licenseNumber} onChange={handleChange} /></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-gray-100 pt-6">
