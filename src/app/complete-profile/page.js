@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
@@ -18,7 +17,6 @@ import Step3_Experience from './components/Step3_Experience';
 import Image from 'next/image';
 import { FileText, Loader2, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 
-// Dynamically import components with error handling
 const loadComponent = (importFn, name) =>
   dynamic(
     () =>
@@ -57,15 +55,15 @@ export default function CompleteProfile() {
     tagline: '',
     location: '',
     languages: [],
-    responseTime: '',
-    pricing: '',
+    responseTime: 'in 20 mins',
+    pricing: '₹799/session',
     about: '',
     photo: null,
-    services: [], // Changed to tags
+    services: [],
     regions: [],
     expertise: [],
     experience: [{ title: '', company: '', startDate: null, endDate: null }],
-    certifications: [], // Changed to tags
+    certifications: [],
     licenseNumber: '',
     referred: 'No',
     referralCode: '',
@@ -96,7 +94,6 @@ export default function CompleteProfile() {
   const [officePhotoPreviews, setOfficePhotoPreviews] = useState([]);
   const [isMainDescriptionExpanded, setIsMainDescriptionExpanded] = useState(false);
 
-  // Profile write-ups
   const profileWriteUps = {
     expert: "Become a recognised travel authority on the world’s first platform dedicated to human expertise in travel. As an Individual Expert, you showcase your specialised knowledge, from destinations and cultures to niche travel themes.",
     agency: "Position your agency as a trusted voice in the global travel community. By joining, you gain visibility as a credible, verified travel partner while connecting with travellers actively seeking professional consultation."
@@ -108,7 +105,6 @@ export default function CompleteProfile() {
       link.href = href;
       link.rel = "stylesheet";
       link.onerror = () => {
-        console.warn(`Failed to load local CSS: ${href}. Loading fallback: ${fallback}`);
         const fallbackLink = document.createElement("link");
         fallbackLink.href = fallback;
         fallbackLink.rel = "stylesheet";
@@ -117,10 +113,6 @@ export default function CompleteProfile() {
       document.head.appendChild(link);
       return () => {
         document.head.removeChild(link);
-        const fallbackElement = document.querySelector(`link[href="${fallback}"]`);
-        if (fallbackElement) {
-          document.head.removeChild(fallbackElement);
-        }
       };
     };
 
@@ -189,11 +181,8 @@ export default function CompleteProfile() {
       }
 
       const { data } = result;
-
-      // Sanitize phone number
       const sanitizedPhone = data.phone ? data.phone.replace(/[^\d+]/g, '') : formData.phone;
 
-      // Merge data into state
       setFormData(prev => ({
         ...prev,
         fullName: data.fullName || prev.fullName,
@@ -202,8 +191,16 @@ export default function CompleteProfile() {
         location: data.location || prev.location,
         tagline: data.tagline || prev.tagline,
         about: data.about || prev.about,
+        username: data.username || prev.username,
+        responseTime: data.responseTime || prev.responseTime,
+        pricing: data.pricing || prev.pricing,
         languages: data.languages && data.languages.length > 0 ? data.languages : prev.languages,
         expertise: data.expertise && data.expertise.length > 0 ? data.expertise : prev.expertise,
+        certifications: data.certifications && data.certifications.length > 0 ? data.certifications : prev.certifications,
+        registeredAddress: data.registeredAddress || prev.registeredAddress,
+        website: data.website || prev.website,
+        employeeCount: data.employeeCount || prev.employeeCount,
+        licenseNumber: data.licenseNumber || prev.licenseNumber,
         experience: data.experience && data.experience.length > 0
           ? data.experience.map(exp => ({
               title: exp.title,
@@ -214,17 +211,19 @@ export default function CompleteProfile() {
           : prev.experience,
       }));
 
-      // Update City Options
       if (data.location && !cityOptions.some(opt => opt.value === data.location)) {
         setCityOptions(prev => [{ value: data.location, label: data.location }, ...prev]);
       }
 
-      // Update Language Options
       if (data.languages && data.languages.length > 0) {
         setLanguageOptions(prev => {
           const newLangs = data.languages.filter(l => !prev.some(opt => opt.value === l)).map(l => ({ value: l, label: l }));
           return [...prev, ...newLangs];
         });
+      }
+
+      if (data.username) {
+        checkUsernameAvailability(data.username);
       }
 
     } catch (error) {
@@ -239,15 +238,10 @@ export default function CompleteProfile() {
     const fetchCities = async () => {
       try {
         const response = await fetch('/api/cities');
-        if (!response.ok) throw new Error(`Failed to fetch cities: ${response.status}`);
         const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        if (data.length === 0) throw new Error("No city data returned.");
         const sortedCities = [...data].sort((a, b) => a.label.localeCompare(b.label));
         setCityOptions(sortedCities);
       } catch (error) {
-        console.error('Error fetching cities:', error);
-        setApiError(`Failed to load city options: ${error.message}. Using fallback options.`);
         setCityOptions([{ value: 'Unknown', label: 'Unknown' }]);
       }
     };
@@ -255,14 +249,9 @@ export default function CompleteProfile() {
     const fetchLanguages = async () => {
       try {
         const response = await fetch('/api/languages');
-        if (!response.ok) throw new Error(`Failed to fetch languages: ${response.status}`);
         const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        if (data.length === 0) throw new Error("No language data returned.");
         setLanguageOptions(data);
       } catch (error) {
-        console.error('Error fetching languages:', error);
-        setApiError(`Failed to load language options: ${error.message}. Using fallback options.`);
         setLanguageOptions([{ value: 'English', label: 'English' }]);
       }
     };
@@ -297,8 +286,8 @@ export default function CompleteProfile() {
               tagline: data.tagline || '',
               location: data.location || '',
               languages: Array.isArray(data.languages) ? data.languages : [],
-              responseTime: data.responseTime || '',
-              pricing: data.pricing || '',
+              responseTime: data.responseTime || 'in 20 mins',
+              pricing: data.pricing || '₹799/session',
               about: data.about || '',
               photo: data.photo || null,
               services: Array.isArray(data.services) ? data.services : [],
@@ -326,11 +315,8 @@ export default function CompleteProfile() {
             setCertificatePreviews(data.certificates || []);
             setOfficePhotoPreviews(data.officePhotos || []);
             setAgreed(true);
-          } else {
-            setApiError(`Profile with ID "${profileId}" not found.`);
           }
         } catch (error) {
-          console.error('Error fetching profile:', error);
           setErrors(prev => ({ ...prev, fetch: 'Failed to load profile data.' }));
         }
       };
@@ -350,7 +336,6 @@ export default function CompleteProfile() {
       setImagePreview(URL.createObjectURL(croppedImageFile));
       setShowCropModal(false);
     } catch (error) {
-      console.error('Error cropping image:', error);
       setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
     }
   }, [imagePreview, croppedAreaPixels, formData.photo]);
@@ -421,7 +406,6 @@ export default function CompleteProfile() {
         setErrors(prev => ({ ...prev, fullName: '', email: '', phone: '' }));
       }
     } catch (error) {
-      console.error('Error fetching lead by phone:', error);
       setErrors(prev => ({ ...prev, phone: 'Failed to fetch lead data.' }));
     }
   };
@@ -440,7 +424,6 @@ export default function CompleteProfile() {
         setErrors(prev => ({ ...prev, username: '' }));
       }
     } catch (error) {
-      console.error('Error checking usernames:', error);
       setUsernameStatus('Error checking username');
     }
   };
@@ -467,7 +450,6 @@ export default function CompleteProfile() {
         setErrors(prev => ({ ...prev, referralCode: '' }));
       }
     } catch (error) {
-      console.error('Error checking referral code:', error);
       setReferralCodeStatus('Error checking referral code');
       setReferrerUsername('');
       setErrors(prev => ({ ...prev, referralCode: 'Error checking referral code' }));
@@ -508,57 +490,6 @@ export default function CompleteProfile() {
     setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
-  const handleExpertiseChange = selectedOption => {
-    setSelectedExpertise(selectedOption);
-  };
-
-  const addExpertise = () => {
-    if (selectedExpertise && formData.expertise.length < 5 && !formData.expertise.includes(selectedExpertise.value)) {
-      const expertiseValue = selectedExpertise.value.trim();
-      if (!expertiseValue) {
-        setErrors(prev => ({ ...prev, expertise: 'Expertise cannot be empty.' }));
-        return;
-      }
-      setFormData(prev => ({ ...prev, expertise: [...prev.expertise, expertiseValue] }));
-      setSelectedExpertise(null);
-      setErrors(prev => ({ ...prev, expertise: '' }));
-    } else if (formData.expertise.length >= 5) {
-      setErrors(prev => ({ ...prev, expertise: 'You can add up to 5 expertise areas.' }));
-    } else if (selectedExpertise && formData.expertise.includes(selectedExpertise.value)) {
-      setErrors(prev => ({ ...prev, expertise: 'This expertise is already added.' }));
-    } else {
-      setErrors(prev => ({ ...prev, expertise: 'Please select or enter an expertise.' }));
-    }
-  };
-
-  const handleExpertiseKeyDown = e => {
-    if (e.key === 'Enter' && selectedExpertise) {
-      e.preventDefault();
-      addExpertise();
-    }
-  };
-
-  const removeExpertise = expertise => {
-    setFormData(prev => ({ ...prev, expertise: prev.expertise.filter(e => e !== expertise) }));
-    setErrors(prev => ({ ...prev, expertise: '' }));
-  };
-
-  const handleArrayChange = (index, key, value) => {
-    const updated = [...formData[key]];
-    updated[index] = value;
-    setFormData(prev => ({ ...prev, [key]: updated }));
-    setErrors(prev => ({ ...prev, [key]: '' }));
-  };
-
-  const addField = key => {
-    setFormData(prev => ({ ...prev, [key]: [...prev[key], ''] }));
-  };
-
-  const removeField = (key, index) => {
-    const updated = formData[key].filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, [key]: updated.length > 0 ? updated : (key === 'services' ? [] : ['']) }));
-  };
-
   const handleExperienceChange = (index, field, value) => {
     const updated = [...formData.experience];
     updated[index] = { ...updated[index], [field]: value };
@@ -584,10 +515,9 @@ export default function CompleteProfile() {
   const validateEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = phone => /^\+?[0-9]{7,15}$/.test(phone);
   const validateUsername = username => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
-  const validateWebsite = website => !website || /^https?:\/\/[^\s/$.?#].[^\s]*$/.test(website);
 
   const validateDateOfBirth = date => {
-    if (!date) return true; // Optional now
+    if (!date) return true;
     const today = new Date();
     const minAgeDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
     const minDate = new Date(1900, 0, 1);
@@ -614,19 +544,14 @@ export default function CompleteProfile() {
     const newErrors = {};
     const { profileType } = formData;
 
-    // Step 1 check
     ['fullName', 'email', 'phone'].forEach(field => {
       if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
     });
     if (!formData.location) newErrors.location = 'Location is required';
     if (!formData.languages.length) newErrors.languages = 'At least one language is required';
 
-    // Step 2 check
-    if (!formData.services.length) newErrors.services = 'At least one service is required';
-    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
     if (!formData.expertise.length) newErrors.expertise = 'At least one expertise area is required';
 
-    // Step 3 check
     ['username', 'responseTime', 'pricing'].forEach(field => {
         if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
     });
@@ -659,11 +584,9 @@ export default function CompleteProfile() {
     if (usernameStatus === 'Username is already taken') newErrors.username = 'Username is already taken';
 
     setErrors(newErrors);
-    
     if (Object.keys(newErrors).length > 0) {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-
     return Object.keys(newErrors).length === 0;
   };
 
@@ -679,8 +602,8 @@ export default function CompleteProfile() {
       tagline: '',
       location: '',
       languages: [],
-      responseTime: '',
-      pricing: '',
+      responseTime: 'in 20 mins',
+      pricing: '₹799/session',
       about: '',
       photo: null,
       services: [],
@@ -708,19 +631,15 @@ export default function CompleteProfile() {
     setUsernameStatus('');
     setReferralCodeStatus('');
     setReferrerUsername('');
-    setSelectedExpertise(null);
     setApiError('');
     setIsMainDescriptionExpanded(false);
   };
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
-
     setIsSubmitting(true);
-
     try {
       const sanitizedFullName = formData.fullName.trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
-
       let photoURL = profileId && originalProfile ? originalProfile.photo : '';
       let certificateURLs = profileId && originalProfile ? [...originalProfile.certificates] : [];
       let officePhotoURLs = profileId && originalProfile ? [...originalProfile.officePhotos] : [];
@@ -763,38 +682,17 @@ export default function CompleteProfile() {
       }
 
       const profileData = {
-        profileType: formData.profileType,
-        username: formData.username,
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
+        ...formData,
         dateOfBirth: formData.profileType === 'expert' && formData.dateOfBirth ? formatDate(formData.dateOfBirth, 'YYYY-MM-DD') : '',
-        yearsActive: formData.yearsActive || '',
-        tagline: formData.tagline,
-        location: formData.location,
-        languages: formData.languages,
-        responseTime: formData.responseTime,
-        pricing: formData.pricing,
-        about: formData.about,
         photo: photoURL,
-        services: formData.services,
-        regions: formData.regions,
-        expertise: formData.expertise,
         experience: formData.profileType === 'expert' ? formData.experience.map(exp => ({
           title: exp.title,
           company: exp.company,
           startDate: exp.startDate ? formatDate(exp.startDate, 'YYYY-MM') : '',
           endDate: exp.endDate === 'Present' ? 'Present' : exp.endDate ? formatDate(exp.endDate, 'YYYY-MM') : '',
         })) : [],
-        certifications: formData.certifications,
-        licenseNumber: formData.licenseNumber,
-        referred: formData.referred || 'No',
-        referralCode: formData.referred === 'Yes' ? formData.referralCode : '',
         certificates: certificateURLs,
         officePhotos: officePhotoURLs,
-        registeredAddress: formData.registeredAddress,
-        website: formData.website,
-        employeeCount: formData.employeeCount,
       };
 
       const response = await fetch('/api/send-profile-form', {
@@ -814,7 +712,6 @@ export default function CompleteProfile() {
         router.push('/');
       }, 3000);
     } catch (error) {
-      console.error('Submission error:', error);
       alert(error.message || 'Failed to submit profile. Please try again.');
     } finally {
       setIsSubmitting(false);
@@ -826,7 +723,6 @@ export default function CompleteProfile() {
       <Navbar />
       <div className=" min-h-screen flex items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-8xl  overflow-hidden mt-20 relative">
-          
           <div className="p-6 md:p-8">
              <div className="flex md:justify-end items-center  mb-6 ">
                 <div className="flex bg-primary shadow-xl rounded-lg p-1 ">
@@ -870,8 +766,8 @@ export default function CompleteProfile() {
               </div>
             )}
 
-            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
-               <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--primary)] rounded-l-2xl"></div>
+            <section >
+               {/* <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--primary)] rounded-l-2xl"></div> */}
                <Step1_BasicInfo
                 formData={formData}
                 errors={errors}
@@ -884,23 +780,20 @@ export default function CompleteProfile() {
                 profileId={profileId}
                 fetchLeadByPhone={fetchLeadByPhone}
                 setFormData={setFormData}
-                setErrors={setErrors}
               />
             </section>
 
-            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
-               <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--secondary1)] rounded-l-2xl"></div>
+            <section >
+               {/* <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--secondary1)] rounded-l-2xl"></div> */}
                <Step2_Services
                 formData={formData}
                 errors={errors}
-                setFormData={setFormData}
-                setErrors={setErrors}
                 handleMultiChange={handleMultiChange}
               />
             </section>
 
-            <section className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 relative group hover:shadow-md transition-shadow">
-               <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--secondary)] rounded-l-2xl"></div>
+            <section >
+               {/* <div className="absolute top-0 left-0 w-1.5 h-full bg-[var(--secondary)] rounded-l-2xl"></div> */}
                <Step3_Experience
                 formData={formData}
                 errors={errors}
