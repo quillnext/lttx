@@ -1,9 +1,11 @@
+
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
 export default async function Head({ params }) {
+  const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
+  const q = query(collection(db, "Profiles"), where("username", "==", slug));
 
   let profileData = null;
 
@@ -39,9 +41,9 @@ export default async function Head({ params }) {
       ? profileData.photo
       : "https://www.xmytravel.com/default-profile.jpg";
 
-  const profileUrl = `https://www.xmytravel.com/experts/${params.slug}`;
+  const profileUrl = `https://www.xmytravel.com/experts/${slug}`;
   const imageAlt = `${profileData.fullName}'s profile image`;
-  const twitterHandle = `@${profileData.username || params.slug}`;
+  const twitterHandle = `@${profileData.username || slug}`;
 
   return (
     <>

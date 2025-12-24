@@ -1,3 +1,4 @@
+
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "../../experts/[slug]/ClientProfilePage"; // Adjust path as needed
@@ -7,8 +8,9 @@ import Link from "next/link";
 
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
+  const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
+  const q = query(collection(db, "Profiles"), where("username", "==", slug));
   let profile = null;
 
   try {
@@ -33,7 +35,7 @@ export async function generateMetadata({ params }) {
   const title = `${profile.fullName} - ${profile.tagline || "Travel Agency"}`;
   const description = profile.about?.substring(0, 200) || "Verified travel agency on XmyTravel";
   const image = profile.photo || "https://www.xmytravel.com/logolttx.svg";
-  const url = `https://www.xmytravel.com/agency/${params.slug}`;
+  const url = `https://www.xmytravel.com/agency/${slug}`;
 
   return {
     title,
@@ -63,8 +65,9 @@ export async function generateMetadata({ params }) {
 
 // ✅ MAIN PAGE FUNCTION
 export default async function AgencyProfilePage({ params }) {
+  const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
+  const q = query(collection(db, "Profiles"), where("username", "==", slug));
   let profile = null;
   let weeklySchedule = {};
 
