@@ -31,8 +31,8 @@ export async function POST(request) {
       6. Extract "experience": An array of objects with "title", "company", "startDate" (YYYY-MM), and "endDate" (YYYY-MM or "Present").
       7. Extract "expertise": Map skills to an array of strings. Max 5 items.
       8. Extract "location": City and Country string.
-      9. Generate a unique "username" based on their name (e.g., "johndoe_travel").
-      10. Set "responseTime" to "in 20 mins".
+      9. Generate a unique "username" based on their name (e.g., "johndoe_xmytravel").
+      10. Set "responseTime" to "Respond in 20 mins".
       11. Set "pricing" to "₹799/session".
       12. Extract "certifications": An array of strings.
       13. For agencies, extract "registeredAddress", "website", "employeeCount", "licenseNumber".
