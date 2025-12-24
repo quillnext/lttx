@@ -1,3 +1,4 @@
+
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
@@ -5,10 +6,12 @@ import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 import Link from "next/link";
 import { redirect } from "next/navigation"; 
+
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
+  const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
+  const q = query(collection(db, "Profiles"), where("username", "==", slug));
   let profile = null;
 
   try {
@@ -22,7 +25,7 @@ export async function generateMetadata({ params }) {
     console.error("Meta error:", error);
   }
 
-if (!profile || profile.isPublic === false) {
+  if (!profile || profile.isPublic === false) {
     return {
       title: "Expert Not Found | XmyTravel",
       description: "This expert profile could not be found or is private.",
@@ -33,10 +36,10 @@ if (!profile || profile.isPublic === false) {
   const title = `${profile.fullName} - ${profile.tagline || "Travel Expert"}`;
   const description = profile.about?.substring(0, 200) || "Verified expert on XmyTravel";
   const image = profile.photo || "https://www.xmytravel.com/logolttx.svg";
-  const url = `https://www.xmytravel.com/experts/${params.slug}`;
+  const url = `https://www.xmytravel.com/experts/${slug}`;
 
   return {
-  title,
+    title,
     description,
     openGraph: {
       title,
@@ -63,8 +66,9 @@ if (!profile || profile.isPublic === false) {
 
 // ✅ MAIN PAGE FUNCTION
 export default async function ExpertProfilePage({ params }) {
+  const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", params.slug));
+  const q = query(collection(db, "Profiles"), where("username", "==", slug));
   let profile = null;
   let weeklySchedule = {};
 
@@ -83,9 +87,8 @@ export default async function ExpertProfilePage({ params }) {
       };
     });
 
-    
     if (profile?.profileType === 'agency') {
-      redirect(`/agency/${params.slug}`);
+      redirect(`/agency/${slug}`);
     }
 
     if (profile) {
