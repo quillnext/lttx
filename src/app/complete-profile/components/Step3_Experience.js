@@ -54,7 +54,7 @@ export default function Step3_Experience({
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-[var(--primary)] mb-6 flex items-center gap-2">
-        <span className="bg-[var(--secondary)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
+        <span className="bg-[var(--primary)] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
         {profileType === 'expert' ? 'Experience & Professional Details' : 'Agency Details'}
       </h2>
 

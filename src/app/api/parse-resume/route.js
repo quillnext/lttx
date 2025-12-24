@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { NextResponse } from "next/server";
 
@@ -25,13 +24,18 @@ export async function POST(request) {
       
       Guidelines:
       1. Extract "fullName", "email".
-      2. Extract "phone": The full international phone number including country code (e.g., +919876543210). Do not truncate.
-      3. Extract "tagline": A short professional headline (max 10 words) based on their role.
+      2. Extract "phone": The full international phone number including country code (e.g., +919876543210).
+      3. Extract "tagline": A short professional headline (max 10 words).
       4. Extract "about": A professional summary (max 100 words).
       5. Extract "languages": An array of languages spoken.
-      6. Extract "experience": An array of objects with "title", "company", "startDate" (YYYY-MM), and "endDate" (YYYY-MM or "Present"). Limit to top 3 most recent.
-      7. Extract "expertise": Map skills/areas of knowledge to an array of strings (e.g., "Luxury Travel", "Visa Services", "Europe"). Max 5 items.
+      6. Extract "experience": An array of objects with "title", "company", "startDate" (YYYY-MM), and "endDate" (YYYY-MM or "Present").
+      7. Extract "expertise": Map skills to an array of strings. Max 5 items.
       8. Extract "location": City and Country string.
+      9. Generate a unique "username" based on their name (e.g., "johndoe_travel").
+      10. Set "responseTime" to "in 20 mins".
+      11. Set "pricing" to "₹799/session".
+      12. Extract "certifications": An array of strings.
+      13. For agencies, extract "registeredAddress", "website", "employeeCount", "licenseNumber".
       
       Return ONLY valid JSON matching this schema:
       {
@@ -43,6 +47,10 @@ export async function POST(request) {
         "about": "string",
         "languages": ["string"],
         "expertise": ["string"],
+        "username": "string",
+        "responseTime": "string",
+        "pricing": "string",
+        "certifications": ["string"],
         "experience": [
           {
             "title": "string",
@@ -50,7 +58,11 @@ export async function POST(request) {
             "startDate": "YYYY-MM",
             "endDate": "YYYY-MM" 
           }
-        ]
+        ],
+        "registeredAddress": "string",
+        "website": "string",
+        "employeeCount": "string",
+        "licenseNumber": "string"
       }
     `;
 
@@ -67,7 +79,7 @@ export async function POST(request) {
       ],
       config: {
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 } // Disable thinking for maximum speed/latency optimization
+        thinkingConfig: { thinkingBudget: 0 }
       },
     });
 
