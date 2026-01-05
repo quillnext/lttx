@@ -1,18 +1,40 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getFirestore, query, collection, where, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
-import "react-phone-input-2/lib/style.css";
-import "react-datepicker/dist/react-datepicker.css";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
+import "react-phone-input-2/lib/style.css";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "@/lib/firebase";
 import _ from "lodash";
 import getCroppedImg from '../complete-profile/getCroppedImg';
+import { 
+  ShieldCheck, 
+  Edit3, 
+  Loader2, 
+  Trash2, 
+  Plus, 
+  Camera,
+  CheckCircle,
+  HelpCircle,
+  Info,
+  FileText,
+  Sparkles,
+  User,
+  Building,
+  ExternalLink,
+  MapPin,
+  Globe,
+  Award,
+  Clock,
+  Briefcase
+} from "lucide-react";
 
-// Reusable helper for dynamic imports with error and loading states
+const db = getFirestore(app);
+
+// Dynamically load components for consistency
 const loadComponent = (importFn, name) =>
   dynamic(
     () =>
@@ -24,227 +46,81 @@ const loadComponent = (importFn, name) =>
         }),
     {
       ssr: false,
-      loading: () => <div className="text-center p-4">Loading...</div>,
+      loading: () => <div className="text-center p-4 animate-pulse text-gray-400 font-bold">Loading {name}...</div>,
     }
   );
 
-// Dynamically import heavy components
 const Select = loadComponent(() => import("react-select"), "Select");
 const CreatableSelect = loadComponent(() => import("react-select/creatable"), "CreatableSelect");
 const PhoneInput = loadComponent(() => import("react-phone-input-2"), "PhoneInput");
 const DatePicker = loadComponent(() => import("react-datepicker"), "DatePicker");
 const Cropper = loadComponent(() => import('react-easy-crop'), "Cropper");
 
-const db = getFirestore(app);
+const expertiseOptionsList = [
+  { value: 'Visa and Documentation Services', label: 'Visa and Documentation Services' },
+  { value: 'Air/Flight Ticketing and Management', label: 'Air/Flight Ticketing and Management' },
+  { value: 'Transfer and Car Rentals', label: 'Transfer and Car Rentals' },
+  { value: 'Holiday Packages', label: 'Holiday Packages' },
+  { value: 'Hotel Bookings', label: 'Hotel Bookings' },
+  { value: 'MICE Logistics Arrangements', label: 'MICE Logistics Arrangements' },
+  { value: 'FRRO Assistance', label: 'FRRO Assistance' },
+  { value: 'Luxury Cruise Trip Planning', label: 'Luxury Cruise Trip Planning' },
+];
 
-const expertiseOptions = [
-  { value: "Visa and Documentation Services", label: "Visa and Documentation Services" },
-  { value: "Air/Flight Ticketing and Management", label: "Air/Flight Ticketing and Management" },
-  { value: "Transfer and Car Rentals", label: "Transfer and Car Rentals" },
-  { value: "Holiday Packages", label: "Holiday Packages" },
-  { value: "Hotel Bookings", label: "Hotel Bookings" },
-  { value: "MICE Logistics Arrangements", label: "MICE Logistics Arrangements" },
-  { value: "FRRO Assistance", label: "FRRO Assistance" },
-  { value: "Luxury Cruise Trip Planning", label: "Luxury Cruise Trip Planning" },
+const certOptionsList = [
+  { value: 'IATA Certified', label: 'IATA Certified' },
+  { value: 'TAAI Member', label: 'TAAI Member' },
+  { value: 'OTOAI Member', label: 'OTOAI Member' },
+  { value: 'Verified Travel Expert', label: 'Verified Travel Expert' },
 ];
 
 export default function EditProfileForm({ initialData, onSave }) {
-  const [formData, setFormData] = useState({
-    profileType: initialData.profileType || "expert",
-    username: initialData.username || "",
-    fullName: initialData.fullName || "",
-    email: initialData.email || "",
-    phone: initialData.phone || "",
-    dateOfBirth: initialData.dateOfBirth || null,
-    yearsActive: initialData.yearsActive || "",
-    tagline: initialData.tagline || "",
-    location: initialData.location || "",
-    languages: Array.isArray(initialData.languages) ? initialData.languages : [],
-    responseTime: initialData.responseTime || "",
-    pricing: initialData.pricing || "",
-    about: initialData.about || "",
-    photo: initialData.photo || null,
-    services: Array.isArray(initialData.services) && initialData.services.filter(s => typeof s === "string" && s.trim()).length > 0 ? initialData.services : [""],
-    regions: Array.isArray(initialData.regions) && initialData.regions.length ? initialData.regions : [],
-    expertise: Array.isArray(initialData.expertise) ? initialData.expertise : [],
-    experience: Array.isArray(initialData.experience) && initialData.experience.length
-      ? initialData.experience
-      : [{ title: "", company: "", startDate: null, endDate: null }],
-    certifications: initialData.certifications || "",
-    licenseNumber: initialData.licenseNumber || "",
-    referred: initialData.referred || "No",
-    referralCode: initialData.referralCode || "",
-    generatedReferralCode: initialData.generatedReferralCode || "",
-  });
   const [errors, setErrors] = useState({});
+  const [formData, setFormData] = useState({ ...initialData });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [usernameStatus, setUsernameStatus] = useState("");
-  const [hasChanges, setHasChanges] = useState(false);
-  const [referrerName, setReferrerName] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
   const [languageOptions, setLanguageOptions] = useState([]);
-  const [selectedExpertise, setSelectedExpertise] = useState(null);
-  const [apiError, setApiError] = useState("");
-  const [agreed, setAgreed] = useState(true); // Default to true for editing
+  const [usernameStatus, setUsernameStatus] = useState('');
+  
+  // Media States
   const [imagePreview, setImagePreview] = useState(initialData.photo || null);
+  const [certificatePreviews, setCertificatePreviews] = useState(initialData.certificates || []);
+  const [officePhotoPreviews, setOfficePhotoPreviews] = useState(initialData.officePhotos || []);
+  
+  // Cropper
   const [showCropModal, setShowCropModal] = useState(false);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  
   const router = useRouter();
 
+  // Initialization & Location Prefill Logic
   useEffect(() => {
-    const fetchCities = async () => {
-      try {
-        const response = await fetch("/api/cities");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch cities: ${response.status}`);
+    // 1. Fetch Cities
+    fetch('/api/cities').then(res => res.json()).then(data => {
+        let options = [...data];
+        // CRITICAL FIX: Ensure the current location is in the options list for pre-filling
+        if (formData.location && !options.some(o => o.value === formData.location)) {
+            options.unshift({ value: formData.location, label: formData.location });
         }
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response format from cities API");
-        }
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        // Add initialData.location to cityOptions if it exists and isn't already included
-        const updatedCities = Array.isArray(data) ? [...data] : [];
-        if (initialData.location && !updatedCities.some(option => option.value === initialData.location)) {
-          updatedCities.push({ value: initialData.location, label: initialData.location });
-        }
-        setCityOptions(updatedCities);
-      } catch (error) {
-        console.error("Error fetching cities:", error);
-        // Fallback to include initialData.location even on error
-        setCityOptions(initialData.location ? [{ value: initialData.location, label: initialData.location }] : []);
-        setApiError(`Failed to load city options: ${error.message}. Using initial location as fallback.`);
-      }
-    };
+        setCityOptions(options.sort((a,b) => a.label.localeCompare(b.label)));
+    }).catch(() => {});
 
-    const fetchLanguages = async () => {
-      try {
-        const response = await fetch("/api/languages");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch languages: ${response.status}`);
-        }
-        const contentType = response.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Invalid response format from languages API");
-        }
-        const data = await response.json();
-        if (data.error) {
-          throw new Error(data.error);
-        }
-        const uniqueLanguages = Array.from(new Map(data.map(item => [item.value, item])).values());
-        setLanguageOptions(uniqueLanguages);
-      } catch (error) {
-        console.error("Error fetching languages:", error);
-        setApiError(`Failed to load language options: ${error.message}. Please try again later.`);
-      }
-    };
-
-    fetchCities();
-    fetchLanguages();
-  }, [initialData.location]);
-
-  useEffect(() => {
-    const fetchReferrer = async () => {
-      if (formData.referred === "Yes" && formData.referralCode) {
-        try {
-          const profilesQuery = query(
-            collection(db, "Profiles"),
-            where("generatedReferralCode", "==", formData.referralCode)
-          );
-          const profilesSnap = await getDocs(profilesQuery);
-          if (!profilesSnap.empty) {
-            const referrerProfile = profilesSnap.docs[0].data();
-            setReferrerName(referrerProfile.fullName || "Unknown Referrer");
-          } else {
-            setReferrerName("Invalid Referral Code");
-            setErrors(prev => ({ ...prev, referralCode: "Invalid referral code" }));
-          }
-        } catch (error) {
-          console.error("Error fetching referrer name:", error);
-          setReferrerName("Error checking referral code");
-          setErrors(prev => ({ ...prev, referralCode: "Error checking referral code" }));
-        }
-      } else {
-        setReferrerName("");
-      }
-    };
-    fetchReferrer();
-  }, [formData.referred, formData.referralCode]);
-
-  const checkUsernameAvailability = useCallback(
-    _.debounce(async (username) => {
-      if (!username || username === initialData.username) {
-        setUsernameStatus("");
-        setErrors((prev) => ({ ...prev, username: "" }));
-        return;
-      }
-      try {
-        const profilesQuery = query(collection(db, "Profiles"), where("username", "==", username));
-        const profileRequestsQuery = query(collection(db, "ProfileRequests"), where("username", "==", username));
-        const [profilesSnap, profileRequestsSnap] = await Promise.all([
-          getDocs(profilesQuery),
-          getDocs(profileRequestsQuery),
-        ]);
-        if (!profilesSnap.empty || !profileRequestsSnap.empty) {
-          setUsernameStatus("Username is already taken");
-          setErrors((prev) => ({ ...prev, username: "Username is already taken" }));
-        } else {
-          setUsernameStatus("Username is available");
-          setErrors((prev) => ({ ...prev, username: "" }));
-        }
-      } catch (error) {
-        console.error("Error checking usernames:", error);
-        setUsernameStatus("Error checking username");
-        setErrors((prev) => ({ ...prev, username: "Error checking username" }));
-      }
-    }, 500),
-    [initialData.username]
-  );
-
-  useEffect(() => {
-    const isEqual = _.isEqual(formData, {
-      ...initialData,
-      services: Array.isArray(initialData.services) && initialData.services.filter(s => typeof s === "string" && s.trim()).length > 0 ? initialData.services : [""],
-      regions: Array.isArray(initialData.regions) && initialData.regions.length ? initialData.regions : [],
-      expertise: Array.isArray(initialData.expertise) ? initialData.expertise : [],
-      experience: Array.isArray(initialData.experience) && initialData.experience.length
-        ? initialData.experience
-        : [{ title: "", company: "", startDate: null, endDate: null }],
-    });
-    setHasChanges(!isEqual);
-  }, [formData, initialData]);
-
-  const fetchLeadByPhone = async (phone) => {
-    if (!phone || phone.length < 6) return;
-    try {
-      const leadsQuery = query(collection(db, "JoinQueries"), where("phone", "==", phone));
-      const querySnapshot = await getDocs(leadsQuery);
-      if (!querySnapshot.empty) {
-        const leads = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date(),
-        }));
-        const mostRecentLead = leads.sort((a, b) => b.timestamp - a.timestamp)[0];
-        setFormData((prev) => ({
-          ...prev,
-          fullName: mostRecentLead.name || prev.fullName,
-          email: mostRecentLead.email || prev.email,
-          phone,
-        }));
-        setErrors((prev) => ({ ...prev, fullName: "", email: "", phone: "" }));
-      }
-    } catch (error) {
-      console.error("Error fetching lead by phone:", error);
-      setErrors((prev) => ({ ...prev, phone: "Failed to fetch lead data." }));
-    }
-  };
+    // 2. Fetch Languages
+    fetch('/api/languages').then(res => res.json()).then(data => {
+        let options = [...data];
+        // Ensure existing languages are in options
+        const existingLangs = Array.isArray(formData.languages) ? formData.languages : [];
+        existingLangs.forEach(lang => {
+            if (!options.some(o => o.value === lang)) {
+                options.push({ value: lang, label: lang });
+            }
+        });
+        setLanguageOptions(options);
+    }).catch(() => {});
+  }, [formData.location, formData.languages]);
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -252,45 +128,14 @@ export default function EditProfileForm({ initialData, onSave }) {
 
   const handleCropConfirm = useCallback(async () => {
     try {
-      const croppedImage = await getCroppedImg(imagePreview, croppedAreaPixels);
-      const blob = await (await fetch(croppedImage)).blob();
-      const file = new File([blob], `cropped_${formData.photo.name}`, { type: blob.type });
-      setFormData(prev => ({ ...prev, photo: file }));
-      setImagePreview(croppedImage);
+      const croppedImageFile = await getCroppedImg(imagePreview, croppedAreaPixels, formData.photo?.name || 'profile.jpg');
+      setFormData(prev => ({ ...prev, photo: croppedImageFile }));
+      setImagePreview(URL.createObjectURL(croppedImageFile));
       setShowCropModal(false);
-      setCrop({ x: 0, y: 0 });
-      setZoom(1);
-      setCroppedAreaPixels(null);
     } catch (error) {
-      console.error('Error cropping image:', error);
-      setErrors(prev => ({ ...prev, photo: 'Failed to crop image.' }));
+        console.error("Crop error:", error);
     }
-  }, [imagePreview, croppedAreaPixels]);
-
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, photo: file }));
-      setImagePreview(URL.createObjectURL(file));
-      setShowCropModal(true);
-      setErrors(prev => ({ ...prev, photo: '' }));
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "tagline" && value.length > 150) return;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: "" }));
-    if (name === "username") {
-      checkUsernameAvailability(value);
-    }
-    if (name === "referred" && value === "No") {
-      setFormData((prev) => ({ ...prev, referralCode: "", referred: "No" }));
-      setReferrerName("");
-      setErrors((prev) => ({ ...prev, referralCode: "" }));
-    }
-  };
+  }, [imagePreview, croppedAreaPixels, formData.photo]);
 
   const handlePhoneChange = (phone) => {
     setFormData((prev) => ({ ...prev, phone }));
@@ -298,361 +143,151 @@ export default function EditProfileForm({ initialData, onSave }) {
     fetchLeadByPhone(phone);
   };
 
-  const handleSingleChange = (selectedOption, field) => {
-    const value = selectedOption ? selectedOption.value : "";
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const handleMultiChange = (selectedOptions, field) => {
-    const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-    if (values.length > 5) {
-      setErrors((prev) => ({ ...prev, [field]: `You can select up to 5 ${field}.` }));
-      return;
-    }
-    setFormData((prev) => ({ ...prev, [field]: values }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const handleExpertiseChange = (selectedOption) => {
-    setSelectedExpertise(selectedOption);
-  };
-
-  const handleExpertiseKeyDown = (e) => {
-    if (e.key === 'Enter' && selectedExpertise) {
-      e.preventDefault();
-      addExpertise();
+  const handleFile = (e, field) => {
+    const files = Array.from(e.target.files);
+    if (field === 'photo') {
+      const file = files[0];
+      if (file) {
+        setFormData(prev => ({ ...prev, photo: file }));
+        setImagePreview(URL.createObjectURL(file));
+        setShowCropModal(true);
+      }
+    } else if (field === 'certificates') {
+      setFormData(prev => ({ ...prev, certificates: [...prev.certificates, ...files] }));
+      setCertificatePreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+    } else if (field === 'officePhotos') {
+      setFormData(prev => ({ ...prev, officePhotos: [...prev.officePhotos, ...files] }));
+      setOfficePhotoPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
     }
   };
 
-  const addExpertise = () => {
-    if (selectedExpertise && formData.expertise.length < 5 && !formData.expertise.includes(selectedExpertise.value)) {
-      const expertiseValue = selectedExpertise.value.trim();
-      if (!expertiseValue) {
-        setErrors(prev => ({ ...prev, expertise: 'Expertise cannot be empty.' }));
+  const removeFile = (index, field) => {
+    if (field === 'certificates') {
+      setFormData(prev => ({ ...prev, certificates: prev.certificates.filter((_, i) => i !== index) }));
+      setCertificatePreviews(prev => prev.filter((_, i) => i !== index));
+    } else if (field === 'officePhotos') {
+      setFormData(prev => ({ ...prev, officePhotos: prev.officePhotos.filter((_, i) => i !== index) }));
+      setOfficePhotoPreviews(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const checkUsernameAvailability = async (username) => {
+    if (!username || username === initialData.username) {
+        setUsernameStatus('');
         return;
-      }
-      setFormData((prev) => ({ ...prev, expertise: [...prev.expertise, expertiseValue] }));
-      setSelectedExpertise(null);
-      setErrors((prev) => ({ ...prev, expertise: "" }));
-    } else if (formData.expertise.length >= 5) {
-      setErrors((prev) => ({ ...prev, expertise: "You can add up to 5 expertise areas." }));
-    } else if (selectedExpertise && formData.expertise.includes(selectedExpertise.value)) {
-      setErrors((prev) => ({ ...prev, expertise: "This expertise is already added." }));
-    } else {
-      setErrors((prev) => ({ ...prev, expertise: "Please select or enter an expertise." }));
     }
+    try {
+      const profilesQuery = query(collection(db, 'Profiles'), where('username', '==', username));
+      const querySnapshot = await getDocs(profilesQuery);
+      if (!querySnapshot.empty) setUsernameStatus('Username is already taken');
+      else setUsernameStatus('Username is available');
+    } catch (error) { setUsernameStatus('Error checking username'); }
   };
 
-  const removeExpertise = (expertise) => {
-    setFormData((prev) => ({ ...prev, expertise: prev.expertise.filter((e) => e !== expertise) }));
-    setErrors((prev) => ({ ...prev, expertise: "" }));
+  const handleUsernameChange = (e) => {
+      const val = e.target.value;
+      setFormData(prev => ({ ...prev, username: val }));
+      checkUsernameAvailability(val);
   };
 
-  const handleArrayChange = (index, key, value) => {
-    const updated = [...formData[key]];
-    updated[index] = value;
-    setFormData((prev) => ({ ...prev, [key]: updated }));
-    setErrors((prev) => ({ ...prev, [key]: "" }));
+  const handleMultiChange = (opts, field) => {
+    setFormData(prev => ({ ...prev, [field]: opts ? opts.map(o => o.value) : [] }));
   };
 
-  const addField = (key) => {
-    setFormData((prev) => ({ ...prev, [key]: [...prev[key], ""] }));
-  };
-
-  const removeField = (key, index) => {
-    const updated = formData[key].filter((_, i) => i !== index);
-    setFormData((prev) => ({ ...prev, [key]: updated.length > 0 ? updated : [""] }));
-  };
-
-  const handleExperienceChange = (index, field, value) => {
+  const handleExperienceChange = (idx, field, value) => {
     const updated = [...formData.experience];
-    updated[index] = { ...updated[index], [field]: value };
-    setFormData((prev) => ({ ...prev, experience: updated }));
-    setErrors((prev) => ({ ...prev, experience: "" }));
-  };
-
-  const addExperience = () => {
-    setFormData((prev) => ({
-      ...prev,
-      experience: [...prev.experience, { title: "", company: "", startDate: null, endDate: null }],
-    }));
-  };
-
-  const removeExperience = (index) => {
-    const updated = formData.experience.filter((_, i) => i !== index);
-    setFormData((prev) => ({
-      ...prev,
-      experience: updated.length > 0 ? updated : [{ title: "", company: "", startDate: null, endDate: null }],
-    }));
-  };
-
-  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  const validatePhone = (phone) => /^\+?[0-9]{7,15}$/.test(phone);
-  const validateUsername = (username) => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
-  const validateDateOfBirth = (date) => {
-    if (!date) return false;
-    const today = new Date();
-    const minAgeDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-    const minDate = new Date(1900, 0, 1);
-    return date <= minAgeDate && date >= minDate && date <= today;
-  };
-
-  const validateExperienceDates = (experience) => {
-    const today = new Date();
-    for (let i = 0; i < experience.length; i++) {
-      const { startDate, endDate } = experience[i];
-      if (!startDate) return "Start date is required";
-      if (!endDate) return "End date is required";
-      if (startDate > today) return "Start date cannot be in the future";
-      if (endDate !== "Present") {
-        if (!endDate) return "End date is required";
-        if (endDate < startDate) return "End date must be after start date";
-        if (endDate > today) return "End date cannot be in the future";
-      }
-    }
-    return "";
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-    const { profileType } = formData;
-
-    ['username', 'fullName', 'email', 'phone', 'responseTime', 'pricing', 'about', 'tagline'].forEach(field => {
-        if (!formData[field]?.trim()) newErrors[field] = 'This field is required';
-      });
-
-    if (profileType === 'expert') {
-        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
-        if (formData.dateOfBirth && !validateDateOfBirth(formData.dateOfBirth)) newErrors.dateOfBirth = 'Invalid date. Must be at least 18.';
-        if (!formData.certifications?.trim()) newErrors.certifications = 'This field is required';
-        if (!formData.experience.length || formData.experience.some(exp => !exp.title?.trim() || !exp.company?.trim())) newErrors.experience = 'Title and company are required.';
-        const dateError = validateExperienceDates(formData.experience);
-        if (dateError) newErrors.experience = dateError;
-    } else { // agency
-        if (!formData.yearsActive?.trim()) newErrors.yearsActive = 'This field is required';
-    }
-
-    if (!formData.location) newErrors.location = 'Location is required';
-    if (!formData.languages.length) newErrors.languages = 'At least one language is required';
-    if (formData.email && !validateEmail(formData.email)) newErrors.email = 'Invalid email address';
-    if (formData.phone && !validatePhone(formData.phone)) newErrors.phone = 'Invalid phone number';
-    if (formData.username && !validateUsername(formData.username)) newErrors.username = 'Invalid username format.';
-    if (!formData.services.length || formData.services.some(s => !s?.trim())) newErrors.services = 'At least one service is required.';
-    if (!formData.regions.length) newErrors.regions = 'At least one region is required';
-    if (!formData.expertise.length) newErrors.expertise = 'At least one expertise is required';
-    if (formData.expertise.length > 5) newErrors.expertise = 'Max 5 expertise areas.';
-    if (formData.referred === 'Yes' && !formData.referralCode?.trim()) newErrors.referralCode = 'Referral code is required.';
-    if (formData.referred === 'Yes' && referrerName === "Invalid Referral Code") newErrors.referralCode = 'Invalid referral code';
-    if (formData.username !== initialData.username && usernameStatus !== "Username is available") newErrors.username = "Username not available.";
-    if (!agreed) newErrors.agreed = "You must agree to the terms";
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    updated[idx] = { ...updated[idx], [field]: value };
+    setFormData(prev => ({ ...prev, experience: updated }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
-    if (!hasChanges) {
-      setErrors((prev) => ({ ...prev, submit: "No changes to save." }));
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       await onSave(formData);
       setShowSuccessModal(true);
-      setTimeout(() => {
-        setShowSuccessModal(false);
-        router.push(`/experts/${formData.username}`);
-      }, 3000);
-    } catch (error) {
-      console.error("Error saving profile:", error);
-      setErrors((prev) => ({ ...prev, submit: error.message || "Failed to save profile. Please try again." }));
+      setTimeout(() => setShowSuccessModal(false), 3000);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleClose = () => {
-    router.back();
-  };
+  const { profileType } = formData;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-2 md:p-4 bg-[#F4D35E]">
-      <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl p-6 md:p-10">
-        {showSuccessModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full shadow-xl">
-              <h2 className="text-xl font-semibold text-[var(--primary)] mb-3">
-                🎉 Profile Updated!
+    <div className="bg-white min-h-screen">
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
+          <div className="bg-white rounded-[40px] p-10 text-center max-w-md w-full shadow-2xl animate-in zoom-in-95">
+            <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6 text-green-600">
+              <ShieldCheck size={48} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-2">Registry Updated</h2>
+            <p className="text-gray-500 text-sm mb-8">All master records have been synchronized successfully.</p>
+            <button onClick={() => setShowSuccessModal(false)} className="w-full py-4 rounded-2xl bg-[#36013F] text-white font-bold transition-all shadow-xl shadow-purple-100">Done</button>
+          </div>
+        </div>
+      )}
+
+      {/* Crop Modal */}
+      {showCropModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[200] p-4">
+          <div className="bg-white rounded-[40px] p-8 max-w-2xl w-full shadow-2xl">
+            <h3 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-2">
+                <Camera className="text-purple-600" size={24}/> Adjust Portrait
+            </h3>
+            <div className="relative w-full h-[350px] bg-gray-100 rounded-3xl overflow-hidden mb-8">
+              <Cropper 
+                image={imagePreview} 
+                crop={crop} 
+                zoom={zoom} 
+                aspect={1} 
+                onCropChange={setCrop} 
+                onZoomChange={setZoom} 
+                onCropComplete={onCropComplete} 
+                cropShape="round" 
+                showGrid={true} 
+              />
+            </div>
+            <div className="space-y-6">
+                <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Zoom Precision</label>
+                    <input type="range" min="1" max="3" step="0.1" value={zoom} onChange={e => setZoom(parseFloat(e.target.value))} className="w-full accent-[#36013F]" />
+                </div>
+                <div className="flex gap-4">
+                    <button type="button" className="flex-1 py-4 rounded-2xl bg-gray-100 text-gray-500 font-bold hover:bg-gray-200 transition" onClick={() => setShowCropModal(false)}>Cancel</button>
+                    <button type="button" className="flex-1 py-4 rounded-2xl bg-[#36013F] text-white font-bold hover:bg-[#4a0152] transition shadow-xl" onClick={handleCropConfirm}>Lock Identity Photo</button>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="p-8 lg:p-14 space-y-20 max-w-7xl mx-auto">
+        
+        {/* Classification Header (Role Toggle Hidden) */}
+        <section className="bg-gray-50 p-8 rounded-[40px] border border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
+           <div className="space-y-1">
+              <h2 className="text-2xl font-black text-gray-900 flex items-center gap-2">
+                {profileType === 'expert' ? <User className="text-[#36013F]"/> : <Building className="text-[#36013F]"/>}
+                Entity Registry: <span className="text-[#36013F] uppercase">{profileType}</span>
               </h2>
-              <p className="text-gray-700 mb-6 text-sm">
-                Your expert profile has been successfully updated.<br />
-                Changes have been saved.
-              </p>
-              <button
-                onClick={() => {
-                  setShowSuccessModal(false);
-                  router.push(`/experts/${formData.username}`);
-                }}
-                className="px-6 py-2 rounded-full text-white bg-[var(--primary)] transition"
-              >
-                Got it!
-              </button>
-            </div>
-          </div>
-        )}
-        {showCropModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-lg w-full">
-              <h3 className="text-lg font-semibold text-[var(--primary)] mb-4">Crop Your Photo</h3>
-              <div className="relative w-full h-64">
-                <Cropper
-                  image={imagePreview}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={1}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={onCropComplete}
-                  cropShape="round"
-                  showGrid={true}
-                  style={{
-                    containerStyle: { height: '100%', width: '100%' },
-                  }}
-                />
-              </div>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Zoom</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="3"
-                  step="0.1"
-                  value={zoom}
-                  onChange={e => setZoom(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300"
-                  onClick={() => {
-                    setShowCropModal(false);
-                    setImagePreview(formData.photo || null);
-                    setFormData(prev => ({ ...prev, photo: initialData.photo || null }));
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm text-white bg-[var(--primary)] rounded-xl hover:bg-opacity-90"
-                  onClick={handleCropConfirm}
-                >
-                  Confirm Crop
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {apiError && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl">
-              {apiError}
-            </div>
-          )}
-          
-            {/* Profile Type Display */}
-          <div className="space-y-4">
-             <h2 className="text-2xl font-semibold text-[var(--primary)]">⚙️ Profile Type</h2>
-             <div className="px-4 py-3 bg-gray-100 rounded-xl text-gray-800 font-medium">
-                {formData.profileType === 'agency' ? 'Travel Agency' : 'Individual Expert'}
-            </div>
+              <p className="text-gray-500 text-sm font-medium">Modifying standard professional records for this {profileType}.</p>
            </div>
+        </section>
 
+        {/* SECTION 1: BASIC IDENTITY */}
+        <section className="space-y-10">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#36013F] text-white flex items-center justify-center font-black">1</div>
+            <h2 className="text-2xl font-black text-gray-900">Registry Core Details</h2>
+          </div>
 
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">👤 Basic Information</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                <input
-                  type="text"
-                  name="username"
-                  placeholder="Enter username (e.g., travelwithjohn)"
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.username ? "border-red-500" : ""}`}
-                  value={formData.username}
-                  onChange={handleChange}
-                />
-                {usernameStatus && (
-                  <p className={`text-sm mt-1 ${usernameStatus === "Username is available" ? "text-green-600" : "text-red-600"}`}>
-                    {usernameStatus}
-                  </p>
-                )}
-                {errors.username && <p className="text-sm text-red-600 mt-1">{errors.username}</p>}
-                <p className="text-sm text-gray-500 mt-1">e.g., travelwithjohn</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Agency Name' : 'Full Name'}</label>
-                <input
-                  type="text"
-                  name="fullName"
-                  placeholder={formData.profileType === 'agency' ? 'Enter agency name' : 'Enter full name (e.g., John Doe)'}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.fullName ? "border-red-500" : ""}`}
-                  value={formData.fullName}
-                  onChange={handleChange}
-                />
-                {errors.fullName && <p className="text-sm text-red-600 mt-1">{errors.fullName}</p>}
-              </div>
-               <div className="row-span-2 flex flex-col items-center justify-center">
-                 {imagePreview && (
-                   <div className="relative w-32 h-32 rounded-full overflow-hidden border-2 border-[var(--primary)] mb-2">
-                     <img
-                       src={imagePreview}
-                       alt="Profile photo preview"
-                       className="object-cover w-full h-full"
-                     />
-                   </div>
-                 )}
-                 <input
-                  type="file"
-                  className={`w-full border rounded-xl px-2 py-2 focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.photo ? "border-red-500" : ""}`}
-                  onChange={handleFileChange}
-                  accept="image/jpeg,image/png"
-                />
-                 <p className="text-sm text-gray-500 mt-1">Upload a professional photo or logo (JPG, PNG)</p>
-                 {imagePreview && (
-                   <button
-                    type="button"
-                    className="mt-2 text-sm text-[var(--primary)] hover:underline"
-                    onClick={() => setShowCropModal(true)}
-                  >
-                    Edit Crop
-                  </button>
-                 )}
-                 {errors.photo && <p className="text-sm text-red-600 mt-1">{errors.photo}</p>}
-               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Enter email (e.g., john@example.com)"
-                  className={`w-full px-4 py-3 border rounded-xl bg-gray-100 cursor-not-allowed focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.email ? "border-red-500" : ""}`}
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled
-                />
-                {errors.email && <p className="text-sm text-red-600 mt-1">{errors.email}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                <PhoneInput
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-10">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Contact Phone <span className="text-red-500">*</span></label>
+               <PhoneInput
                   country={"in"}
                   value={formData.phone}
                   onChange={handlePhoneChange}
@@ -665,483 +300,260 @@ export default function EditProfileForm({ initialData, onSave }) {
                 />
                 {errors.phone && <p className="text-sm text-red-600 mt-1">{errors.phone}</p>}
               </div>
-
-               {formData.profileType === 'expert' ? (
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                   <DatePicker
-                     selected={formData.dateOfBirth}
-                     onChange={(date) => {
-                       setFormData((prev) => ({ ...prev, dateOfBirth: date }));
-                       setErrors((prev) => ({ ...prev, dateOfBirth: "" }));
-                     }}
-                     dateFormat="yyyy-MM-dd"
-                     placeholderText="Select date of birth (YYYY-MM-DD)"
-                     className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.dateOfBirth ? "border-red-500" : ""}`}
-                     maxDate={new Date()}
-                     showYearDropdown
-                     yearDropdownItemNumber={100}
-                     scrollableYearDropdown
-                   />
-                   {errors.dateOfBirth && <p className="text-sm text-red-600 mt-1">{errors.dateOfBirth}</p>}
-                 </div>
-               ) : (
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Years Active</label>
-                   <input
-                     type="text"
-                     name="yearsActive"
-                     placeholder="e.g., 5+ years"
-                     className={`w-full px-4 py-3 border rounded-xl ${errors.yearsActive ? 'border-red-500' : ''}`}
-                     value={formData.yearsActive}
-                     onChange={handleChange}
-                   />
-                   {errors.yearsActive && <p className="text-sm text-red-600 mt-1">{errors.yearsActive}</p>}
-                 </div>
-               )}
-               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                <Select
-                  instanceId="location-select"
-                  options={cityOptions}
-                  value={cityOptions.find(option => option.value === formData.location) || null}
-                  onChange={selected => handleSingleChange(selected, "location")}
-                  placeholder="Select a location (e.g., Mumbai, India)"
-                  className={`w-full ${errors.location ? "border-red-500" : ""}`}
-                  classNamePrefix="react-select"
-                  isDisabled={cityOptions.length === 0}
-                  isSearchable={true}
-                  onInputChange={inputValue => {
-                    if (inputValue) {
-                      fetch(`/api/cities?search=${encodeURIComponent(inputValue)}`)
-                        .then(res => {
-                          if (!res.ok) throw new Error(`Failed to fetch cities: ${res.status}`);
-                          return res.json();
-                        })
-                        .then(data => {
-                          const updatedCities = Array.isArray(data) ? [...data] : [];
-                          if (formData.location && !updatedCities.some(option => option.value === formData.location)) {
-                            updatedCities.push({ value: formData.location, label: formData.location });
-                          }
-                          setCityOptions(updatedCities);
-                        })
-                        .catch(err => {
-                          console.error("Error fetching cities:", err);
-                          setApiError("Failed to fetch city options. Please try again.");
-                        });
-                    }
-                  }}
-                />
-                {errors.location && <p className="text-sm text-red-600 mt-1">{errors.location}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Languages</label>
-                <Select
-                  instanceId="language-select"
-                  isMulti
-                  options={languageOptions}
-                  value={languageOptions.filter(option => formData.languages.includes(option.value))}
-                  onChange={selected => handleMultiChange(selected, "languages")}
-                  placeholder="Select up to 5 languages (e.g., English, Hindi)"
-                  className={`w-full ${errors.languages ? "border-red-500" : ""}`}
-                  classNamePrefix="react-select"
-                  isDisabled={languageOptions.length === 0}
-                />
-                {errors.languages && <p className="text-sm text-red-600 mt-1">{errors.languages}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Response Time</label>
-                <input
-                  type="text"
-                  name="responseTime"
-                  placeholder="Enter response time (e.g., Within 12 hours)"
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.responseTime ? "border-red-500" : ""}`}
-                  value={formData.responseTime}
-                  onChange={handleChange}
-                />
-                {errors.responseTime && <p className="text-sm text-red-600 mt-1">{errors.responseTime}</p>}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Pricing</label>
-                <input
-                  type="text"
-                  name="pricing"
-                  placeholder="Enter pricing (e.g., ₹2000/session)"
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.pricing ? "border-red-500" : ""}`}
-                  value={formData.pricing}
-                  onChange={handleChange}
-                />
-                {errors.pricing && <p className="text-sm text-red-600 mt-1">{errors.pricing}</p>}
-              </div>
-               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
-                <input
-                  type="text"
-                  name="tagline"
-                  placeholder={formData.profileType === 'agency' ? 'e.g., Crafting Unforgettable Journeys' : 'e.g., Europe Travel Expert'}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.tagline ? "border-red-500" : ""}`}
-                  value={formData.tagline}
-                  onChange={handleChange}
-                  maxLength={150}
-                />
-                {errors.tagline && <p className="text-sm text-red-600 mt-1">{errors.tagline}</p>}
-              </div>
-            </div>
+            <FormInput label={profileType === 'expert' ? "Official Full Name" : "Registered Agency Name"} name="fullName" value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} required />
+            <FormInput label="Protected Email Address" value={formData.email} disabled />
+            
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'About Us' : 'About Me'}</label>
-              <textarea
-                name="about"
-                placeholder={formData.profileType === 'agency' ? 'e.g., We are a boutique travel agency...' : 'e.g., 10+ years guiding travellers...'}
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.about ? "border-red-500" : ""}`}
-                rows="4"
-                value={formData.about}
-                onChange={handleChange}
-              ></textarea>
-              {errors.about && <p className="text-sm text-red-600 mt-1">{errors.about}</p>}
-            </div>
-          </div>
-
-          {/* Services & Regions */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">{formData.profileType === 'agency' ? '🎯 Services & Specialisations' : '🎯 Services, Expertise & Regions'}</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Services Offered' : 'What I Can Help You With'}</label>
-              {formData.services.map((service, index) => (
-                <div key={index} className="flex gap-2 items-center mb-2">
-                  <input
-                    type="text"
-                    className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.services ? "border-red-500" : ""}`}
-                    placeholder="Enter service (e.g., Visa Documentation)"
-                    value={service}
-                    onChange={(e) => handleArrayChange(index, "services", e.target.value)}
-                  />
-                  {formData.services.length > 1 && (
-                    <button
-                      type="button"
-                      className="text-red-500 text-sm hover:text-red-700"
-                      onClick={() => removeField("services", index)}
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addField("services")}
-                className="text-sm text-[var(--primary)] hover:underline mt-2"
-              >
-                + Add More
-              </button>
-              {errors.services && <p className="text-sm text-red-600 mt-1">{errors.services}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Specialisations (Up to 5)' : 'Expertise Areas (Up to 5)'}</label>
-              <div className="flex gap-2 mb-2">
-                <CreatableSelect
-                  instanceId="expertise-select"
-                  options={expertiseOptions}
-                  value={selectedExpertise}
-                  onChange={handleExpertiseChange}
-                  onKeyDown={handleExpertiseKeyDown}
-                  placeholder="Select or type expertise (e.g., Adventure Travel)"
-                  className={`w-full ${errors.expertise ? "border-red-500" : ""}`}
-                  classNamePrefix="react-select"
-                  formatCreateLabel={inputValue => `Add "${inputValue}"`}
-                />
-                <button
-                  type="button"
-                  className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl cursor-pointer"
-                  onClick={addExpertise}
-                  disabled={!selectedExpertise}
-                >
-                  Add
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {formData.expertise.map((exp) => (
-                  <span
-                    key={exp}
-                    className="bg-[var(--primary)] text-white px-2 py-1 rounded-full text-sm flex items-center"
-                  >
-                    {exp}
-                    <button
-                      type="button"
-                      className="ml-2 text-white"
-                      onClick={() => removeExpertise(exp)}
-                    >
-                      ✕
-                    </button>
-                  </span>
-                ))}
-              </div>
-              {errors.expertise && <p className="text-sm text-red-600 mt-1">{errors.expertise}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{formData.profileType === 'agency' ? 'Destination Specialisations' : 'Regions You Specialize In'}</label>
-              <select
-                multiple
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.regions ? "border-red-500" : ""}`}
-                value={formData.regions}
-                onChange={(e) => {
-                  const options = Array.from(e.target.selectedOptions).map((o) => o.value);
-                  if (options.length > 5) {
-                    setErrors((prev) => ({ ...prev, regions: "You can select up to 5 regions." }));
-                    return;
-                  }
-                  setFormData((prev) => ({ ...prev, regions: options }));
-                  setErrors((prev) => ({ ...prev, regions: "" }));
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Official Base Location <span className="text-red-500">*</span></label>
+              <Select 
+                instanceId="location-registry-select"
+                options={cityOptions} 
+                value={cityOptions.find(o => o.value === formData.location)} 
+                onChange={o => setFormData({...formData, location: o?.value || ""})} 
+                onInputChange={val => {
+                    if (val) fetch(`/api/cities?search=${encodeURIComponent(val)}`).then(res => res.json()).then(data => setCityOptions([...data].sort((a,b) => a.label.localeCompare(b.label))));
                 }}
-              >
-                <option value="south-asia">South Asia</option>
-                <option value="southeast-asia">Southeast Asia</option>
-                <option value="east-asia">East Asia</option>
-                <option value="central-asia">Central Asia</option>
-                <option value="west-asia">West Asia</option>
-                <option value="north-africa">North Africa</option>
-                <option value="west-africa">West Africa</option>
-                <option value="east-africa">East Africa</option>
-                <option value="central-africa">Central Africa</option>
-                <option value="southern-africa">Southern Africa</option>
-                <option value="north-america">North America</option>
-                <option value="central-america">Central America</option>
-                <option value="caribbean">Caribbean</option>
-                <option value="south-america">South America</option>
-                <option value="western-europe">Western Europe</option>
-                <option value="eastern-europe">Eastern Europe</option>
-                <option value="northern-europe">Northern Europe</option>
-                <option value="southern-europe">Southern Europe</option>
-                <option value="australia-nz">Australia & New Zealand</option>
-                <option value="pacific-islands">Pacific Islands</option>
-                <option value="mena">MENA</option>
-                <option value="emea">EMEA</option>
-                <option value="apac">APAC</option>
-                <option value="latam">LATAM</option>
-              </select>
-              <p className="text-sm text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select up to 5 regions</p>
-              {errors.regions && <p className="text-sm text-red-600 mt-1">{errors.regions}</p>}
-            </div>
-          </div>
-
-          {/* Experience & Credentials */}
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">{formData.profileType === 'agency' ? '🏢 Trust & Credentials' : '📚 Experience & Credentials'}</h2>
-               {formData.profileType === 'expert' ? (
-                 <>
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
-                   {formData.experience.map((exp, index) => (
-                     <div key={index} className="space-y-2 mb-4 border p-4 rounded-xl bg-gray-50">
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <div>
-                           <input
-                             type="text"
-                             placeholder="Enter job title (e.g., Travel Consultant)"
-                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                             value={exp.title}
-                             onChange={(e) => handleExperienceChange(index, "title", e.target.value)}
-                           />
-                         </div>
-                         <div>
-                           <input
-                             type="text"
-                             placeholder="Enter company (e.g., MakeMyTrip)"
-                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                             value={exp.company}
-                             onChange={(e) => handleExperienceChange(index, "company", e.target.value)}
-                           />
-                         </div>
-                         <div>
-                           <DatePicker
-                             selected={exp.startDate}
-                             onChange={(date) => handleExperienceChange(index, "startDate", date)}
-                             dateFormat="yyyy-MM"
-                             placeholderText="Select start date (YYYY-MM)"
-                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                             maxDate={new Date()}
-                             showMonthYearPicker
-                           />
-                           <p className="text-sm text-gray-500 mt-1">e.g., 2020-01</p>
-                         </div>
-                         <div className="flex items-center gap-2">
-                           <DatePicker
-                             selected={exp.endDate !== "Present" ? exp.endDate : null}
-                             onChange={(date) => handleExperienceChange(index, "endDate", date)}
-                             dateFormat="yyyy-MM"
-                             placeholderText="Select end date (YYYY-MM)"
-                             className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.experience ? "border-red-500" : ""}`}
-                             maxDate={new Date()}
-                             showMonthYearPicker
-                             disabled={exp.endDate === "Present"}
-                           />
-                           <label className="flex items-center gap-2 text-sm">
-                             <input
-                               type="checkbox"
-                               checked={exp.endDate === "Present"}
-                               onChange={(e) => handleExperienceChange(index, "endDate", e.target.checked ? "Present" : null)}
-                             />
-                             Present
-                           </label>
-                         </div>
-                       </div>
-                       {formData.experience.length > 1 && (
-                         <button
-                           type="button"
-                           className="text-red-500 text-sm hover:text-red-700"
-                           onClick={() => removeExperience(index)}
-                         >
-                           ✕ Remove
-                         </button>
-                       )}
-                     </div>
-                   ))}
-                   <button
-                     type="button"
-                     onClick={addExperience}
-                     className="text-sm text-[var(--primary)] hover:underline mt-2"
-                   >
-                     + Add Experience
-                   </button>
-                   {errors.experience && <p className="text-sm text-red-600 mt-1">{errors.experience}</p>}
-                 </div>
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-1">Certifications</label>
-                   <input
-                     type="text"
-                     name="certifications"
-                     placeholder="Enter certifications (e.g., Aussie Specialist, VisitBritain)"
-                     className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.certifications ? "border-red-500" : ""}`}
-                     value={formData.certifications}
-                     onChange={handleChange}
-                   />
-                   {errors.certifications && <p className="text-sm text-red-600 mt-1">{errors.certifications}</p>}
-                 </div>
-                 </>
-               ) : (
-                 <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-1">Licence / IATA / GST No. (if any)</label>
-                     <input
-                         type="text"
-                         name="licenseNumber"
-                         className={`w-full px-4 py-2 border rounded-xl ${errors.licenseNumber ? 'border-red-500' : ''}`}
-                         placeholder="Enter your agency's registration number"
-                         value={formData.licenseNumber}
-                         onChange={handleChange}
-                     />
-                     {errors.licenseNumber && <p className="text-sm text-red-600 mt-1">{errors.licenseNumber}</p>}
-                 </div>
-               )}
-          </div>
-
-          {/* Referral Information */}
-          <div className="space-y-4">
-            <h2 className="text-2xl font-semibold text-[var(--primary)]">🤝 Referral Information</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Were you referred by someone?</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="referred"
-                    value="Yes"
-                    checked={formData.referred === "Yes"}
-                    onChange={handleChange}
-                    className={`${errors.referred ? "ring-2 ring-red-500" : ""}`}
-                  />
-                  Yes
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="referred"
-                    value="No"
-                    checked={formData.referred === "No"}
-                    onChange={handleChange}
-                    className={`${errors.referred ? "ring-2 ring-red-500" : ""}`}
-                  />
-                  No
-                </label>
-              </div>
-              {errors.referred && <p className="text-sm text-red-600 mt-1">{errors.referred}</p>}
-            </div>
-            {formData.referred === "Yes" && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referral Code</label>
-                <input
-                  type="text"
-                  name="referralCode"
-                  placeholder="Enter referral code"
-                  className={`w-full px-4 py-2 border rounded-xl focus:ring-[var(--primary)] focus:border-[var(--primary)] ${errors.referralCode ? "border-red-500" : ""}`}
-                  value={formData.referralCode}
-                  onChange={handleChange}
-                />
-                {referrerName && (
-                  <p className={`text-sm mt-1 ${referrerName === "Invalid Referral Code" ? "text-red-600" : "text-green-600"}`}>
-                    {referrerName === "Invalid Referral Code" ? "Invalid referral code" : `Referred by ${referrerName}`}
-                  </p>
-                )}
-                <p className="text-sm text-gray-500 mt-1">
-                  A verification call might be made to your referrer to confirm your recommendation.
-                </p>
-                {errors.referralCode && <p className="text-sm text-red-600 mt-1">{errors.referralCode}</p>}
-              </div>
-            )}
-            {formData.referred === "No" && (
-              <p className="text-sm text-gray-700 mt-2">
-                Your profile approval may take a little longer. A short interview might be scheduled before activation.
-              </p>
-            )}
-          </div>
-
-          {/* Final Declaration */}
-          <div className="pt-4 border-t">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Final Declaration</label>
-            <label className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                className={`mt-1 ${errors.agreed ? "ring-2 ring-red-500" : ""}`}
-                checked={agreed}
-                onChange={() => setAgreed(!agreed)}
+                styles={selectStyles} 
               />
-              <span>
-                I confirm that the information provided is accurate and complies with{" "}
-                <strong>Xmytravel Experts'</strong> professional and ethical standards. I also agree to the{" "}
-                <Link
-                  href="/privacy-policy"
-                  className="text-blue-600 underline hover:text-blue-800"
-                  target="_blank"
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </span>
-            </label>
-            {errors.agreed && <p className="text-sm text-red-600 mt-1">{errors.agreed}</p>}
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Languages Spoken <span className="text-red-500">*</span></label>
+              <Select isMulti instanceId="lang-registry-select" options={languageOptions} value={languageOptions.filter(o => formData.languages?.includes(o.value))} onChange={o => handleMultiChange(o, 'languages')} styles={selectStyles} />
+            </div>
+
+            {profileType === 'expert' && (
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Date of Birth</label>
+                <DatePicker 
+                  selected={formData.dateOfBirth} 
+                  onChange={d => setFormData({...formData, dateOfBirth: d})} 
+                  dateFormat="yyyy-MM-dd" 
+                  maxDate={new Date()}
+                  showYearDropdown
+                  scrollableYearDropdown
+                  yearDropdownItemNumber={80}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all" 
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* SECTION 2: EXPERTISE & COMMERCIALS */}
+        <section className="space-y-10">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#36013F] text-white flex items-center justify-center font-black">2</div>
+            <h2 className="text-2xl font-black text-gray-900">Commercial Specialisations</h2>
+          </div>
+          
+          <div className="space-y-10">
+            <div>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Areas of Specialisation (Expertise Tags) <span className="text-red-500">*</span></label>
+              <CreatableSelect isMulti instanceId="expertise-registry-select" options={expertiseOptionsList} value={formData.expertise?.map(e => ({ value: e, label: e }))} onChange={o => handleMultiChange(o, 'expertise')} styles={selectStyles} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-8 bg-gray-50 rounded-[32px] border border-gray-100">
+               <FormInput label="Public Pricing (₹)" name="pricing" value={formData.pricing} onChange={e => setFormData({...formData, pricing: e.target.value})} border="white" required />
+               <FormInput label="Est. Response Window" name="responseTime" value={formData.responseTime} onChange={e => setFormData({...formData, responseTime: e.target.value})} border="white" required />
+               <div className="space-y-2">
+                    <FormInput label="Platform Username" name="username" value={formData.username} onChange={handleUsernameChange} border="white" required />
+                    {usernameStatus && <p className={`text-[10px] font-black uppercase tracking-widest ${usernameStatus.includes('available') ? 'text-green-600' : 'text-red-600'}`}>{usernameStatus}</p>}
+               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* SECTION 3: PROFESSIONAL DETAILS & MEDIA */}
+        <section className="space-y-12">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-[#36013F] text-white flex items-center justify-center font-black">3</div>
+            <h2 className="text-2xl font-black text-gray-900">Professional Assets & Experience</h2>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex justify-between pt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-6 py-2 text-sm font-semibold text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !hasChanges}
-              className={`px-6 py-2 text-sm font-semibold text-white rounded-xl cursor-pointer ${
-                isSubmitting || !hasChanges ? "bg-gray-400 cursor-not-allowed" : "bg-[var(--primary)] "
-              }`}
-            >
-              {isSubmitting ? "Saving..." : "Save Changes"}
-            </button>
+          <div className="flex flex-col lg:flex-row gap-12 border-b border-gray-100 pb-12">
+            <div className="shrink-0 flex flex-col items-center">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Identity Image <span className="text-red-500">*</span></label>
+              <div className="relative w-40 h-40">
+                  <div className="w-full h-full rounded-[48px] overflow-hidden border-4 border-white shadow-2xl bg-gray-50 group">
+                    <Image src={imagePreview || "/default.jpg"} alt="" fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                  </div>
+                  <label className="absolute -bottom-2 -right-2 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 cursor-pointer text-[#36013F] hover:scale-110 transition-transform">
+                    <Edit3 size={20} />
+                    <input type="file" className="hidden" onChange={e => handleFile(e, 'photo')} accept="image/*" />
+                  </label>
+              </div>
+              {imagePreview && (
+                <button type="button" onClick={() => setShowCropModal(true)} className="text-[10px] font-black uppercase text-blue-600 mt-4 hover:underline">Crop/Adjust Portrait</button>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-8">
+              <FormInput label="Professional Registry Tagline" name="tagline" value={formData.tagline} maxLength={150} onChange={e => setFormData({...formData, tagline: e.target.value})} required />
+              <div>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Public Profile Biography <span className="text-red-500">*</span></label>
+                <textarea value={formData.about} onChange={e => setFormData({...formData, about: e.target.value})} rows={5} className="w-full bg-gray-50 border border-gray-100 rounded-[32px] p-6 text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all leading-relaxed" required />
+              </div>
+            </div>
           </div>
-          {errors.submit && <p className="text-sm text-red-600 mt-2">{errors.submit}</p>}
-        </form>
-      </div>
+
+          {profileType === 'expert' ? (
+            <div className="space-y-10">
+               <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-black text-gray-900 tracking-tight flex items-center gap-2">
+                    <Briefcase size={20} className="text-gray-400"/> Work History Timeline
+                  </h3>
+                  <button type="button" onClick={() => setFormData({...formData, experience: [...formData.experience, {title: "", company: "", startDate: null, endDate: null}]})} className="flex items-center gap-2 text-xs font-black text-blue-600 hover:scale-105 transition-all"><Plus size={14}/> Add Entry</button>
+               </div>
+               <div className="space-y-6">
+                  {formData.experience.map((exp, idx) => (
+                    <div key={idx} className="p-8 bg-gray-50 rounded-[32px] grid grid-cols-1 md:grid-cols-4 gap-6 relative group border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                        <button type="button" onClick={() => setFormData({...formData, experience: formData.experience.filter((_, i) => i !== idx)})} className="absolute -top-3 -right-3 w-10 h-10 bg-white text-red-500 rounded-2xl flex items-center justify-center shadow-lg border border-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={18}/></button>
+                        <FormInput label="Title" value={exp.title} onChange={e => handleExperienceChange(idx, 'title', e.target.value)} border="white" required />
+                        <FormInput label="Company" value={exp.company} onChange={e => handleExperienceChange(idx, 'company', e.target.value)} border="white" required />
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Start Date</label>
+                            <DatePicker 
+                                selected={exp.startDate ? new Date(exp.startDate) : null} 
+                                onChange={d => handleExperienceChange(idx, 'startDate', d)} 
+                                dateFormat="yyyy-MM" 
+                                showMonthYearPicker 
+                                className="w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800" 
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">End Date</label>
+                            <div className="flex items-center gap-2">
+                                <DatePicker 
+                                    disabled={exp.endDate === 'Present'} 
+                                    selected={exp.endDate && exp.endDate !== 'Present' ? new Date(exp.endDate) : null} 
+                                    onChange={d => handleExperienceChange(idx, 'endDate', d)} 
+                                    dateFormat="yyyy-MM" 
+                                    showMonthYearPicker 
+                                    className="w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 disabled:opacity-50" 
+                                />
+                                <button type="button" onClick={() => handleExperienceChange(idx, 'endDate', exp.endDate === 'Present' ? null : 'Present')} className={`px-2 py-2.5 rounded-xl text-[10px] font-black border transition-all ${exp.endDate === 'Present' ? 'bg-[#36013F] text-white border-[#36013F]' : 'bg-white text-gray-400 border-gray-200'}`}>PRESENT</button>
+                            </div>
+                        </div>
+                    </div>
+                  ))}
+               </div>
+               <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Verified Certifications (Tags) <span className="text-red-500">*</span></label>
+                  <CreatableSelect isMulti instanceId="cert-registry-select" options={certOptionsList} value={formData.certifications?.map(c => ({ value: c, label: c }))} onChange={o => handleMultiChange(o, 'certifications')} styles={selectStyles} />
+               </div>
+            </div>
+          ) : (
+            <div className="space-y-12">
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 bg-gray-50 p-8 rounded-[40px] border border-gray-100">
+                  <div className="md:col-span-2"><FormInput label="Registered Address" value={formData.registeredAddress} onChange={e => setFormData({...formData, registeredAddress: e.target.value})} border="white" required /></div>
+                  <FormInput label="Official Website" value={formData.website} onChange={e => setFormData({...formData, website: e.target.value})} border="white" />
+                  <FormInput label="License (IATA/GST)" value={formData.licenseNumber} onChange={e => setFormData({...formData, licenseNumber: e.target.value})} border="white" required />
+                  <FormInput label="Years Active" value={formData.yearsActive} onChange={e => setFormData({...formData, yearsActive: e.target.value})} border="white" />
+                  <FormInput label="Team Size" type="number" value={formData.employeeCount} onChange={e => setFormData({...formData, employeeCount: e.target.value})} border="white" required />
+               </div>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                  <MediaUploadSection title="Association Certificates" items={certificatePreviews} field="certificates" handleFile={handleFile} removeFile={removeFile} />
+                  <MediaUploadSection title="Office Photos" items={officePhotoPreviews} field="officePhotos" handleFile={handleFile} removeFile={removeFile} />
+               </div>
+            </div>
+          )}
+        </section>
+
+        {/* SECTION 4: REFERRALS */}
+        <section className="bg-purple-50 p-10 rounded-[40px] border border-purple-100 flex flex-col md:flex-row items-center justify-between gap-10">
+            <div className="flex items-center gap-6">
+                <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center text-purple-600 shadow-xl shadow-purple-200/50 border border-purple-100">
+                    <CheckCircle size={40}/>
+                </div>
+                <div>
+                   <p className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-1">Self Referral ID</p>
+                   <p className="text-2xl font-black text-purple-900 font-mono tracking-tight">{formData.generatedReferralCode || "N/A"}</p>
+                </div>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-6 w-full md:w-auto">
+                <div className="text-center sm:text-right">
+                    <p className="text-sm font-bold text-purple-800 leading-tight">Were you referred?</p>
+                    <p className="text-[10px] text-purple-500 font-medium mt-0.5">Enter code if applicable</p>
+                </div>
+                <input 
+                    type="text" 
+                    name="referralCode" 
+                    value={formData.referralCode} 
+                    onChange={e => setFormData({...formData, referralCode: e.target.value})} 
+                    className="bg-white border-2 border-purple-100 rounded-2xl px-6 py-4 text-sm font-black text-[#36013F] w-full sm:w-48 shadow-lg shadow-purple-900/5 focus:ring-2 focus:ring-[#36013F] outline-none transition-all placeholder:text-purple-200" 
+                    placeholder="ENTER CODE" 
+                />
+            </div>
+        </section>
+
+        {/* SUBMIT ACTIONS */}
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-12 border-t border-gray-100">
+            <button type="button" onClick={() => router.back()} className="text-sm font-black text-gray-400 hover:text-red-500 transition-colors uppercase tracking-widest">Discard Platform Changes</button>
+            <button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-20 py-5 rounded-2xl bg-gradient-to-r from-[#36013F] to-[#5a1066] text-white font-black shadow-2xl shadow-purple-300 hover:scale-105 active:scale-95 flex items-center justify-center gap-4 disabled:opacity-50 transition-all text-lg">
+                {isSubmitting ? <Loader2 className="animate-spin" size={24}/> : <ShieldCheck size={24}/>}
+                Synchronize Master Record
+            </button>
+        </div>
+      </form>
     </div>
   );
 }
+
+function FormInput({ label, border = "gray-50", ...props }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{label}</label>
+      <input 
+        className={`w-full bg-${border} border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all disabled:opacity-50 shadow-sm`}
+        {...props} 
+      />
+    </div>
+  );
+}
+
+function MediaUploadSection({ title, items, field, handleFile, removeFile }) {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                <label className="text-sm font-black text-gray-900 uppercase tracking-widest">{title}</label>
+                <label className="cursor-pointer bg-blue-50 text-blue-600 px-4 py-1.5 rounded-full text-[10px] font-black hover:bg-blue-100 transition-all border border-blue-100">
+                    + UPLOAD NEW
+                    <input type="file" multiple accept="image/*,.pdf" className="hidden" onChange={e => handleFile(e, field)} />
+                </label>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+               {items.length > 0 ? items.map((url, idx) => (
+                  <div key={idx} className="relative aspect-square rounded-[24px] bg-gray-50 border border-gray-100 overflow-hidden group shadow-sm ring-4 ring-white">
+                     {url.includes('.pdf') ? (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-500">PDF DOC</div>
+                     ) : (
+                        <Image src={url} alt="" fill className="object-cover" />
+                     )}
+                     <button type="button" onClick={() => removeFile(idx, field)} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Trash2 className="text-white" size={20}/>
+                     </button>
+                  </div>
+               )) : <div className="col-span-4 p-8 border-2 border-dashed border-gray-100 rounded-[32px] text-center text-gray-400 text-[10px] font-black uppercase tracking-[0.2em]">No Records Uploaded</div>}
+            </div>
+        </div>
+    );
+}
+
+const selectStyles = {
+  control: (b) => ({ 
+      ...b, 
+      borderRadius: '1rem', 
+      border: '1px solid #f3f4f6', 
+      background: '#f9fafb', 
+      minHeight: '3.5rem', 
+      fontWeight: '800', 
+      fontSize: '0.875rem', 
+      color: '#1f2937', 
+      boxShadow: 'none',
+      '&:hover': { borderColor: '#e5e7eb' }
+  }),
+  multiValue: (b) => ({ ...b, borderRadius: '0.5rem', background: '#36013F15', border: '1px solid #36013F20' }),
+  multiValueLabel: (b) => ({ ...b, color: '#36013F', fontWeight: '900', fontSize: '0.75rem', padding: '0.2rem 0.5rem' }),
+  placeholder: (b) => ({ ...b, color: '#9ca3af', fontWeight: '500' })
+};

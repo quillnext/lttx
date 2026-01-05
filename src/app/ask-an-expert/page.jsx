@@ -284,11 +284,11 @@ export default function ExpertsDirectory() {
     try {
       let q;
       if (isReset) {
-        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(9));
+        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(30));
         setExperts([]); 
         setLastDoc(null);
       } else {
-        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(9), startAfter(lastDoc));
+        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(30), startAfter(lastDoc));
       }
 
       const querySnapshot = await getDocs(q);

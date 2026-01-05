@@ -133,16 +133,19 @@ export async function POST(request) {
       bookingDate,
       bookingTime,
       referredByAgencyName,
+      isHandedOver
     } = await request.json();
 
-    // Validation
-    if (!userEmail || !userName || !userPhone || !expertEmail || !expertName || !bookingDate || !bookingTime) {
+    const isPlaceholder = isHandedOver === false;
+
+    // Validation (Allow missing expertEmail if placeholder)
+    if (!userEmail || !userName || !userPhone || (!isPlaceholder && !expertEmail) || !expertName || !bookingDate || !bookingTime) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userEmail) || !emailRegex.test(expertEmail)) {
-      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+    if (!emailRegex.test(userEmail) || (!isPlaceholder && !emailRegex.test(expertEmail))) {
+      return NextResponse.json({ error: "Invalid email address format" }, { status: 400 });
     }
 
     if (!/^\+?[1-9]\d{1,14}$/.test(userPhone)) {
@@ -156,44 +159,10 @@ export async function POST(request) {
     const year = new Date().getFullYear();
     const dashboardLink = "https://xmytravel.com/expert-dashboard";
 
-    // Email to User
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: userEmail,
-      subject: "Your Booking Confirmation with XMyTravel",
-      html: emailTemplate({
-        userName,
-        expertName,
-        bookingDate,
-        bookingTime,
-        userMessage,
-        year,
-        type: "user",
-        dashboardLink,
-        referredByAgencyName,
-      }),
-    });
+    const emailPromises = [];
 
-    // Email to Expert
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: expertEmail,
-      subject: "New Booking on XMyTravel",
-      html: emailTemplate({
-        userName,
-        expertName,
-        bookingDate,
-        bookingTime,
-        userMessage,
-        year,
-        type: "expert",
-        dashboardLink,
-        referredByAgencyName,
-      }),
-    });
-
-    // Email to Admin
-    await transporter.sendMail({
+    // Always send to Admin
+    emailPromises.push(transporter.sendMail({
       from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
       subject: "New Booking Notification on XMyTravel",
@@ -210,7 +179,48 @@ export async function POST(request) {
         dashboardLink,
         referredByAgencyName,
       }),
-    });
+    }));
+
+    // Only send to User and Expert if isHandedOver is not false
+    if (!isPlaceholder) {
+      // Email to User
+      emailPromises.push(transporter.sendMail({
+        from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: "Your Booking Confirmation with XMyTravel",
+        html: emailTemplate({
+          userName,
+          expertName,
+          bookingDate,
+          bookingTime,
+          userMessage,
+          year,
+          type: "user",
+          dashboardLink,
+          referredByAgencyName,
+        }),
+      }));
+
+      // Email to Expert
+      emailPromises.push(transporter.sendMail({
+        from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+        to: expertEmail,
+        subject: "New Booking on XMyTravel",
+        html: emailTemplate({
+          userName,
+          expertName,
+          bookingDate,
+          bookingTime,
+          userMessage,
+          year,
+          type: "expert",
+          dashboardLink,
+          referredByAgencyName,
+        }),
+      }));
+    }
+
+    await Promise.all(emailPromises);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

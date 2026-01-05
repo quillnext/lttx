@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -250,8 +249,7 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
       });
 
       if (!user && !hasSubmitted) {
-        const userData = { name, email, phone };
-        localStorage.setItem("userFormData", JSON.stringify(userData));
+        localStorage.setItem("userFormData", JSON.stringify({ name, email, phone }));
         setHasSubmitted(true);
       }
 
@@ -263,11 +261,12 @@ const BookingConfirmationModal = ({ expert, selectedDate, selectedSlot, onClose,
           userName: name,
           userPhone: phone,
           userMessage: message,
-          expertEmail: expert.email,
+          expertEmail: expert.email || "info@xmytravel.com",
           expertName: expert.fullName,
           bookingDate: selectedDate.toISOString().split("T")[0],
           bookingTime: selectedSlot.startTime,
           referredByAgencyName: referredByAgency === 'Yes' && selectedAgency ? selectedAgency.label : null,
+          isHandedOver: expert.isHandedOver,
         }),
       });
 
@@ -685,56 +684,12 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
   const itemsPerPage = 20;
 
   const expertId = profile?.expertId || profile?.id || profile?.userId;
-  if (!profile || !expertId) {
-    console.error("Profile or expertId is missing:", profile);
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-100">
-        <div className="text-gray-600 text-center">
-          <p>Unable to load profile. Please try again later.</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="mt-4 px-4 py-2 bg-[#F4D35E] text-[#36013F] rounded-lg hover:bg-[#e0c54e]"
-          >
-            Reload
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const username = profile?.username;
-  const isAgency = profile.profileType === 'agency';
-  const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/experts/${username}` : "";
-
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `${profile.fullName} | ${isAgency ? 'Travel Agency' : 'Travel Expert'}`,
-          text: profile.tagline || `Check out this ${isAgency ? 'travel agency' : 'travel expert'}'s profile!`,
-          url: profileUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(profileUrl);
-        setIsShareMessageVisible(true);
-        setTimeout(() => setIsShareMessageVisible(false), 2000);
-      }
-    } catch (error) {
-      console.error("Error sharing profile:", error);
-    }
-  };
-
-  const openLightbox = (imageSrc) => {
-    setSelectedImage(imageSrc);
-    setIsLightboxOpen(true);
-  };
-
+  
   const totalExperience = calculateTotalExperience(sortedExperience);
 
   useEffect(() => {
     const fetchAnsweredQuestions = async () => {
       if (!expertId) {
-        console.error("Expert ID is missing:", profile);
         setLoadingQuestions(false);
         return;
       }
@@ -772,6 +727,22 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
     fetchAnsweredQuestions();
   }, [expertId]);
 
+  if (!profile || !expertId) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100">
+        <div className="text-gray-600 text-center">
+          <p>Unable to load profile. Please try again later.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-4 px-4 py-2 bg-[#F4D35E] text-[#36013F] rounded-lg hover:bg-[#e0c54e]"
+          >
+            Reload
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const totalPages = Math.ceil(answeredQuestions.length / itemsPerPage);
   const paginatedQuestions = answeredQuestions.slice(
     (currentPage - 1) * itemsPerPage,
@@ -782,6 +753,33 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
     if (newPage > 0 && newPage <= totalPages) {
       setCurrentPage(newPage);
     }
+  };
+
+  const username = profile?.username;
+  const isAgency = profile.profileType === 'agency';
+  const profileUrl = typeof window !== "undefined" ? `${window.location.origin}/experts/${username}` : "";
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: `${profile.fullName} | ${isAgency ? 'Travel Agency' : 'Travel Expert'}`,
+          text: profile.tagline || `Check out this ${isAgency ? 'travel agency' : 'travel expert'}'s profile!`,
+          url: profileUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(profileUrl);
+        setIsShareMessageVisible(true);
+        setTimeout(() => setIsShareMessageVisible(false), 2000);
+      }
+    } catch (error) {
+      console.error("Error sharing profile:", error);
+    }
+  };
+
+  const openLightbox = (imageSrc) => {
+    setSelectedImage(imageSrc);
+    setIsLightboxOpen(true);
   };
   
   const cardClass = `rounded-3xl shadow-lg p-6 text-center sticky top-8 relative ${
@@ -1170,7 +1168,7 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
             </details>
             <details
               className="group bg-white rounded-2xl shadow border border-[#F4D35E30] overflow-hidden"
-            >
+              >
               <summary className="flex items-center justify-between px-5 py-4 cursor-pointer select-none transition-colors duration-200 hover:bg-gray-50">
                 <h2
                   style={{ fontFamily: "'DM Serif Display', serif" }}
