@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -16,7 +15,6 @@ const auth = getAuth(app);
 
 export default function AskQuestionModal({ expert, onClose }) {
   const searchParams = useSearchParams();
-  const urlQuestion = searchParams.get("question") || "";
   const urlKeywordsParam = searchParams.get("keywords") || "";
   const urlKeywords = urlKeywordsParam === "all" ? [] : urlKeywordsParam.split(",").filter(k => k.trim());
 
@@ -33,38 +31,33 @@ export default function AskQuestionModal({ expert, onClose }) {
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
-  // Load user details
   useEffect(() => {
     const savedData = localStorage.getItem("userFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
-      console.log("AskQuestionModal: Loaded from localStorage:", parsedData);
       setName(parsedData.name || "");
       setEmail(parsedData.email || "");
       setPhone(parsedData.phone || "");
       setHasSubmitted(true);
-      setIsEmailVerified(true); // Assume verified if previously submitted
+      setIsEmailVerified(true);
     }
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
-        console.log("AskQuestionModal: Auth user:", currentUser);
         setUser(currentUser);
         setName(currentUser.displayName || "");
         setEmail(currentUser.email || "");
         setPhone(currentUser.phoneNumber || "");
         setHasSubmitted(true);
-        setIsEmailVerified(true); // Authenticated users skip OTP
+        setIsEmailVerified(true);
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  // Clear on close
   useEffect(() => {
     return () => {
-      console.log("AskQuestionModal: Cleaning up on close");
       setQuestion("");
       setOtp("");
       setErrors({});
@@ -73,7 +66,6 @@ export default function AskQuestionModal({ expert, onClose }) {
     };
   }, []);
 
-  // Reset OTP states on email change
   useEffect(() => {
     setIsOtpSent(false);
     setIsEmailVerified(false);
@@ -94,12 +86,6 @@ export default function AskQuestionModal({ expert, onClose }) {
     if (!expert?.id) newErrors.form = "Expert profile ID is missing.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const validateEmailPayload = (payload) => {
-    const requiredFields = ["userEmail", "userName", "expertEmail", "expertName", "question", "userPhone"];
-    const missingFields = requiredFields.filter((field) => !payload[field] || payload[field].trim() === "");
-    return missingFields.length === 0 ? null : `Missing or empty fields: ${missingFields.join(", ")}`;
   };
 
   const handleSendOtp = async () => {
@@ -158,7 +144,6 @@ export default function AskQuestionModal({ expert, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("AskQuestionModal: handleSubmit called:", { question, name, email, phone, expert });
     if (!validateForm()) {
       toast.error("Please fill out all required fields correctly.");
       return;
@@ -166,10 +151,10 @@ export default function AskQuestionModal({ expert, onClose }) {
 
     setLoading(true);
     try {
-      const docRef = await addDoc(collection(db, "Questions"), {
+      await addDoc(collection(db, "Questions"), {
         expertId: expert.id,
         expertName: expert.fullName || "Unknown Expert",
-        expertEmail: expert.email || "no-email@placeholder.com",
+        expertEmail: expert.email || "placeholder@xmytravel.com",
         question,
         userName: name,
         userEmail: email,
@@ -181,29 +166,25 @@ export default function AskQuestionModal({ expert, onClose }) {
       });
 
       if (!hasSubmitted && !user) {
-        const userData = { name, email, phone, purpose: "General Query" };
-        console.log("AskQuestionModal: Saving user data to localStorage:", userData);
-        localStorage.setItem("userFormData", JSON.stringify(userData));
+        localStorage.setItem("userFormData", JSON.stringify({ name, email, phone, purpose: "General Query" }));
         setHasSubmitted(true);
       }
 
-      if (expert.email && expert.email.trim() && /\S+@\S+\.\S+/.test(expert.email)) {
+      // Proceed if expert has email OR it's a placeholder profile (handedOver is explicitly false)
+      const isPlaceholder = expert.isHandedOver === false;
+      const hasValidEmail = expert.email && expert.email.trim() && /\S+@\S+\.\S+/.test(expert.email);
+
+      if (hasValidEmail || isPlaceholder) {
         const emailPayload = {
           userEmail: email,
           userName: name,
-          expertEmail: expert.email,
+          expertEmail: expert.email || "info@xmytravel.com",
           expertName: expert.fullName || "Unknown Expert",
           question,
           userPhone: phone,
-          keywords: urlKeywords, // Use exact URL keywords
+          keywords: urlKeywords,
+          isHandedOver: expert.isHandedOver,
         };
-
-        console.log("AskQuestionModal: Email payload:", emailPayload);
-
-        const validationError = validateEmailPayload(emailPayload);
-        if (validationError) {
-          throw new Error(validationError);
-        }
 
         const response = await fetch("/api/send-question-emails", {
           method: "POST",
@@ -215,9 +196,6 @@ export default function AskQuestionModal({ expert, onClose }) {
           const errorData = await response.json();
           throw new Error(`Failed to send emails: ${errorData.error || "Unknown error"}`);
         }
-      } else {
-        console.warn("AskQuestionModal: Skipping email sending due to missing or invalid expert.email:", expert.email);
-        toast.warn("Question submitted, but expert email is missing or invalid. Notification not sent to expert.");
       }
 
       setQuestion("");
@@ -230,11 +208,8 @@ export default function AskQuestionModal({ expert, onClose }) {
         setIsEmailVerified(false);
       }
       setErrors({});
-
       setSuccess(true);
-      setTimeout(() => {
-        onClose();
-      }, 2000);
+      setTimeout(() => onClose(), 2000);
     } catch (error) {
       console.error("AskQuestionModal: Error submitting question:", error.message);
       toast.error(`Failed to submit question: ${error.message}`);
@@ -277,18 +252,6 @@ export default function AskQuestionModal({ expert, onClose }) {
               />
               {errors.question && (
                 <p className="text-red-400 text-sm mt-2">{errors.question}</p>
-              )}
-              {urlKeywords.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {urlKeywords.map((keyword, index) => (
-                    <span
-                      key={index}
-                      className="bg-[#F4D35E] text-[#36013F] px-2 py-1 rounded-full text-sm font-medium"
-                    >
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
               )}
             </div>
             {!(hasSubmitted || user) && (
@@ -381,9 +344,6 @@ export default function AskQuestionModal({ expert, onClose }) {
                   )}
                 </div>
               </>
-            )}
-            {errors.form && (
-              <p className="text-red-400 text-sm mt-2">{errors.form}</p>
             )}
             <button
               type="submit"

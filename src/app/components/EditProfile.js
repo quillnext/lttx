@@ -1,5 +1,4 @@
 
-// app/components/EditProfile.js
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,12 +11,11 @@ import EditProfileForm from "./EditProfileForm";
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-export default function EditProfile({ id }) { // Accept id as a prop
+export default function EditProfile({ id }) { 
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // Helper to parse date strings to Date objects
   const parseDate = (dateString, format = "YYYY-MM-DD") => {
     if (!dateString) return null;
     const parts = dateString.split("-");
@@ -37,12 +35,19 @@ export default function EditProfile({ id }) { // Accept id as a prop
         const snapshot = await getDoc(docRef);
         if (snapshot.exists()) {
           const data = snapshot.data();
+          
+          const safeArray = (val) => {
+              if (Array.isArray(val)) return val;
+              if (typeof val === 'string' && val.trim()) return val.split(',').map(s => s.trim());
+              return [];
+          };
+
           setProfileData({
             ...data,
             dateOfBirth: data.dateOfBirth ? parseDate(data.dateOfBirth, "YYYY-MM-DD") : null,
-            services: Array.isArray(data.services) ? data.services.filter(s => typeof s === "string" && s.trim()) : [""],
-            regions: Array.isArray(data.regions) ? data.regions : [],
-            expertise: Array.isArray(data.expertise) ? data.expertise : [],
+            languages: safeArray(data.languages),
+            expertise: safeArray(data.expertise),
+            certifications: safeArray(data.certifications),
             experience: Array.isArray(data.experience) && data.experience.length
               ? data.experience.map((exp) => ({
                   ...exp,
@@ -50,6 +55,8 @@ export default function EditProfile({ id }) { // Accept id as a prop
                   endDate: exp.endDate === "Present" ? "Present" : parseDate(exp.endDate, "YYYY-MM"),
                 }))
               : [{ title: "", company: "", startDate: null, endDate: null }],
+            certificates: safeArray(data.certificates),
+            officePhotos: safeArray(data.officePhotos),
           });
         }
       } catch (error) {
@@ -62,21 +69,52 @@ export default function EditProfile({ id }) { // Accept id as a prop
 
   const handleSave = async (updatedData) => {
     try {
-      let newPhotoURL = updatedData.photo;
-
+      const sanitizedName = updatedData.fullName?.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") || "Unknown";
+      
+      // 1. Handle Profile Photo
+      let photoURL = updatedData.photo;
       if (updatedData.photo instanceof File) {
-        const sanitizedName = updatedData.fullName?.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") || "Unknown";
         const timestamp = Date.now();
         const ext = updatedData.photo.name.split(".").pop();
         const fileName = `profile_${timestamp}.${ext}`;
         const storageRef = ref(storage, `Profiles/${sanitizedName}/${fileName}`);
         await uploadBytes(storageRef, updatedData.photo);
-        newPhotoURL = await getDownloadURL(storageRef);
+        photoURL = await getDownloadURL(storageRef);
       }
 
-      // Format dates for Firestore
+      // 2. Handle Multi-File Certificates
+      const finalCertificates = [];
+      const certificatesList = Array.isArray(updatedData.certificates) ? updatedData.certificates : [];
+      for (const cert of certificatesList) {
+        if (cert instanceof File) {
+          const certName = `cert_${Date.now()}_${cert.name}`;
+          const certRef = ref(storage, `Certificates/${sanitizedName}/${certName}`);
+          await uploadBytes(certRef, cert);
+          const url = await getDownloadURL(certRef);
+          finalCertificates.push(url);
+        } else if (typeof cert === 'string') {
+          finalCertificates.push(cert);
+        }
+      }
+
+      // 3. Handle Multi-File Office Photos
+      const finalOfficePhotos = [];
+      const officePhotosList = Array.isArray(updatedData.officePhotos) ? updatedData.officePhotos : [];
+      for (const oPhoto of officePhotosList) {
+        if (oPhoto instanceof File) {
+          const oName = `office_${Date.now()}_${oPhoto.name}`;
+          const oRef = ref(storage, `OfficePhotos/${sanitizedName}/${oName}`);
+          await uploadBytes(oRef, oPhoto);
+          const url = await getDownloadURL(oRef);
+          finalOfficePhotos.push(url);
+        } else if (typeof oPhoto === 'string') {
+          finalOfficePhotos.push(oPhoto);
+        }
+      }
+
       const formatDate = (date, format = "YYYY-MM-DD") => {
         if (!date) return "";
+        if (typeof date === 'string') return date;
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         if (format === "YYYY-MM") return `${year}-${month}`;
@@ -86,34 +124,27 @@ export default function EditProfile({ id }) { // Accept id as a prop
 
       const dataForFirestore = {
         ...updatedData,
-        photo: newPhotoURL,
-        services: updatedData.services.filter(s => typeof s === "string" && s.trim()),
-        
-        // Conditionally set fields based on profileType
+        photo: photoURL,
+        certificates: finalCertificates,
+        officePhotos: finalOfficePhotos,
         dateOfBirth: updatedData.profileType === 'expert' && updatedData.dateOfBirth ? formatDate(updatedData.dateOfBirth, "YYYY-MM-DD") : "",
-        yearsActive: updatedData.profileType === 'agency' ? updatedData.yearsActive : "",
         experience: updatedData.profileType === 'expert' ? updatedData.experience.map((exp) => ({
           title: exp.title || "",
           company: exp.company || "",
-          startDate: exp.startDate ? formatDate(exp.startDate, "YYYY-MM") : "",
-          endDate: exp.endDate === "Present" ? "Present" : exp.endDate ? formatDate(exp.endDate, "YYYY-MM") : "",
+          startDate: exp.startDate instanceof Date ? formatDate(exp.startDate, "YYYY-MM") : exp.startDate || "",
+          endDate: exp.endDate === "Present" ? "Present" : (exp.endDate instanceof Date ? formatDate(exp.endDate, "YYYY-MM") : exp.endDate || ""),
         })) : [],
-        certifications: updatedData.profileType === 'expert' ? updatedData.certifications : "",
-        licenseNumber: updatedData.profileType === 'agency' ? updatedData.licenseNumber : "",
       };
 
-
       await updateDoc(doc(db, "Profiles", id), dataForFirestore);
-
-      router.push(`/experts/${updatedData.username}`);
     } catch (error) {
       console.error("Error saving profile:", error);
       throw new Error("Failed to save profile");
     }
   };
 
-  if (loading) return <div className="p-10 text-center">Loading profile...</div>;
-  if (!profileData) return <div className="p-10 text-center">Profile not found.</div>;
+  if (loading) return <div className="p-20 text-center text-gray-400 font-black animate-pulse uppercase tracking-[0.2em]">Synchronizing Record...</div>;
+  if (!profileData) return <div className="p-20 text-center text-red-500 font-bold">Profile not found.</div>;
 
   return <EditProfileForm initialData={profileData} onSave={handleSave} />;
 }

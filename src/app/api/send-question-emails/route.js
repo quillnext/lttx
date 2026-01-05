@@ -144,26 +144,27 @@ export async function POST(request) {
       userPhone,
       keywords = [],
       referredByAgencyName,
+      isHandedOver
     } = await request.json();
 
-    // Validate required fields
-    if (!userEmail || !userName || !expertEmail || !expertName || !question || !userPhone) {
+    const isPlaceholder = isHandedOver === false;
+
+    // Validate required fields (Allow missing expertEmail if placeholder)
+    if (!userEmail || !userName || (!isPlaceholder && !expertEmail) || !expertName || !question || !userPhone) {
       return NextResponse.json(
-        { error: "Missing required fields: userEmail, userName, expertEmail, expertName, question, or userPhone" },
+        { error: "Missing required fields: userEmail, userName, expertName, question, or userPhone" },
         { status: 400 }
       );
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userEmail) || !emailRegex.test(expertEmail)) {
+    if (!emailRegex.test(userEmail) || (!isPlaceholder && !emailRegex.test(expertEmail))) {
       return NextResponse.json(
-        { error: "Invalid email address for user or expert" },
+        { error: "Invalid email address format" },
         { status: 400 }
       );
     }
 
-    // Validate email configuration
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.ADMIN_EMAIL) {
       return NextResponse.json(
         { error: "Email configuration missing in environment variables" },
@@ -174,46 +175,10 @@ export async function POST(request) {
     const year = new Date().getFullYear();
     const dashboardLink = "https://xmytravel.com/expert-dashboard";
 
-    // Email to User
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: userEmail,
-      subject: "Your Question Has Been Submitted to XMyTravel",
-      html: emailTemplate({
-        userName,
-        expertName,
-        question,
-        userEmail,
-        userPhone,
-        year,
-        type: "user",
-        dashboardLink,
-        keywords,
-        referredByAgencyName,
-      }),
-    });
+    const emailPromises = [];
 
-    // Email to Expert
-    await transporter.sendMail({
-      from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
-      to: expertEmail,
-      subject: "New Question from a Traveler on XMyTravel",
-      html: emailTemplate({
-        userName,
-        expertName,
-        question,
-        userEmail,
-        userPhone,
-        year,
-        type: "expert",
-        dashboardLink,
-        keywords,
-        referredByAgencyName,
-      }),
-    });
-
-    // Email to Admin
-    await transporter.sendMail({
+    // Always send to Admin
+    emailPromises.push(transporter.sendMail({
       from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
       to: process.env.ADMIN_EMAIL,
       subject: "New User Inquiry Submitted on XMyTravel",
@@ -229,7 +194,50 @@ export async function POST(request) {
         keywords,
         referredByAgencyName,
       }),
-    });
+    }));
+
+    // Only send to User and Expert if isHandedOver is not false
+    if (!isPlaceholder) {
+      // Email to User
+      emailPromises.push(transporter.sendMail({
+        from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+        to: userEmail,
+        subject: "Your Question Has Been Submitted to XMyTravel",
+        html: emailTemplate({
+          userName,
+          expertName,
+          question,
+          userEmail,
+          userPhone,
+          year,
+          type: "user",
+          dashboardLink,
+          keywords,
+          referredByAgencyName,
+        }),
+      }));
+
+      // Email to Expert
+      emailPromises.push(transporter.sendMail({
+        from: `"XMyTravel Team" <${process.env.EMAIL_USER}>`,
+        to: expertEmail,
+        subject: "New Question from a Traveler on XMyTravel",
+        html: emailTemplate({
+          userName,
+          expertName,
+          question,
+          userEmail,
+          userPhone,
+          year,
+          type: "expert",
+          dashboardLink,
+          keywords,
+          referredByAgencyName,
+        }),
+      }));
+    }
+
+    await Promise.all(emailPromises);
 
     return NextResponse.json({ success: true, message: "Emails sent successfully" }, { status: 200 });
   } catch (error) {
