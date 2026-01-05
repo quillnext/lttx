@@ -107,7 +107,7 @@ export default function AdminLogin() {
           </button>
         </form>
 
-        {currentUserUid && !isLoading && (
+        {/* {currentUserUid && !isLoading && (
           <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
             <p className="text-[10px] font-bold text-blue-800 uppercase mb-2">Development Helper</p>
             <p className="text-[11px] text-blue-700 mb-3">If you are logged in but can't access the dashboard, you need to grant yourself admin claims.</p>
@@ -122,7 +122,7 @@ export default function AdminLogin() {
               Grant Admin Role to this Account
             </a>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
