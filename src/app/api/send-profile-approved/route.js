@@ -1,8 +1,17 @@
-
-
 import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { sendApprovalNotificationEmail } from "@/app/utils/sendApprovalNotificationEmail";
 import { NextResponse } from "next/server";
+import admin from "firebase-admin";
+
+const defaultSchedule = {
+  Mon: ["09:00", "13:30", "14:00"],
+  Tue: ["09:00", "13:30", "14:00"],
+  Wed: ["09:00", "13:30", "14:00"],
+  Thu: ["09:00", "13:30", "14:00"],
+  Fri: ["09:00", "13:30", "14:00"],
+  Sat: ["09:00", "13:30", "14:00"],
+  Sun: ["14:00", "17:30"],
+};
 
 // Generate a secure random password
 function generatePassword(length = 12) {
@@ -163,13 +172,22 @@ export async function POST(req) {
     console.log("Saving final profile data to Profiles collection:", finalProfileData);
     const newProfileRef = adminDb.collection("Profiles").doc(userRecord.uid);
     await newProfileRef.set(finalProfileData);
-    console.log(`Successfully created profile in 'Profiles' with ID: ${userRecord.uid}`);
 
-    // 5. Delete the request from `ProfileRequests`
+    // 5. Initialize default recurring availability
+    const recurringRef = adminDb.collection("ExpertRecurringAvailability").doc(userRecord.uid);
+    await recurringRef.set({
+      schedule: defaultSchedule,
+      expertId: userRecord.uid,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log(`Successfully created profile and schedule for ID: ${userRecord.uid}`);
+
+    // 6. Delete the request from `ProfileRequests`
     await requestProfileRef.delete();
     console.log(`Successfully deleted profile request with ID: ${profileId}`);
 
-    // 6. Validate email parameters and send notification
+    // 7. Validate email parameters and send notification
     if (!username || !generatedReferralCode) {
       console.warn(
         `Missing username or generatedReferralCode for email: ${email}`,

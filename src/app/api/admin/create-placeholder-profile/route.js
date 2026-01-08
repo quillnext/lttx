@@ -2,6 +2,16 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
 import admin from "firebase-admin";
 
+const defaultSchedule = {
+  Mon: ["09:00", "13:30", "14:00"],
+  Tue: ["09:00", "13:30", "14:00"],
+  Wed: ["09:00", "13:30", "14:00"],
+  Thu: ["09:00", "13:30", "14:00"],
+  Fri: ["09:00", "13:30", "14:00"],
+  Sat: ["09:00", "13:30", "14:00"],
+  Sun: ["14:00", "17:30"],
+};
+
 export async function POST(request) {
   try {
     const data = await request.json();
@@ -23,7 +33,16 @@ export async function POST(request) {
         generatedReferralCode: `REFX${Date.now().toString().slice(-4)}${Math.random().toString(36).substring(2, 4).toUpperCase()}`
     };
 
+    // 1. Create the profile record
     await profileRef.set(finalData);
+
+    // 2. Initialize default recurring availability
+    const recurringRef = adminDb.collection("ExpertRecurringAvailability").doc(id);
+    await recurringRef.set({
+      schedule: defaultSchedule,
+      expertId: id,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
 
     return NextResponse.json({ success: true, id });
   } catch (error) {
