@@ -13,6 +13,10 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import JoinOrQueryForm from '../components/JoinOrQueryForm';
 import { X } from 'lucide-react';
+import { getFirestore, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+
+const db = getFirestore(app);
 
 const CACHE_KEY_PREFIX = 'travel-section-cache';
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -51,7 +55,7 @@ const calculateTotalExperience = (experience) => {
 };
 
 // Enhanced loadSectionData with caching, debounce, error handling
-const useLoadSectionData = (query) => {
+const useLoadSectionData = (query, searchId) => {
     return useCallback(async (type) => {
         const cacheKey = `${CACHE_KEY_PREFIX}:${query}:${type}`;
         const cached = localStorage.getItem(cacheKey);
@@ -70,7 +74,7 @@ const useLoadSectionData = (query) => {
             const response = await fetch('/api/ai-search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query, action: 'section', sectionType: type }),
+                body: JSON.stringify({ query, action: 'section', sectionType: type, searchId }),
             });
             if (!response.ok) {
                 if (response.status === 429) throw new Error('Rate limited—retry in 1 min');
@@ -83,7 +87,7 @@ const useLoadSectionData = (query) => {
             console.error(`Error loading ${type}:`, error);
             return null;
         }
-    }, [query]);
+    }, [query, searchId]);
 };
 
 // Dispute Stat Component
@@ -365,10 +369,26 @@ const UnlockModal = ({ isOpen, onClose, onSuccess }) => {
     );
 };
 
-const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) => {
-    const loadSectionData = useLoadSectionData(query);
+const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookClick, openLightbox }) => {
+    const loadSectionData = useLoadSectionData(currentQuery, searchId);
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [showUnlockModal, setShowUnlockModal] = useState(false);
+    const [recentSearches, setRecentSearches] = useState([]);
+
+    useEffect(() => {
+        const fetchRecentSearches = async () => {
+            try {
+                const q = query(collection(db, "RecentSearches"), orderBy("timestamp", "desc"), limit(5));
+                const snapshot = await getDocs(q);
+                const searches = snapshot.docs.map(doc => doc.data().query).filter(q => q && q !== currentQuery);
+                // Deduplicate
+                setRecentSearches([...new Set(searches)].slice(0, 5));
+            } catch (error) {
+                console.error("Error fetching recent searches:", error);
+            }
+        };
+        fetchRecentSearches();
+    }, [currentQuery]);
 
     useEffect(() => {
         const unlocked = localStorage.getItem('lttx_search_unlocked');
@@ -431,6 +451,25 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
                     </div>
                 </div>
             </div>
+
+            {/* Recent Searches - New Section */}
+            {recentSearches.length > 0 && (
+                <div className="mb-6 -mt-4 px-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Others also asked</p>
+                    <div className="flex flex-wrap gap-2">
+                        {recentSearches.map((sq, idx) => (
+                            <Link
+                                key={idx}
+                                href={`/ask-an-expert?search=${encodeURIComponent(sq)}`}
+                                className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs text-gray-600 hover:bg-[#36013F] hover:text-white transition-colors shadow-sm"
+                                title={sq}
+                            >
+                                {sq}
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* 2. Smart Expert Matches (Hero Grid) */}
             <div id="expert-grid" className="bg-primary p-5 md:p-10 rounded-2xl md:rounded-3xl text-white">
@@ -513,31 +552,33 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
                         </motion.div>
                     ))}
                 </div>
-            </div>
+            </div >
 
             {/* 3. Lazy Load Grid - Dynamic Keys based on context */}
-            {relevantPointerIds.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-                    {relevantPointerIds.map((pointerId) => {
-                        const config = POINTER_CONFIG[pointerId];
-                        if (!config) return null; // Skip unknown pointers
-                        return (
-                            <LazySection
-                                key={pointerId}
-                                title={config.title}
-                                description={config.desc}
-                                icon={config.icon}
-                                type={pointerId}
-                                loadSectionData={loadSectionData}
-                                query={query}
-                                colorClass={config.color}
-                                isUnlocked={isUnlocked}
-                                onUnlockRequest={() => setShowUnlockModal(true)}
-                            />
-                        );
-                    })}
-                </div>
-            )}
+            {
+                relevantPointerIds.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                        {relevantPointerIds.map((pointerId) => {
+                            const config = POINTER_CONFIG[pointerId];
+                            if (!config) return null; // Skip unknown pointers
+                            return (
+                                <LazySection
+                                    key={pointerId}
+                                    title={config.title}
+                                    description={config.desc}
+                                    icon={config.icon}
+                                    type={pointerId}
+                                    loadSectionData={loadSectionData}
+                                    query={query}
+                                    colorClass={config.color}
+                                    isUnlocked={isUnlocked}
+                                    onUnlockRequest={() => setShowUnlockModal(true)}
+                                />
+                            );
+                        })}
+                    </div>
+                )
+            }
 
             {/* 4. Bottom Conversion Strip (Mobile) */}
             <div className=" w-full bg-[#36013F] rounded-2xl text-white p-5 z-40 shadow-2xl border-t border-white/10 md:hidden">
@@ -573,7 +614,7 @@ const SearchLayout = ({ experts, context, query, onBookClick, openLightbox }) =>
                 onSuccess={handleUnlockSuccess}
             />
 
-        </div>
+        </div >
     );
 };
 

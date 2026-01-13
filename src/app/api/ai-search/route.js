@@ -27,7 +27,7 @@ function calculateYearsOfExperience(experience) {
   experience.forEach((exp) => {
     if (exp.startDate) {
       const startDate = new Date(exp.startDate);
-      if (!isNaN(startDate.getTime())) { 
+      if (!isNaN(startDate.getTime())) {
         if (startDate.getTime() < earliestStart.getTime()) {
           earliestStart = startDate;
           hasValidDate = true;
@@ -38,7 +38,7 @@ function calculateYearsOfExperience(experience) {
 
   if (!hasValidDate) return 0;
   const diffTime = Math.abs(today.getTime() - earliestStart.getTime());
-  const diffYears = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 365)); 
+  const diffYears = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 365));
   return diffYears;
 }
 
@@ -60,7 +60,7 @@ async function generateWithRetry(ai, params, retries = 1) {
       const isRetryable = error.status === 503 || error.status === 429 || error.message?.includes('overloaded');
       if (isRetryable && i < retries) {
         console.warn(`AI Busy. Retrying immediately... Attempt ${i + 1}`);
-        continue; 
+        continue;
       }
       throw error;
     }
@@ -69,11 +69,7 @@ async function generateWithRetry(ai, params, retries = 1) {
 
 export async function POST(request) {
   try {
-    const { query, action = 'initial', sectionType } = await request.json();
-
-    if (!query) {
-      return NextResponse.json({ error: "Query is required" }, { status: 400 });
-    }
+    const { query, action = 'initial', sectionType, searchId } = await request.json();
 
     if (!process.env.API_KEY) {
       return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
@@ -89,8 +85,8 @@ export async function POST(request) {
       // 1. Fetch Full Data for Client Response
       const fullProfiles = snapshot.docs.map((doc) => {
         const data = doc.data();
-        const yearsExp = data.profileType === 'agency' 
-          ? (parseInt(data.yearsActive) || 0) 
+        const yearsExp = data.profileType === 'agency'
+          ? (parseInt(data.yearsActive) || 0)
           : calculateYearsOfExperience(data.experience);
 
         return {
@@ -116,10 +112,10 @@ export async function POST(request) {
       // 2. TOKEN OPTIMIZATION: Send minimal data to AI
       const simplifiedProfiles = fullProfiles.map(p => ({
         id: p.id,
-        loc: p.location, 
+        loc: p.location,
         tags: p.expertise,
         svc: p.services,
-        tag: p.tagline?.substring(0, 50) 
+        tag: p.tagline?.substring(0, 50)
       }));
 
       const prompt = `
@@ -143,7 +139,7 @@ export async function POST(request) {
             properties: {
               matches: {
                 type: Type.ARRAY,
-                items: { 
+                items: {
                   type: Type.OBJECT,
                   properties: {
                     id: { type: Type.STRING },
@@ -179,7 +175,44 @@ export async function POST(request) {
         }
       });
 
-      return NextResponse.json(JSON.parse(response.text));
+      const aiResponse = JSON.parse(response.text);
+
+      // Merge AI matches with full profile data and sort
+      const sortedAiExperts = aiResponse.matches
+        .map(match => {
+          const fullProfile = fullProfiles.find(p => p.id === match.id);
+          return fullProfile ? { ...fullProfile, matchScore: match.score, aiMatchReason: match.reason } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      let searchId = null;
+
+      // Async: Save to RecentSearches (Await to return ID)
+      if (aiResponse.context) {
+        try {
+          // Simplify experts for storage
+          const expertsToStore = sortedAiExperts.slice(0, 5).map(e => ({
+            id: e.id,
+            fullName: e.fullName,
+            photo: e.photo || null,
+            matchScore: e.matchScore,
+            aiMatchReason: e.aiMatchReason || null
+          }));
+
+          const docRef = await db.collection("RecentSearches").add({
+            query: query,
+            context: aiResponse.context,
+            experts: expertsToStore,
+            timestamp: new Date().toISOString()
+          });
+          searchId = docRef.id;
+        } catch (err) {
+          console.error("Failed to save recent search:", err);
+        }
+      }
+
+      return NextResponse.json({ ...aiResponse, searchId });
     }
 
     // --- ACTION: SECTION GENERATION ---
@@ -191,8 +224,8 @@ export async function POST(request) {
       const disputeSchema = {
         type: Type.OBJECT,
         properties: {
-            percentage: { type: Type.INTEGER },
-            text: { type: Type.STRING }
+          percentage: { type: Type.INTEGER },
+          text: { type: Type.STRING }
         },
         required: ["percentage", "text"]
       };
@@ -262,13 +295,13 @@ export async function POST(request) {
           sectionPrompt = `Query: "${query}". Best Time + Temp + Packing. ${getDisputeInst('unpredictable weather')}`;
           schemaProperties = {
             weatherInfo: {
-                type: Type.OBJECT,
-                properties: {
-                    season: { type: Type.STRING },
-                    temperature: { type: Type.STRING },
-                    advice: { type: Type.ARRAY, items: { type: Type.STRING } }
-                },
-                required: ["season", "temperature", "advice"]
+              type: Type.OBJECT,
+              properties: {
+                season: { type: Type.STRING },
+                temperature: { type: Type.STRING },
+                advice: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["season", "temperature", "advice"]
             },
             dispute: disputeSchema
           };
@@ -279,13 +312,13 @@ export async function POST(request) {
           sectionPrompt = `Query: "${query}". Currency, Daily Spend, 3 cost tips. ${getDisputeInst('pricing scams')}`;
           schemaProperties = {
             budgetInfo: {
-                type: Type.OBJECT,
-                properties: {
-                    currency: { type: Type.STRING },
-                    dailyEstimate: { type: Type.STRING },
-                    tips: { type: Type.ARRAY, items: { type: Type.STRING } }
-                },
-                required: ["currency", "dailyEstimate", "tips"]
+              type: Type.OBJECT,
+              properties: {
+                currency: { type: Type.STRING },
+                dailyEstimate: { type: Type.STRING },
+                tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+              },
+              required: ["currency", "dailyEstimate", "tips"]
             },
             dispute: disputeSchema
           };
@@ -296,12 +329,12 @@ export async function POST(request) {
           sectionPrompt = `Query: "${query}". Best Route, Local Travel. ${getDisputeInst('transport issues')}`;
           schemaProperties = {
             transportInfo: {
-                type: Type.OBJECT,
-                properties: {
-                    bestRoute: { type: Type.STRING },
-                    localTravel: { type: Type.STRING }
-                },
-                required: ["bestRoute", "localTravel"]
+              type: Type.OBJECT,
+              properties: {
+                bestRoute: { type: Type.STRING },
+                localTravel: { type: Type.STRING }
+              },
+              required: ["bestRoute", "localTravel"]
             },
             dispute: disputeSchema
           };
@@ -352,7 +385,22 @@ export async function POST(request) {
         }
       });
 
-      return NextResponse.json(JSON.parse(response.text));
+      const sectionData = JSON.parse(response.text);
+
+      // Async: Update RecentSearches with new section data
+      if (searchId) {
+        try {
+          // Use dot notation to update specific map field
+          await db.collection("RecentSearches").doc(searchId).update({
+            [`sections.${sectionType}`]: sectionData
+          });
+        } catch (err) {
+          console.error("Failed to update section storage:", err);
+          // Fail silently for the user so UX isn't affected
+        }
+      }
+
+      return NextResponse.json(sectionData);
     }
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -360,9 +408,9 @@ export async function POST(request) {
   } catch (error) {
     console.error("AI Search Error:", error);
     const isOverloaded = error.status === 503 || error.message?.includes('overloaded');
-    return NextResponse.json({ 
-      error: isOverloaded ? "Service Busy" : "Search Failed", 
-      details: isOverloaded ? "Server busy, please retry." : error.message 
+    return NextResponse.json({
+      error: isOverloaded ? "Service Busy" : "Search Failed",
+      details: isOverloaded ? "Server busy, please retry." : error.message
     }, { status: isOverloaded ? 503 : 500 });
   }
 }
