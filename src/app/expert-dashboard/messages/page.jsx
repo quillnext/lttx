@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { ChevronDown, ChevronUp, CircleCheckBig, Loader } from "lucide-react";
+import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -20,6 +21,8 @@ export default function Messages() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState({});
+  const [sessionData, setSessionData] = useState({});
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -70,6 +73,32 @@ export default function Messages() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  const loadSessionData = async (sessionId) => {
+    if (!sessionId || sessionData[sessionId]) return;
+    try {
+      const docSnap = await getDocs(query(collection(db, "RecentSearches"), where(documentId(), "==", sessionId)));
+      if (!docSnap.empty) {
+        setSessionData(prev => ({ ...prev, [sessionId]: docSnap.docs[0].data() }));
+      }
+    } catch (error) {
+      console.error("Error fetching session:", error);
+    }
+  };
+
+  const openSessionModal = (question) => {
+    if (!question.sessionId) return;
+
+    // Prefer snapshot if available (handles permission issues)
+    if (question.sessionSnapshot) {
+      setSessionData(prev => ({ ...prev, [question.sessionId]: question.sessionSnapshot }));
+      setSelectedSessionId(question.sessionId);
+    } else {
+      // Fallback for old data or if snapshot missing
+      loadSessionData(question.sessionId);
+      setSelectedSessionId(question.sessionId);
+    }
+  };
 
   const handleReply = async (question) => {
     const finalReply = replyText.trim();
@@ -198,6 +227,12 @@ export default function Messages() {
 
   return (
     <div className="p-4 text-gray-800">
+      <SessionDetailsModal
+        isOpen={!!selectedSessionId}
+        onClose={() => setSelectedSessionId(null)}
+        sessionData={sessionData[selectedSessionId] ? { id: selectedSessionId, ...sessionData[selectedSessionId] } : null}
+      />
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">💬 Messages</h1>
         <input
@@ -309,7 +344,7 @@ export default function Messages() {
                     <tr key={`${q.id}-details`}>
                       <td colSpan="6" className="p-3 border bg-gray-50">
                         <div className="flex flex-col md:flex-row gap-4 text-gray-700">
-                          <div className="w-[30%] border-r">
+                          <div className="w-[30%] border-r pr-4">
                             <p>
                               <strong>Question:</strong> {q.question || "N/A"}
                             </p>
@@ -319,6 +354,20 @@ export default function Messages() {
                                 <p className="text-sm mt-1">{q.suggestedAnswer}</p>
                               </div>
                             )}
+
+                            {/* Session Info Injection */}
+                            {q.sessionId && (
+                              <div className="mt-3">
+                                <button
+                                  onClick={() => openSessionModal(q)}
+                                  className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-[#36013F] px-4 py-2 rounded-lg text-xs font-bold transition-colors border border-purple-200"
+                                >
+                                  <Loader size={12} />
+                                  See Search Context & Insights
+                                </button>
+                              </div>
+                            )}
+
                           </div>
                           <div className="w-[70%]">
                             <p>
@@ -342,11 +391,10 @@ export default function Messages() {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
-              className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
-                page === currentPage
-                  ? "bg-[#36013F] text-white border-[#36013F]"
-                  : "text-gray-700 border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-              }`}
+              className={`px-3 py-1 rounded-md text-sm font-medium border transition ${page === currentPage
+                ? "bg-[#36013F] text-white border-[#36013F]"
+                : "text-gray-700 border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#36013F]"
+                }`}
               onClick={() => setCurrentPage(page)}
             >
               {page}
@@ -409,9 +457,8 @@ export default function Messages() {
                 <textarea
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
-                  className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${
-                    replyError ? "border-red-500" : "border-white/20"
-                  }`}
+                  className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${replyError ? "border-red-500" : "border-white/20"
+                    }`}
                   rows="5"
                   placeholder="Type your custom reply here..."
                   required
@@ -421,13 +468,12 @@ export default function Messages() {
               <button
                 type="submit"
                 disabled={replyLoading || !replyText.trim()}
-                className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${
-                  replyLoading ? "opacity-70 cursor-not-allowed" : ""
-                }`}
+                className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${replyLoading ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
               >
                 {replyLoading ? "Sending..." : "Send Custom Reply"}
               </button>
-             
+
             </form>
           </div>
         </div>

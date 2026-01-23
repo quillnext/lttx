@@ -407,6 +407,7 @@ export default function ExpertsDirectory() {
           expert={modalExpert}
           onClose={() => setModalExpert(null)}
           initialQuestion={searchQuery}
+          sessionId={searchId}
         />
       )}
       {isLightboxOpen && (

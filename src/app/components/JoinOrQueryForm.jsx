@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getFirestore, collection, addDoc, Timestamp, getDocs } from "firebase/firestore";
+import { getFirestore, collection, addDoc, Timestamp, getDocs, getDoc, doc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -10,7 +10,7 @@ import { FaCheckCircle, FaSpinner, FaPaperPlane, FaLock } from 'react-icons/fa';
 
 const db = getFirestore(app);
 
-export default function JoinLTTXForm({ onSuccess, isModal = false }) {
+export default function JoinLTTXForm({ onSuccess, isModal = false, sessionId }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -127,11 +127,25 @@ export default function JoinLTTXForm({ onSuccess, isModal = false }) {
     setLoading(true);
 
     try {
+      let sessionSnapshot = null;
+      if (sessionId) {
+        try {
+          const sessionDoc = await getDoc(doc(db, "RecentSearches", sessionId));
+          if (sessionDoc.exists()) {
+            sessionSnapshot = sessionDoc.data();
+          }
+        } catch (err) {
+          console.warn("Failed to fetch session snapshot:", err);
+        }
+      }
+
       // Save form data to Firestore
       await addDoc(collection(db, "JoinQueries"), {
         ...formData,
         timestamp: Timestamp.now(),
-        verified: true
+        verified: true,
+        sessionId: sessionId || null,
+        sessionSnapshot: sessionSnapshot || null // Snapshot of the search context
       });
 
       // Send form data to API
