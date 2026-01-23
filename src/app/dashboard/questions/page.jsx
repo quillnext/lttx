@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc, query, where, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { ChevronDown, ChevronUp, CircleCheckBig, Loader } from "lucide-react";
+import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 
 const db = getFirestore(app);
 
@@ -15,6 +16,8 @@ export default function AdminQuestions() {
   const [itemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState({});
   const [toggling, setToggling] = useState({});
+  const [sessionData, setSessionData] = useState({});
+  const [selectedSessionId, setSelectedSessionId] = useState(null);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -52,6 +55,29 @@ export default function AdminQuestions() {
 
     fetchQuestions();
   }, []);
+
+  const loadSessionData = async (sessionId) => {
+    if (!sessionId || sessionData[sessionId]) return;
+    try {
+      const docSnap = await getDocs(query(collection(db, "RecentSearches"), where(documentId(), "==", sessionId)));
+      if (!docSnap.empty) {
+        setSessionData(prev => ({ ...prev, [sessionId]: docSnap.docs[0].data() }));
+      }
+    } catch (error) {
+      console.error("Error fetching session:", error);
+    }
+  };
+
+  const openSessionModal = (question) => {
+    if (!question.sessionId) return;
+    if (question.sessionSnapshot) {
+      setSessionData(prev => ({ ...prev, [question.sessionId]: question.sessionSnapshot }));
+      setSelectedSessionId(question.sessionId);
+    } else {
+      loadSessionData(question.sessionId);
+      setSelectedSessionId(question.sessionId);
+    }
+  };
 
   const handleDelete = async (id) => {
     const confirm = window.confirm("Are you sure you want to delete this question?");
@@ -107,6 +133,12 @@ export default function AdminQuestions() {
 
   return (
     <div className="p-4 text-gray-800">
+      <SessionDetailsModal
+        isOpen={!!selectedSessionId}
+        onClose={() => setSelectedSessionId(null)}
+        sessionData={sessionData[selectedSessionId] ? { id: selectedSessionId, ...sessionData[selectedSessionId] } : null}
+      />
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold">❓ Questions Dashboard</h1>
         <input
@@ -193,14 +225,12 @@ export default function AdminQuestions() {
                             aria-label={`Toggle public status for question ${q.id}`}
                           />
                           <div
-                            className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${
-                              q.isPublic ? "bg-[#36013F]" : "bg-gray-200"
-                            } ${toggling[q.id] ? "opacity-50" : ""}`}
+                            className={`w-11 h-6 rounded-full transition-colors duration-200 ease-in-out ${q.isPublic ? "bg-[#36013F]" : "bg-gray-200"
+                              } ${toggling[q.id] ? "opacity-50" : ""}`}
                           >
                             <div
-                              className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${
-                                q.isPublic ? "translate-x-5" : "translate-x-0"
-                              }`}
+                              className={`w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out ${q.isPublic ? "translate-x-5" : "translate-x-0"
+                                }`}
                             ></div>
                           </div>
                           <span className="ml-2 text-xs font-medium">
@@ -237,10 +267,23 @@ export default function AdminQuestions() {
                       <tr key={`${q.id}-details`}>
                         <td colSpan="9" className="p-3 border bg-gray-50">
                           <div className="flex flex-col md:flex-row gap-4 text-gray-700">
-                            <div className="w-[30%] border-r">
+                            <div className="w-[30%] border-r pr-4">
                               <p>
                                 <strong>Question:</strong> {q.question || "N/A"}
                               </p>
+
+                              {/* Session Info Injection */}
+                              {q.sessionId && (
+                                <div className="mt-3">
+                                  <button
+                                    onClick={() => openSessionModal(q)}
+                                    className="flex items-center gap-2 bg-purple-50 hover:bg-purple-100 text-[#36013F] px-4 py-2 rounded-lg text-xs font-bold transition-colors border border-purple-200"
+                                  >
+                                    <Loader size={12} />
+                                    See Search Context & Insights
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <div className="w-[70%]">
                               <p>
@@ -270,11 +313,10 @@ export default function AdminQuestions() {
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
             <button
               key={page}
-              className={`px-3 py-1 rounded-md text-sm font-medium border transition ${
-                page === currentPage
-                  ? "bg-[#36013F] text-white border-[#36013F]"
-                  : "text-gray-700 border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-              }`}
+              className={`px-3 py-1 rounded-md text-sm font-medium border transition ${page === currentPage
+                ? "bg-[#36013F] text-white border-[#36013F]"
+                : "text-gray-700 border-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-[#36013F]"
+                }`}
               onClick={() => setCurrentPage(page)}
             >
               {page}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, getFirestore } from "firebase/firestore";
+import { collection, addDoc, getFirestore, getDoc, doc } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const db = getFirestore(app);
 const auth = getAuth(app);
 
-export default function AskQuestionModal({ expert, onClose }) {
+export default function AskQuestionModal({ expert, onClose, sessionId }) {
   const searchParams = useSearchParams();
   const urlKeywordsParam = searchParams.get("keywords") || "";
   const urlKeywords = urlKeywordsParam === "all" ? [] : urlKeywordsParam.split(",").filter(k => k.trim());
@@ -154,6 +154,19 @@ export default function AskQuestionModal({ expert, onClose }) {
 
     setLoading(true);
     try {
+      // Snapshot the session data so experts can view it without accessing private Search history
+      let sessionSnapshot = null;
+      if (sessionId) {
+        try {
+          const sessionDoc = await getDoc(doc(db, "RecentSearches", sessionId));
+          if (sessionDoc.exists()) {
+            sessionSnapshot = sessionDoc.data();
+          }
+        } catch (err) {
+          console.warn("Failed to fetch session snapshot:", err);
+        }
+      }
+
       await addDoc(collection(db, "Questions"), {
         expertId: expert.id,
         expertName: expert.fullName || "Unknown Expert",
@@ -165,6 +178,8 @@ export default function AskQuestionModal({ expert, onClose }) {
         status: "pending",
         isPublic: false,
         createdAt: new Date().toISOString(),
+        sessionId: sessionId || null,
+        sessionSnapshot: sessionSnapshot || null, // Snapshot of the search context
         reply: null,
       });
 

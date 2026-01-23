@@ -329,7 +329,7 @@ const LazySection = ({ title, description, icon, type, loadSectionData, query, c
     );
 };
 
-const UnlockModal = ({ isOpen, onClose, onSuccess }) => {
+const UnlockModal = ({ isOpen, onClose, onSuccess, sessionId }) => {
     return (
         <AnimatePresence>
             {isOpen && (
@@ -360,7 +360,7 @@ const UnlockModal = ({ isOpen, onClose, onSuccess }) => {
                             </div>
                         </div>
                         <div className="pb-8 px-2 md:px-6">
-                            <JoinOrQueryForm isModal={true} onSuccess={onSuccess} />
+                            <JoinOrQueryForm isModal={true} onSuccess={onSuccess} sessionId={sessionId} />
                         </div>
                     </motion.div>
                 </div>
@@ -612,6 +612,7 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
                 isOpen={showUnlockModal}
                 onClose={() => setShowUnlockModal(false)}
                 onSuccess={handleUnlockSuccess}
+                sessionId={searchId}
             />
 
         </div >
