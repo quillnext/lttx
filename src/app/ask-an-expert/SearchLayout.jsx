@@ -558,9 +558,13 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
             {
                 relevantPointerIds.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-                        {relevantPointerIds.map((pointerId) => {
+                        {relevantPointerIds.map((pointerId, index) => {
                             const config = POINTER_CONFIG[pointerId];
                             if (!config) return null; // Skip unknown pointers
+
+                            // First block is always unlocked (teaser), others require form
+                            const isSectionUnlocked = isUnlocked || index === 0;
+
                             return (
                                 <LazySection
                                     key={pointerId}
@@ -571,7 +575,7 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
                                     loadSectionData={loadSectionData}
                                     query={query}
                                     colorClass={config.color}
-                                    isUnlocked={isUnlocked}
+                                    isUnlocked={isSectionUnlocked}
                                     onUnlockRequest={() => setShowUnlockModal(true)}
                                 />
                             );
