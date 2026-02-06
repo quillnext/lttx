@@ -360,7 +360,7 @@ const UnlockModal = ({ isOpen, onClose, onSuccess, sessionId }) => {
                             </div>
                         </div>
                         <div className="pb-8 px-2 md:px-6">
-                            <JoinOrQueryForm isModal={true} onSuccess={onSuccess} sessionId={sessionId} />
+                            <JoinOrQueryForm isModal={true} onSuccess={onSuccess} sessionId={sessionId} includeMessageField={false} />
                         </div>
                     </motion.div>
                 </div>
