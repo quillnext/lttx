@@ -10,7 +10,7 @@ import { FaCheckCircle, FaSpinner, FaPaperPlane, FaLock } from 'react-icons/fa';
 
 const db = getFirestore(app);
 
-export default function JoinLTTXForm({ onSuccess, isModal = false, sessionId }) {
+export default function JoinLTTXForm({ onSuccess, isModal = false, sessionId, includeMessageField = true }) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -322,16 +322,19 @@ export default function JoinLTTXForm({ onSuccess, isModal = false, sessionId }) 
         )}
 
 
-        <textarea
-          name="message"
-          required
-          placeholder="Tell us more about your query..."
-          value={formData.message}
-          onChange={handleChange}
-          rows={4}
-          disabled={loading}
-          className="w-full px-4 py-3 rounded-xl border bg-white col-span-2"
-        />
+
+        {includeMessageField && (
+          <textarea
+            name="message"
+            required
+            placeholder="Tell us more about your query..."
+            value={formData.message}
+            onChange={handleChange}
+            rows={4}
+            disabled={loading}
+            className="w-full px-4 py-3 rounded-xl border bg-white col-span-2"
+          />
+        )}
 
         <div className="col-span-2 flex justify-center mt-4">
           {!isVerified ? (
