@@ -83,32 +83,32 @@ export async function POST(request) {
       const snapshot = await profilesRef.where("isPublic", "==", true).get();
 
       // Normalize query
-const normalizedQuery = query.trim().toLowerCase();
+      const normalizedQuery = query.trim().toLowerCase();
 
-// Check cache first
-const existingSearch = await db
-  .collection("RecentSearches")
-  .where("query", "==", normalizedQuery)
-  .limit(1)
-  .get();
+      // Check cache first
+      const existingSearch = await db
+        .collection("RecentSearches")
+        .where("query", "==", normalizedQuery)
+        .limit(1)
+        .get();
 
-if (!existingSearch.empty) {
-  const doc = existingSearch.docs[0];
-  const data = doc.data();
+      if (!existingSearch.empty) {
+        const doc = existingSearch.docs[0];
+        const data = doc.data();
 
-  // Optional TTL (24 hours)
-  const isExpired =
-    new Date() - new Date(data.timestamp) > 24 * 60 * 60 * 1000;
+        // Optional TTL (24 hours)
+        const isExpired =
+          new Date() - new Date(data.timestamp) > 24 * 60 * 60 * 1000;
 
-  if (!isExpired) {
-    return NextResponse.json({
-      matches: data.matches || [],
-      context: data.context || null,
-      searchId: doc.id,
-      cached: true
-    });
-  }
-}
+        if (!isExpired) {
+          return NextResponse.json({
+            matches: data.matches || [],
+            context: data.context || null,
+            searchId: doc.id,
+            cached: true
+          });
+        }
+      }
 
       // 1. Fetch Full Data for Client Response
       const fullProfiles = snapshot.docs.map((doc) => {
@@ -229,12 +229,12 @@ if (!existingSearch.empty) {
           }));
 
           const docRef = await db.collection("RecentSearches").add({
-           query: normalizedQuery,
-matches: sortedAiExperts.map(e => ({
-  id: e.id,
-  score: e.matchScore,
-  reason: e.aiMatchReason
-})),
+            query: normalizedQuery,
+            matches: sortedAiExperts.map(e => ({
+              id: e.id,
+              score: e.matchScore,
+              reason: e.aiMatchReason
+            })),
             context: aiResponse.context,
             experts: expertsToStore,
             timestamp: new Date().toISOString()
@@ -250,6 +250,23 @@ matches: sortedAiExperts.map(e => ({
 
     // --- ACTION: SECTION GENERATION ---
     if (action === 'section') {
+      // 1. Check if section is already cached in Firestore
+      if (searchId) {
+        try {
+          const searchDoc = await db.collection("RecentSearches").doc(searchId).get();
+          if (searchDoc.exists) {
+            const sections = searchDoc.data()?.sections;
+            if (sections && sections[sectionType]) {
+              console.log(`Cache Hit for section: ${sectionType} (searchId: ${searchId})`);
+              return NextResponse.json(sections[sectionType]);
+            }
+          }
+        } catch (err) {
+          console.error("Failed to check section cache:", err);
+          // Continue to generation if cache check fails
+        }
+      }
+
       let sectionPrompt = "";
       let schemaProperties = {};
       let requiredFields = [];
