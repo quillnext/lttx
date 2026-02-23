@@ -1,17 +1,27 @@
-// src/app/sitemap.xml/route.js
-
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
 import { app } from "@/lib/firebase";
+import slugify from "slugify";
 
 const db = getFirestore(app);
 const baseUrl = "https://www.xmytravel.com";
+
+// Helper function keys for slug generation (ensure consistency with AAQ page)
+const toSlug = (text) => {
+  return slugify(text, {
+    lower: true,
+    strict: true,
+    remove: /[*+~.()'"!:@]/g,
+    trim: true,
+    replacement: '-',
+  }).substring(0, 100);
+};
 
 function generateSiteMap(allRoutes) {
   return `<?xml version="1.0" encoding="UTF-8"?>
    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
      ${allRoutes
-       .map(({ url, lastModified, changeFrequency, priority }) => {
-         return `
+      .map(({ url, lastModified, changeFrequency, priority }) => {
+        return `
        <url>
            <loc>${url}</loc>
            <lastmod>${lastModified}</lastmod>
@@ -19,8 +29,8 @@ function generateSiteMap(allRoutes) {
            <priority>${priority}</priority>
        </url>
      `;
-       })
-       .join("")}
+      })
+      .join("")}
    </urlset>
  `;
 }
@@ -31,12 +41,10 @@ export async function GET() {
     const staticRoutes = [
       "/",
       "/about",
-      
       "/privacy-policy",
-      
       "/expert-login",
       "/expert-forgot-password",
-     
+      "/aaq", // Added main AAQ page
     ].map((route) => ({
       url: `${baseUrl}${route}`,
       lastModified: new Date().toISOString(),
@@ -63,7 +71,29 @@ export async function GET() {
       })
       .filter(Boolean); // Remove null entries
 
-    const allRoutes = [...staticRoutes, ...expertRoutes];
+    // 3. Get Dynamic Question Routes
+    const q = query(
+      collection(db, "Questions"),
+      where("isPublic", "==", true),
+      where("status", "==", "answered")
+    );
+    const questionsSnapshot = await getDocs(q);
+    const questionRoutes = questionsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      if (!data.question) return null;
+
+      const slug = toSlug(data.question);
+      const lastModified = data.updatedAt ? new Date(data.updatedAt) : (data.createdAt ? new Date(data.createdAt) : new Date());
+
+      return {
+        url: `${baseUrl}/aaq/${slug}`,
+        lastModified: lastModified.toISOString(),
+        changeFrequency: "weekly",
+        priority: 0.8,
+      };
+    }).filter(Boolean);
+
+    const allRoutes = [...staticRoutes, ...expertRoutes, ...questionRoutes];
     const sitemap = generateSiteMap(allRoutes);
 
     return new Response(sitemap, {
