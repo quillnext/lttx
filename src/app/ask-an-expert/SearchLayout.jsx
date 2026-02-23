@@ -77,18 +77,6 @@ const useLoadSectionData = (query, searchId) => {
                 body: JSON.stringify({ query, action: 'section', sectionType: type, searchId }),
             });
 
-            if (searchId) {
-  const searchDoc = await db.collection("RecentSearches").doc(searchId).get();
-
-  if (searchDoc.exists) {
-    const existingSection =
-      searchDoc.data()?.sections?.[sectionType];
-
-    if (existingSection) {
-      return NextResponse.json(existingSection);
-    }
-  }
-}
             if (!response.ok) {
                 if (response.status === 429) throw new Error('Rate limited—retry in 1 min');
                 throw new Error('Failed to load section');
