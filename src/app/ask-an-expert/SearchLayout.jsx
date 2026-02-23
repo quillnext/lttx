@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import JoinOrQueryForm from '../components/JoinOrQueryForm';
 import { X } from 'lucide-react';
-import { getFirestore, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, query as firestoreQuery, orderBy, limit, getDocs } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 
 const db = getFirestore(app);
@@ -76,6 +76,19 @@ const useLoadSectionData = (query, searchId) => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query, action: 'section', sectionType: type, searchId }),
             });
+
+            if (searchId) {
+  const searchDoc = await db.collection("RecentSearches").doc(searchId).get();
+
+  if (searchDoc.exists) {
+    const existingSection =
+      searchDoc.data()?.sections?.[sectionType];
+
+    if (existingSection) {
+      return NextResponse.json(existingSection);
+    }
+  }
+}
             if (!response.ok) {
                 if (response.status === 429) throw new Error('Rate limited—retry in 1 min');
                 throw new Error('Failed to load section');
@@ -378,7 +391,7 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
     useEffect(() => {
         const fetchRecentSearches = async () => {
             try {
-                const q = query(collection(db, "RecentSearches"), orderBy("timestamp", "desc"), limit(5));
+                const q = firestoreQuery(collection(db, "RecentSearches"), orderBy("timestamp", "desc"), limit(5));
                 const snapshot = await getDocs(q);
                 const searches = snapshot.docs.map(doc => doc.data().query).filter(q => q && q !== currentQuery);
                 // Deduplicate
@@ -417,7 +430,7 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div className="flex-1 w-full md:w-auto text-left">
                     <p className="text-xs md:text-sm text-gray-500 uppercase tracking-wide font-semibold mb-1">Your Search Analysis</p>
-                    <h2 className="text-xl md:text-2xl font-bold text-[#36013F] capitalize leading-tight">{query}</h2>
+                    <h2 className="text-xl md:text-2xl font-bold text-[#36013F] capitalize leading-tight">{currentQuery}</h2>
                     <button
                         onClick={() => document.getElementById('expert-grid')?.scrollIntoView({ behavior: 'smooth' })}
                         className="bg-[#36013F] w-full md:w-auto text-white px-6 py-3 mt-4 md:mt-6 rounded-full font-bold shadow-lg hover:bg-opacity-90 transition whitespace-nowrap text-sm md:text-base"
@@ -573,7 +586,7 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
                                     icon={config.icon}
                                     type={pointerId}
                                     loadSectionData={loadSectionData}
-                                    query={query}
+                                    query={currentQuery}
                                     colorClass={config.color}
                                     isUnlocked={isSectionUnlocked}
                                     onUnlockRequest={() => setShowUnlockModal(true)}
