@@ -82,6 +82,34 @@ export async function POST(request) {
       const profilesRef = db.collection("Profiles");
       const snapshot = await profilesRef.where("isPublic", "==", true).get();
 
+      // Normalize query
+const normalizedQuery = query.trim().toLowerCase();
+
+// Check cache first
+const existingSearch = await db
+  .collection("RecentSearches")
+  .where("query", "==", normalizedQuery)
+  .limit(1)
+  .get();
+
+if (!existingSearch.empty) {
+  const doc = existingSearch.docs[0];
+  const data = doc.data();
+
+  // Optional TTL (24 hours)
+  const isExpired =
+    new Date() - new Date(data.timestamp) > 24 * 60 * 60 * 1000;
+
+  if (!isExpired) {
+    return NextResponse.json({
+      matches: data.matches || [],
+      context: data.context || null,
+      searchId: doc.id,
+      cached: true
+    });
+  }
+}
+
       // 1. Fetch Full Data for Client Response
       const fullProfiles = snapshot.docs.map((doc) => {
         const data = doc.data();
@@ -201,7 +229,12 @@ export async function POST(request) {
           }));
 
           const docRef = await db.collection("RecentSearches").add({
-            query: query,
+           query: normalizedQuery,
+matches: sortedAiExperts.map(e => ({
+  id: e.id,
+  score: e.matchScore,
+  reason: e.aiMatchReason
+})),
             context: aiResponse.context,
             experts: expertsToStore,
             timestamp: new Date().toISOString()
