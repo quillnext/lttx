@@ -38,15 +38,32 @@ export async function generateMetadata({ params }) {
     const data = searchSnapshot.docs[0].data();
     const queryTitle = data.query.charAt(0).toUpperCase() + data.query.slice(1).toLowerCase();
 
+    // SEO Optimization: Keeping title under 60-70 chars and description around 155
+    const seoTitle = `${queryTitle} | Expert Travel Guide`;
+    const seoDescription = `Get expert travel insights for ${queryTitle}. Includes budget tips, visa info, weather, and expert recommendations for your perfect trip.`;
+
+    // Break query into keywords, filtering out small words
+    const queryKeywords = data.query.split(' ').filter(word => word.length > 3).join(', ');
+
     return {
-        title: `${queryTitle} - Expert Travel Insights | Xmytravel`,
-        description: `Detailed travel advice, budget tips, weather info, and expert matches for: ${queryTitle}. Plan your trip with Xmytravel.`,
+        title: seoTitle,
+        description: seoDescription,
+        keywords: `${queryKeywords}, ${data.query},xmytravel, travel guide, travel tips, expert travel advice,itinerary`,
+        authors: [{ name: "Xmytravel Expert Team" }],
+        publisher: "Xmytravel",
         robots: {
             index: data.isIndexed || false,
             follow: data.isIndexed || false,
         },
         alternates: {
-            canonical: `https://lttx.in/answers/${slug}`,
+            canonical: `https://xmytravel.com/answers/${slug}`,
+        },
+        openGraph: {
+            title: seoTitle,
+            description: seoDescription,
+            url: `https://xmytravel.com/answers/${slug}`,
+            siteName: "Xmytravel",
+            type: "article",
         }
     };
 }
