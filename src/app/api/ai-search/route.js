@@ -219,6 +219,11 @@ export async function POST(request) {
       // Async: Save to RecentSearches (Await to return ID)
       if (aiResponse.context) {
         try {
+          // Generate URL-friendly slug
+          const slug = normalizedQuery
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)+/g, '');
+
           // Simplify experts for storage
           const expertsToStore = sortedAiExperts.slice(0, 5).map(e => ({
             id: e.id,
@@ -230,6 +235,7 @@ export async function POST(request) {
 
           const docRef = await db.collection("RecentSearches").add({
             query: normalizedQuery,
+            slug: slug,
             matches: sortedAiExperts.map(e => ({
               id: e.id,
               score: e.matchScore,
@@ -237,6 +243,9 @@ export async function POST(request) {
             })),
             context: aiResponse.context,
             experts: expertsToStore,
+            relevantPointersCount: aiResponse.context.relevantPointers?.length || 0,
+            unlockedSectionsCount: 0,
+            isIndexed: false,
             timestamp: new Date().toISOString()
           });
           searchId = docRef.id;
@@ -441,9 +450,38 @@ export async function POST(request) {
       if (searchId) {
         try {
           // Use dot notation to update specific map field
-          await db.collection("RecentSearches").doc(searchId).update({
-            [`sections.${sectionType}`]: sectionData
-          });
+          const searchDocRef = db.collection("RecentSearches").doc(searchId);
+          const searchDoc = await searchDocRef.get();
+
+          if (searchDoc.exists) {
+            const currentData = searchDoc.data();
+            const currentSections = currentData.sections || {};
+
+            // Only increment if this is a new section being added
+            if (!currentSections[sectionType]) {
+              const newUnlockedCount = (currentData.unlockedSectionsCount || 0) + 1;
+              const totalNeeded = currentData.relevantPointersCount || 3;
+
+              // --- BOUNCER LOGIC ---
+              const isQueryTooShort = (currentData.query || "").length < 8;
+              const hasSpamKeywords = ["test", "asdf", "dummy", "hack"].some(kw =>
+                (currentData.query || "").toLowerCase().includes(kw)
+              );
+
+              const isHighQuality = !isQueryTooShort && !hasSpamKeywords;
+
+              await searchDocRef.update({
+                [`sections.${sectionType}`]: sectionData,
+                unlockedSectionsCount: newUnlockedCount,
+                // Mark as indexed if high quality AND most sections are unlocked (at least 3)
+                isIndexed: isHighQuality && newUnlockedCount >= Math.min(totalNeeded, 3)
+              });
+            } else {
+              await searchDocRef.update({
+                [`sections.${sectionType}`]: sectionData
+              });
+            }
+          }
         } catch (err) {
           console.error("Failed to update section storage:", err);
           // Fail silently for the user so UX isn't affected

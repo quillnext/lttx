@@ -93,7 +93,27 @@ export async function GET() {
       };
     }).filter(Boolean);
 
-    const allRoutes = [...staticRoutes, ...expertRoutes, ...questionRoutes];
+    // 4. Get Dynamic AI Answer Routes (RecentSearches)
+    const recentSearchesQuery = query(
+      collection(db, "RecentSearches"),
+      where("isIndexed", "==", true)
+    );
+    const recentSearchesSnapshot = await getDocs(recentSearchesQuery);
+    const answerRoutes = recentSearchesSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      if (!data.slug) return null;
+
+      const lastModified = data.timestamp ? new Date(data.timestamp) : new Date();
+
+      return {
+        url: `${baseUrl}/answers/${data.slug}`,
+        lastModified: lastModified.toISOString(),
+        changeFrequency: "weekly",
+        priority: 0.7,
+      };
+    }).filter(Boolean);
+
+    const allRoutes = [...staticRoutes, ...expertRoutes, ...questionRoutes, ...answerRoutes];
     const sitemap = generateSiteMap(allRoutes);
 
     return new Response(sitemap, {
