@@ -228,6 +228,7 @@ export async function POST(request) {
           const expertsToStore = sortedAiExperts.slice(0, 5).map(e => ({
             id: e.id,
             fullName: e.fullName,
+            username: e.username || null,
             photo: e.photo || null,
             matchScore: e.matchScore,
             aiMatchReason: e.aiMatchReason || null
