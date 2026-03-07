@@ -302,7 +302,7 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
                     <div className="lg:col-span-4 space-y-6">
                         <div className="lg:sticky lg:top-24 space-y-6">
                             <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-xl shadow-purple-900/5">
-                                <h3 className="text-xl font-bold text-gray-900 mb-1 font-[var(--font-dm-serif-display)]">Top Match</h3>
+                                <h2 className="text-xl font-bold text-gray-900 mb-1 font-[var(--font-dm-serif-display)]">Top Match</h2>
                                 <p className="text-xs text-gray-500 mb-6 font-[var(--font-ralewaySans-sans)] uppercase tracking-widest font-bold">Verified Travel Experts</p>
 
                                 <div className="space-y-5">
@@ -364,7 +364,7 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
                                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-6 transition-transform">
                                     <FaSuitcaseRolling size={80} />
                                 </div>
-                                <h3 className="text-xl font-bold mb-2 font-[var(--font-dm-serif-display)] relative z-10">Plan Your Trip</h3>
+                                <h2 className="text-xl font-bold mb-2 font-[var(--font-dm-serif-display)] relative z-10">Plan Your Trip</h2>
                                 <p className="text-xs opacity-70 mb-6 relative z-10 font-[var(--font-ralewaySans-sans)]">Get a personalized itinerary in minutes.</p>
                                 <Link href="/ask-an-expert">
                                     <button className="w-full bg-white text-[#36013F] py-3 rounded-full font-bold shadow-lg hover:bg-gray-100 transition-all font-[var(--font-ralewaySans-sans)] uppercase tracking-widest text-xs relative z-10 cursor-pointer">
@@ -377,30 +377,6 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
 
                 </div>
             </div>
-
-            {/* Bottom CTA */}
-            {/* <div className="bg-white border-t border-gray-100 pt-10 md:pt-10 text-center">
-                <div className="max-w-3xl mx-auto px-4">
-                    <h2 className="text-2xl md:text-4xl font-black mb-4 font-[var(--font-dm-serif-display)] text-gray-900">
-                        Need more help?
-                    </h2>
-                    <p className="text-sm md:text-base text-gray-600 mb-10 leading-relaxed font-[var(--font-inter)]">
-                        Our verified experts offer real-time advice tailored to your preferences.
-                    </p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-4">
-                        <Link href="/ask-an-expert">
-                            <button className="bg-[#36013F] text-white px-8 py-3.5 rounded-xl font-bold text-sm shadow-xl hover:bg-[#4a0152] transition-all font-[var(--font-ralewaySans-sans)] uppercase tracking-widest cursor-pointer">
-                                Connect with Expert
-                            </button>
-                        </Link>
-                        <Link href="/">
-                            <button className="bg-white text-gray-700 border border-gray-200 px-8 py-3.5 rounded-xl font-bold text-sm hover:border-purple-300 transition-all font-[var(--font-ralewaySans-sans)] uppercase tracking-widest cursor-pointer">
-                                Back to Home
-                            </button>
-                        </Link>
-                    </div>
-                </div>
-            </div> */}
         </div>
     );
 };
