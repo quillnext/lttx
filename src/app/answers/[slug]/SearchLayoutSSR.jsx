@@ -350,7 +350,7 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
                                                 </p>
                                             </div>
 
-                                            <Link href={`/experts/${expert.username || expert.id}`}>
+                                            <Link href={`/${expert.profileType === 'agency' ? 'agency' : 'experts'}/${expert.username || expert.id}`}>
                                                 <button className="w-full bg-[#36013F] text-white py-2.5 rounded-full text-xs font-bold shadow-md hover:bg-[#4a0152] transition-all transform hover:-translate-y-0.5 active:translate-y-0 font-[var(--font-ralewaySans-sans)] uppercase tracking-widest cursor-pointer">
                                                     Consult Now
                                                 </button>
