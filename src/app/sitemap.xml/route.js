@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import slugify from "slugify";
