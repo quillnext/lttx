@@ -123,7 +123,8 @@ export default async function PublicAnswerPage({ params }) {
                     location: p.location || "Global",
                     expertise: (p.expertise || []).slice(0, 3),
                     tagline: p.tagline || "",
-                    yearsOfExperience: years
+                    yearsOfExperience: years,
+                    profileType: p.profileType || 'expert'
                 };
             }
         } catch (err) {
