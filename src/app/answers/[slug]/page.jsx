@@ -1,4 +1,6 @@
 
+export const dynamic = "force-dynamic";
+
 import { getFirestore } from "firebase-admin/firestore";
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { notFound } from "next/navigation";
