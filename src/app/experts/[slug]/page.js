@@ -6,6 +6,7 @@ import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 import Link from "next/link";
 import { redirect } from "next/navigation"; 
+import JsonLd from "@/app/components/JsonLd";
 
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
@@ -154,5 +155,27 @@ export default async function ExpertProfilePage({ params }) {
       return dateB - dateA;
     });
 
-  return <ClientProfilePage profile={profile} sortedExperience={sortedExperience} weeklySchedule={weeklySchedule} />;
+  // Generate Person Schema for GEO
+  const personSchema = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": profile.fullName,
+    "jobTitle": profile.tagline || "Travel Expert",
+    "description": profile.about || `Verified travel expert on Xmytravel specializing in ${profile.expertise?.join(', ') || 'travel consultation'}.`,
+    "image": profile.photo || "https://www.xmytravel.com/logolttx.svg",
+    "url": `https://www.xmytravel.com/experts/${slug}`,
+    "sameAs": profile.socialLinks || [], // Social links help build entity authority
+    "knowsAbout": profile.expertise || [],
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Xmytravel"
+    }
+  };
+
+  return (
+    <>
+      <JsonLd schema={personSchema} />
+      <ClientProfilePage profile={profile} sortedExperience={sortedExperience} weeklySchedule={weeklySchedule} />
+    </>
+  );
 }
