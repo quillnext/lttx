@@ -5,6 +5,7 @@ import ClientProfilePage from "../../experts/[slug]/ClientProfilePage"; // Adjus
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 import Link from "next/link";
+import JsonLd from "@/app/components/JsonLd";
 
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
@@ -154,5 +155,26 @@ export default async function AgencyProfilePage({ params }) {
       return dateB - dateA;
     });
 
-  return <ClientProfilePage profile={profile} sortedExperience={sortedExperience} weeklySchedule={weeklySchedule} />;
+  // Generate Agency Schema for GEO
+  const agencySchema = {
+    "@context": "https://schema.org",
+    "@type": "TravelAgency",
+    "name": profile.fullName,
+    "description": profile.about || `Verified travel agency on Xmytravel specializing in ${profile.expertise?.join(', ') || 'travel services'}.`,
+    "image": profile.photo || "https://www.xmytravel.com/logolttx.svg",
+    "url": `https://www.xmytravel.com/agency/${slug}`,
+    "sameAs": profile.socialLinks || [],
+    "knowsAbout": profile.expertise || [],
+    "location": {
+      "@type": "Place",
+      "name": profile.location || "Global"
+    }
+  };
+
+  return (
+    <>
+      <JsonLd schema={agencySchema} />
+      <ClientProfilePage profile={profile} sortedExperience={sortedExperience} weeklySchedule={weeklySchedule} />
+    </>
+  );
 }

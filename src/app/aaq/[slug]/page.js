@@ -137,17 +137,29 @@ async function fetchData(slug) {
   }
 }
 
+// Helper for SEO truncation
+const truncateStr = (text, limit) => {
+  if (!text || text.length <= limit) return text;
+  const truncated = text.slice(0, limit);
+  // Optional: Back up to the last space to avoid cutting words
+  const lastSpace = truncated.lastIndexOf(' ');
+  return (lastSpace > limit * 0.8 ? truncated.slice(0, lastSpace) : truncated) + "...";
+};
+
 export async function generateMetadata({ params }) {
   const resolvedParams = await params;
   const { featuredQuestion } = await fetchData(resolvedParams.slug);
 
   if (featuredQuestion) {
+    const rawTitle = featuredQuestion.question || "Travel Question";
+    const rawDesc = featuredQuestion.reply || "Expert travel answer by verified professionals.";
+
     return {
-      title: `${featuredQuestion.question} - Let's Talk Travel`,
-      description: featuredQuestion.reply ? featuredQuestion.reply.substring(0, 160) : "Expert answer on Let's Talk Travel",
+      title: truncateStr(`${rawTitle} | Xmytravel`, 60),
+      description: truncateStr(rawDesc, 160),
       openGraph: {
-        title: featuredQuestion.question,
-        description: featuredQuestion.reply ? featuredQuestion.reply.substring(0, 160) : "Expert answer on Let's Talk Travel",
+        title: truncateStr(rawTitle, 60),
+        description: truncateStr(rawDesc, 160),
         type: 'article',
       },
       alternates: {
@@ -157,26 +169,41 @@ export async function generateMetadata({ params }) {
   }
 
   return {
-    title: "Ask a Question - Let's Talk Travel",
-    description: "Find answers to your travel questions from our experts.",
+    title: "Already Answered Questions | Xmytravel",
+    description: "Browse verified travel questions and expert answers for visa, flight and itinerary tips.",
   };
 }
+
+import JsonLd from "@/app/components/JsonLd";
 
 export default async function Page({ params }) {
   // Next.js 15 requires awaiting params
   const resolvedParams = await params;
-  const { questions, topExperts, expertProfileMap } = await fetchData(resolvedParams.slug);
+  const { questions, topExperts, expertProfileMap, featuredQuestion } = await fetchData(resolvedParams.slug);
 
-  // Pass data to Client Component
-  // JSON.parse(JSON.stringify(...)) is a safe way to ensure only plain objects are passed 
-  // (though here we should already have plain objects from the mapper)
+  // Generate FAQ Schema if featuredQuestion exists
+  const faqSchema = featuredQuestion ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [{
+      "@type": "Question",
+      "name": featuredQuestion.question,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": featuredQuestion.reply || "Answer pending from travel experts."
+      }
+    }]
+  } : null;
 
   return (
-    <QuestionClient
-      initialQuestions={JSON.parse(JSON.stringify(questions))}
-      initialTopExperts={JSON.parse(JSON.stringify(topExperts))}
-      initialExpertProfileMap={JSON.parse(JSON.stringify(expertProfileMap))}
-      slug={resolvedParams.slug}
-    />
+    <>
+      {faqSchema && <JsonLd schema={faqSchema} />}
+      <QuestionClient
+        initialQuestions={JSON.parse(JSON.stringify(questions))}
+        initialTopExperts={JSON.parse(JSON.stringify(topExperts))}
+        initialExpertProfileMap={JSON.parse(JSON.stringify(expertProfileMap))}
+        slug={resolvedParams.slug}
+      />
+    </>
   );
 }

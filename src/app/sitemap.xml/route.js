@@ -46,7 +46,10 @@ export async function GET() {
       "/privacy-policy",
       "/expert-login",
       "/expert-forgot-password",
-      "/aaq", // Added main AAQ page
+      "/aaq",
+      "/news-and-media",
+      "/ask-an-expert",
+      "/join-us",
     ].map((route) => ({
       url: `${baseUrl}${route}`,
       lastModified: new Date().toISOString(),
@@ -56,24 +59,29 @@ export async function GET() {
 
     // 2. Get Dynamic Expert Profile Routes
     const profilesSnapshot = await getDocs(collection(db, "Profiles"));
-    const expertRoutes = profilesSnapshot.docs
-      .map((doc) => {
-        const data = doc.data();
-        if (!data.username) return null; // Skip profiles without a username
+    const expertRoutes = [];
+    const agencyRoutes = [];
 
-        const lastModified =
-          data.approvalTimestamp || data.timestamp?.toDate() || new Date();
+    profilesSnapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      if (!data.username) return;
 
-        return {
-          url: `${baseUrl}/experts/${data.username}`,
-          lastModified: new Date(lastModified).toISOString(),
-          changeFrequency: "weekly",
-          priority: 0.9,
-        };
-      })
-      .filter(Boolean); // Remove null entries
+      const lastModified = data.approvalTimestamp || data.timestamp?.toDate() || new Date();
+      const route = {
+        lastModified: new Date(lastModified).toISOString(),
+        changeFrequency: "weekly",
+        priority: 0.9,
+      };
 
-    // 3. Get Dynamic Question Routes
+      if (data.profileType === 'agency') {
+        agencyRoutes.push({ ...route, url: `${baseUrl}/agency/${data.username}` });
+      } else {
+        expertRoutes.push({ ...route, url: `${baseUrl}/experts/${data.username}` });
+      }
+    });
+
+    // 3. Get Dynamic Question Routes (AAQ)
+    // ... (logic remains same for questionRoutes and answerRoutes)
     const q = query(
       collection(db, "Questions"),
       where("isPublic", "==", true),
@@ -115,8 +123,8 @@ export async function GET() {
       };
     }).filter(Boolean);
 
-    const allRoutes = [...staticRoutes, ...expertRoutes, ...questionRoutes, ...answerRoutes];
-    const sitemap = generateSiteMap(allRoutes);
+    const allRoutes = [...staticRoutes, ...expertRoutes, ...agencyRoutes, ...questionRoutes, ...answerRoutes];
+    const sitemap = generateSiteMap(allRoutes).trim();
 
     return new Response(sitemap, {
       status: 200,
