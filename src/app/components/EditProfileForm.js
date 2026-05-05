@@ -9,6 +9,8 @@ import "react-phone-input-2/lib/style.css";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import _ from "lodash";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import getCroppedImg from '../complete-profile/getCroppedImg';
 import { 
   ShieldCheck, 
@@ -78,6 +80,7 @@ export default function EditProfileForm({ initialData, onSave }) {
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({ ...initialData });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
   const [languageOptions, setLanguageOptions] = useState([]);
@@ -188,6 +191,32 @@ export default function EditProfileForm({ initialData, onSave }) {
       const val = e.target.value;
       setFormData(prev => ({ ...prev, username: val }));
       checkUsernameAvailability(val);
+  };
+
+  const handleAiEnhance = async () => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch("/api/generate-profile-sections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileData: formData }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setFormData(prev => ({
+          ...prev,
+          ...data.data,
+        }));
+        toast.success("Profile enhanced with AI!");
+      } else {
+        toast.error("Failed to enhance profile.");
+      }
+    } catch (err) {
+      console.error("AI Enhance error:", err);
+      toast.error("AI enhancement failed.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleMultiChange = (opts, field) => {
@@ -389,9 +418,32 @@ export default function EditProfileForm({ initialData, onSave }) {
             </div>
 
             <div className="flex-1 space-y-8">
-              <FormInput label="Professional Registry Tagline" name="tagline" value={formData.tagline} maxLength={150} onChange={e => setFormData({...formData, tagline: e.target.value})} required />
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">Professional Registry Tagline</label>
+                <button 
+                  type="button" 
+                  onClick={handleAiEnhance} 
+                  disabled={isGenerating}
+                  className={`flex items-center gap-2 text-[10px] font-black text-purple-600 hover:text-purple-800 transition-colors uppercase tracking-widest ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isGenerating ? (
+                    <><Loader2 size={14} className="animate-spin" /> Generating...</>
+                  ) : (
+                    <><Sparkles size={14}/> AI Enhance Profile</>
+                  )}
+                </button>
+              </div>
+              <input value={formData.tagline} maxLength={150} onChange={e => setFormData({...formData, tagline: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all" required />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Short Bio (Persona Summary)</label>
+                  <textarea value={formData.bio} onChange={e => setFormData({...formData, bio: e.target.value})} rows={3} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all" />
+                </div>
+              </div>
+
               <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Public Profile Biography <span className="text-red-500">*</span></label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">Detailed "About Me" Narrative <span className="text-red-500">*</span></label>
                 <textarea value={formData.about} onChange={e => setFormData({...formData, about: e.target.value})} rows={5} className="w-full bg-gray-50 border border-gray-100 rounded-[32px] p-6 text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all leading-relaxed" required />
               </div>
             </div>
@@ -438,6 +490,22 @@ export default function EditProfileForm({ initialData, onSave }) {
                     </div>
                   ))}
                </div>
+               <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Why Consult You? (Key Value Props)</label>
+                  <CreatableSelect isMulti instanceId="why-consult-select" options={[]} value={formData.whyConsult?.map(e => ({ value: e, label: e })) || []} onChange={o => handleMultiChange(o, 'whyConsult')} styles={selectStyles} />
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Experience DNA: Destinations</label>
+                    <CreatableSelect isMulti instanceId="dna-dest-select" options={[]} value={formData.experienceDNA?.destinations?.map(e => ({ value: e, label: e })) || []} onChange={o => setFormData(prev => ({ ...prev, experienceDNA: { ...prev.experienceDNA, destinations: o ? o.map(x => x.value) : [] } }))} styles={selectStyles} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Experience DNA: Themes</label>
+                    <CreatableSelect isMulti instanceId="dna-themes-select" options={[]} value={formData.experienceDNA?.themes?.map(e => ({ value: e, label: e })) || []} onChange={o => setFormData(prev => ({ ...prev, experienceDNA: { ...prev.experienceDNA, themes: o ? o.map(x => x.value) : [] } }))} styles={selectStyles} />
+                  </div>
+               </div>
+
                <div>
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 block">Verified Certifications (Tags) <span className="text-red-500">*</span></label>
                   <CreatableSelect isMulti instanceId="cert-registry-select" options={certOptionsList} value={formData.certifications?.map(c => ({ value: c, label: c }))} onChange={o => handleMultiChange(o, 'certifications')} styles={selectStyles} />

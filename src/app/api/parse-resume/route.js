@@ -18,7 +18,7 @@ export async function POST(request) {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const prompt = `
-      You are a resume parser. Extract data from the provided resume document and map it to the specific JSON structure below.
+      You are a resume parser for high-end travel experts. Extract data from the provided resume document and map it to the specific JSON structure below.
       
       Target Audience: The user is applying to be a Travel Expert or Agency.
       
@@ -26,16 +26,18 @@ export async function POST(request) {
       1. Extract "fullName", "email".
       2. Extract "phone": The full international phone number including country code (e.g., +919876543210).
       3. Extract "tagline": A short professional headline (max 10 words).
-      4. Extract "about": A professional summary (max 100 words).
-      5. Extract "languages": An array of languages spoken.
-      6. Extract "experience": An array of objects with "title", "company", "startDate" (YYYY-MM), and "endDate" (YYYY-MM or "Present").
-      7. Extract "expertise": Map skills to an array of strings. Max 5 items.
-      8. Extract "location": City and Country string.
-      9. Generate a unique "username" based on their name (e.g., "johndoe_xmytravel").
-      10. Set "responseTime" to "Respond in 20 mins".
-      11. Set "pricing" to "₹799/session".
-      12. Extract "certifications": An array of strings.
-      13. For agencies, extract "registeredAddress", "website", "employeeCount", "licenseNumber".
+      4. "bio": A short, punchy, persona-driven summary (30-50 words).
+      5. "about": A longer professional description focusing on methodology and philosophy (max 100 words).
+      6. "quote": A personal philosophy related to travel (e.g. "Travel should be an effortless extension of your existence.").
+      7. "whyConsult": An array of 4 distinct value propositions (e.g. "Access to private estates in Italy").
+      8. "professionalJourney": An array of objects with "title", "company", "period" (e.g. "2019 - Present"), and "desc" (brief outcome).
+      9. "experienceDNA": An object with "destinations" (list of 4 scouted regions) and "themes" (list of 4 specialized styles).
+      10. "languages": An array of languages spoken.
+      11. "expertise": Map skills to an array of strings. Max 5 items.
+      12. "location": City and Country string.
+      13. Generate a unique "username" based on their name (e.g., "johndoe_xmytravel").
+      14. Set "responseTime" to "Respond in 20 mins".
+      15. Set "pricing" to "₹799/session".
       
       Return ONLY valid JSON matching this schema:
       {
@@ -44,25 +46,22 @@ export async function POST(request) {
         "phone": "string",
         "location": "string",
         "tagline": "string",
+        "bio": "string",
         "about": "string",
+        "quote": "string",
+        "whyConsult": ["string"],
+        "professionalJourney": [
+          { "title": "string", "company": "string", "period": "string", "desc": "string" }
+        ],
+        "experienceDNA": {
+           "destinations": ["string"],
+           "themes": ["string"]
+        },
         "languages": ["string"],
         "expertise": ["string"],
         "username": "string",
         "responseTime": "string",
-        "pricing": "string",
-        "certifications": ["string"],
-        "experience": [
-          {
-            "title": "string",
-            "company": "string",
-            "startDate": "YYYY-MM",
-            "endDate": "YYYY-MM" 
-          }
-        ],
-        "registeredAddress": "string",
-        "website": "string",
-        "employeeCount": "string",
-        "licenseNumber": "string"
+        "pricing": "string"
       }
     `;
 

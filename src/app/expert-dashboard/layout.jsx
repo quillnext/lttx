@@ -9,6 +9,8 @@ import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck } from "lucide-react";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const auth = getAuth(app);
 
@@ -377,6 +379,7 @@ export default function UserLayout({ children }) {
           </div>
         )}
         {children}
+        <ToastContainer position="top-right" autoClose={3000} theme="light" />
       </main>
     </div>
   );

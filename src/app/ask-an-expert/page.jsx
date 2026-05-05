@@ -450,7 +450,7 @@ export default function ExpertsDirectory() {
                   type="submit"
                   className="absolute right-1.5 top-1.5 bottom-1.5 bg-[#36013F] text-white px-6 rounded-full hover:bg-[#4a0150] transition-colors text-sm font-semibold flex items-center gap-2"
                 >
-                  <Image src="/favicon.svg" alt="xmytravel search" width={25} height={25} />
+                  <Image src="/icon-x.svg" alt="xmytravel search" width={25} height={25} />
                   <span className="hidden sm:inline">Search</span>
                 </button>
               </form>
