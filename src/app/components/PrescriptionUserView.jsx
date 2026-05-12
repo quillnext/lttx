@@ -1,0 +1,79 @@
+"use client";
+import React from "react";
+import { CheckCircle2, AlertTriangle, Lightbulb, Compass, Star, ChevronRight } from "lucide-react";
+
+export default function PrescriptionUserView({ prescription }) {
+  if (typeof prescription === 'string') {
+    return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{prescription}</p>;
+  }
+
+  const { diagnosis, coreAdvice, risks, optimizedApproach, confidence, nextSteps } = prescription;
+
+  return (
+    <div className="space-y-8 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+      {/* 1. DIAGNOSIS */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+          <Compass size={14} className="text-purple-500" /> What I understand
+        </h3>
+        <p className="text-lg font-medium text-[#36013F] leading-snug">
+          "{diagnosis}"
+        </p>
+      </section>
+
+      {/* 2. CORE ADVICE */}
+      <section className="space-y-4">
+        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+          <CheckCircle2 size={14} className="text-green-500" /> Expert Recommendation
+        </h3>
+        <div className="prose prose-purple max-w-none">
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+            {coreAdvice}
+          </p>
+        </div>
+      </section>
+
+      {/* 3. RISKS */}
+      {risks && risks.length > 0 && (
+        <section className="space-y-3 bg-red-50/50 p-6 rounded-2xl border border-red-100">
+          <h3 className="text-xs font-black text-red-400 uppercase tracking-widest flex items-center gap-2">
+            <AlertTriangle size={14} /> What to Avoid
+          </h3>
+          <ul className="space-y-2">
+            {risks.map((risk, i) => (
+              <li key={i} className="text-sm text-red-800 flex items-start gap-3">
+                <span className="mt-1.5 w-1.5 h-1.5 bg-red-400 rounded-full shrink-0" />
+                {risk}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* 4. OPTIMIZED APPROACH */}
+      <section className="space-y-3 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
+        <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+          <Lightbulb size={14} /> Better Way to Plan
+        </h3>
+        <p className="text-sm text-indigo-900 leading-relaxed font-medium">
+          {optimizedApproach}
+        </p>
+      </section>
+
+      {/* FOOTER: CONFIDENCE & CTA */}
+      <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t">
+        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
+          <Star size={14} className="text-yellow-500 fill-yellow-500" />
+          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+            Confidence: <span className="text-[#36013F]">{confidence}</span>
+          </span>
+        </div>
+        
+        <button className="group flex items-center gap-3 bg-[#36013F] text-white px-6 py-3 rounded-full text-sm font-bold hover:shadow-xl hover:shadow-purple-100 transition-all">
+          Upgrade to Master Plan
+          <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+        </button>
+      </div>
+    </div>
+  );
+}

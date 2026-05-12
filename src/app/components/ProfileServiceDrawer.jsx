@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Upload, Calendar, Clock, IndianRupee, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 const SERVICES_DATA = {
   "1:1 STRATEGIC CONSULTATION": {
@@ -89,7 +90,7 @@ const ChipSelect = ({ label, required, options, multi = false, selected, onChang
   </div>
 );
 
-export default function ProfileServiceDrawer({ isOpen, onClose, serviceType }) {
+export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -251,13 +252,42 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType }) {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+    if (e) e.preventDefault();
+    
+    // Basic validation
+    if (serviceType === "ASK A QUESTION" && !formData.question) return;
+    if (serviceType === "1:1 STRATEGIC CONSULTATION" && !formData.destination) return;
+    if (serviceType === "THE MASTER PLAN" && !formData.dest) return;
+    if (serviceType === "CUSTOM LUXE PACKAGE" && !formData.dest) return;
+
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      const { error } = await supabase
+        .from('leads')
+        .insert([{
+          service_type: serviceType,
+          form_data: formData,
+          expert_id: expertData?.id || "unknown",
+          expert_name: expertData?.fullName || "Unknown Expert",
+          status: "pending",
+          user_name: formData.name || "Traveller",
+          user_email: formData.email || "",
+          // Flatten some common fields for easier querying/display if needed
+          destination: formData.destination || formData.dest || "",
+          trip_dates: (formData.startDate && formData.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData.dates || ""),
+          source: 'profile_v2'
+        }]);
+
+      if (error) throw error;
+      
       setIsSuccess(true);
-    }, 1500);
+    } catch (error) {
+      console.error("Error submitting lead to Supabase:", error);
+      alert("Submission failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

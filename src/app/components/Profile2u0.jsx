@@ -567,7 +567,12 @@ export default function Profile2u0({ profile, sortedExperience, onBookService })
           </div>
         </div>
         <Footer />
-        <ProfileServiceDrawer isOpen={!!activeService} onClose={() => setActiveService(null)} serviceType={activeService} />
+        <ProfileServiceDrawer 
+          isOpen={!!activeService} 
+          onClose={() => setActiveService(null)} 
+          serviceType={activeService} 
+          expertData={{ id: profile.id, fullName: profile.fullName }} 
+        />
         <ProfileAddOnModal isOpen={!!activeAddOn} onClose={() => setActiveAddOn(null)} addOnType={activeAddOn} />
       </main>
     </div>

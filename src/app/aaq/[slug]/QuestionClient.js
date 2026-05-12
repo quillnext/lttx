@@ -13,6 +13,7 @@ import "react-toastify/dist/ReactToastify.css";
 import slugify from "slugify";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
+import PrescriptionUserView from "@/app/components/PrescriptionUserView";
 
 const truncateByChars = (text, maxLength) => {
     if (!text) return "";
@@ -208,7 +209,16 @@ export default function QuestionClient({
                     <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
                         <div className="p-5">
                             <h1 className="text-3xl text-gray-700 mb-4">{featuredQuestion.question}</h1>
-                            <p className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">{featuredQuestion.reply || "No answer available yet."}</p>
+                            <div className="mb-6">
+                                {(() => {
+                                    try {
+                                        const parsed = JSON.parse(featuredQuestion.reply);
+                                        return <PrescriptionUserView prescription={parsed} />;
+                                    } catch (e) {
+                                        return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{featuredQuestion.reply || "No answer available yet."}</p>;
+                                    }
+                                })()}
+                            </div>
                             <div className="flex flex-wrap justify-between items-center gap-4">
                                 <div className="flex items-center gap-3">
                                     <button
@@ -303,9 +313,16 @@ export default function QuestionClient({
                                                     <FaChevronDown className="w-5 h-5 flex-shrink-0 text-gray-400 transition-transform duration-300 group-open:rotate-180 group-open:text-[#36013F]" />
                                                 </summary>
                                                 <div className="p-5 border-t border-gray-200">
-                                                    <p className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                                        {q.reply || "No answer available yet."}
-                                                    </p>
+                                                    <div className="mb-6">
+                                                        {(() => {
+                                                            try {
+                                                                const parsed = JSON.parse(q.reply);
+                                                                return <PrescriptionUserView prescription={parsed} />;
+                                                            } catch (e) {
+                                                                return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{q.reply || "No answer available yet."}</p>;
+                                                            }
+                                                        })()}
+                                                    </div>
                                                     <div className="flex flex-wrap justify-between items-center gap-4">
                                                         <div className="flex items-center gap-3">
                                                             <button

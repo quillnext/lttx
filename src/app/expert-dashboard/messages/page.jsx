@@ -4,8 +4,11 @@ import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import { ChevronDown, ChevronUp, CircleCheckBig, Loader } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleCheckBig, Loader, Sparkles, X } from "lucide-react";
 import SessionDetailsModal from "@/app/components/SessionDetailsModal";
+import CaseSheetView from "@/app/components/CaseSheetView";
+import ExpertPrescriptionBuilder from "@/app/components/ExpertPrescriptionBuilder";
+import { supabase } from "@/lib/supabase";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -23,56 +26,77 @@ export default function Messages() {
   const [expandedRows, setExpandedRows] = useState({});
   const [sessionData, setSessionData] = useState({});
   const [selectedSessionId, setSelectedSessionId] = useState(null);
+  const [activeTab, setActiveTab] = useState("questions");
+  const [leads, setLeads] = useState([]);
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        console.error("No user authenticated");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const q = query(collection(db, "Questions"), where("expertId", "==", user.uid));
-        const querySnapshot = await getDocs(q);
-        const questionList = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = data.createdAt?.toDate?.() ?? new Date(data.createdAt);
-
-          return {
-            id: docSnap.id,
-            ...data,
-            rawTimestamp: rawDate,
-            timestamp:
-              rawDate.toLocaleDateString("en-GB") +
-              " " +
-              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          };
-        });
-
-        const ids = questionList.map((q) => q.id);
-        const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-        if (duplicates.length > 0) {
-          console.warn("Duplicate question IDs found:", duplicates);
-        }
-
-        // Sort questions by timestamp (newest first)
-        const sorted = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-        setQuestions(sorted);
-      } catch (error) {
-        console.error("Error fetching questions:", error.message);
-      } finally {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        fetchQuestions(user.uid);
+        fetchLeads(user.uid);
+      } else {
         setLoading(false);
       }
-    };
+    });
 
-    const timer = setTimeout(() => {
-      fetchQuestions();
-    }, 100);
-
-    return () => clearTimeout(timer);
+    return () => unsubscribe();
   }, []);
+
+  const fetchQuestions = async (expertId) => {
+    try {
+      const q = query(collection(db, "Questions"), where("expertId", "==", expertId));
+      const querySnapshot = await getDocs(q);
+      const questionList = querySnapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        const rawDate = data.createdAt?.toDate?.() ?? new Date(data.createdAt);
+
+        return {
+          id: docSnap.id,
+          ...data,
+          rawTimestamp: rawDate,
+          timestamp:
+            rawDate.toLocaleDateString("en-GB") +
+            " " +
+            rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+        };
+      });
+
+      const sorted = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+      setQuestions(sorted);
+    } catch (error) {
+      console.error("Error fetching questions:", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchLeads = async (expertId) => {
+    try {
+      console.log("Fetching leads for expert:", expertId);
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('expert_id', expertId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      console.log("Supabase response data:", data);
+
+      const leadList = data.map((item) => ({
+        ...item,
+        rawTimestamp: new Date(item.created_at),
+        timestamp: new Date(item.created_at).toLocaleDateString("en-GB") + " " + new Date(item.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+        userName: item.user_name || item.form_data?.name || "Traveller",
+        question: item.form_data?.confusion || item.form_data?.question || item.form_data?.context || "New Service Request",
+        serviceType: item.service_type,
+        formData: item.form_data,
+      }));
+      setLeads(leadList);
+    } catch (error) {
+      console.error("Error fetching leads from Supabase:", error);
+    }
+  };
 
   const loadSessionData = async (sessionId) => {
     if (!sessionId || sessionData[sessionId]) return;
@@ -100,8 +124,8 @@ export default function Messages() {
     }
   };
 
-  const handleReply = async (question) => {
-    const finalReply = replyText.trim();
+  const handleReply = async (question, structuredReply) => {
+    const finalReply = structuredReply || replyText.trim();
     if (!finalReply) {
       setReplyError("Reply cannot be empty.");
       return;
@@ -109,12 +133,27 @@ export default function Messages() {
 
     setReplyLoading(true);
     try {
-      const questionRef = doc(db, "Questions", question.id);
-      await updateDoc(questionRef, {
-        reply: finalReply,
-        status: "answered",
-        repliedAt: new Date().toISOString(),
-      });
+      const finalReplyToSave = typeof finalReply === 'object' ? JSON.stringify(finalReply) : finalReply;
+
+      if (activeTab === "questions") {
+        const questionRef = doc(db, "Questions", question.id);
+        await updateDoc(questionRef, {
+          reply: finalReplyToSave,
+          status: "answered",
+          repliedAt: new Date().toISOString(),
+        });
+      } else {
+        const { error } = await supabase
+          .from('leads')
+          .update({
+            reply: finalReplyToSave,
+            status: "answered",
+            replied_at: new Date().toISOString()
+          })
+          .eq('id', question.id);
+        
+        if (error) throw error;
+      }
 
       const response = await fetch("/api/send-reply-email", {
         method: "POST",
@@ -122,11 +161,11 @@ export default function Messages() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userEmail: question.userEmail,
+          userEmail: question.userEmail || question.user_email || "",
           userName: question.userName,
-          expertName: question.expertName,
+          expertName: question.expertName || question.expert_name,
           question: question.question,
-          reply: finalReply,
+          reply: typeof finalReply === 'object' ? finalReply.coreAdvice : finalReply,
         }),
       });
 
@@ -135,14 +174,25 @@ export default function Messages() {
         throw new Error(errorData.error || "Failed to send reply email");
       }
 
-      // Update the question in the state to reflect the reply and status
-      setQuestions((prev) =>
-        prev.map((q) =>
-          q.id === question.id
-            ? { ...q, reply: finalReply, status: "answered", repliedAt: new Date().toISOString() }
-            : q
-        )
-      );
+      // Update local state
+      if (activeTab === "questions") {
+        setQuestions((prev) =>
+          prev.map((q) =>
+            q.id === question.id
+              ? { ...q, reply: finalReplyToSave, status: "answered", repliedAt: new Date().toISOString() }
+              : q
+          )
+        );
+      } else {
+        setLeads((prev) =>
+          prev.map((q) =>
+            q.id === question.id
+              ? { ...q, reply: finalReplyToSave, status: "answered", replied_at: new Date().toISOString() }
+              : q
+          )
+        );
+      }
+
       setReplyModal(null);
       setReplyText("");
       setReplyError(null);
@@ -150,6 +200,30 @@ export default function Messages() {
     } catch (error) {
       console.error("Error sending reply:", error.message);
       setReplyError(error.message);
+      setReplyLoading(false);
+    }
+  };
+
+  const handleGenerateDraft = async (question) => {
+    setReplyLoading(true);
+    try {
+      const response = await fetch("/api/generate-expert-prescription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question,
+          sessionData: sessionData[question.sessionId]
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        // Set the draft into the question object so the builder can see it
+        setQuestions(prev => prev.map(q => q.id === question.id ? { ...q, aiDraft: result.data } : q));
+        setReplyModal(prev => ({ ...prev, aiDraft: result.data }));
+      }
+    } catch (err) {
+      console.error("Draft generation failed", err);
+    } finally {
       setReplyLoading(false);
     }
   };
@@ -214,14 +288,16 @@ export default function Messages() {
     }));
   };
 
-  const filteredQuestions = questions.filter((question) =>
-    question.userName?.toLowerCase().includes(searchTerm.toLowerCase())
+  const currentData = activeTab === "questions" ? questions : leads;
+
+  const filteredData = currentData.filter((item) =>
+    item.userName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredQuestions.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
   const isAdminPrompt = (question) => question.isAdminPrompt || question.status === "admin_prompt";
 
@@ -233,12 +309,26 @@ export default function Messages() {
         sessionData={sessionData[selectedSessionId] ? { id: selectedSessionId, ...sessionData[selectedSessionId] } : null}
       />
 
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold">💬 Messages</h1>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <h1 className="text-3xl font-black text-[#36013F]">💬 Messages & Requests</h1>
+        <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+          <button 
+            onClick={() => { setActiveTab("questions"); setCurrentPage(1); }}
+            className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "questions" ? "bg-white text-[#36013F] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Questions
+          </button>
+          <button 
+            onClick={() => { setActiveTab("leads"); setCurrentPage(1); }}
+            className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "leads" ? "bg-white text-[#36013F] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            Service Requests
+          </button>
+        </div>
         <input
           type="text"
           placeholder="Search by user name..."
-          className="p-2 border rounded w-full max-w-sm focus:outline-none focus:ring-2 focus:ring-[#36013F]"
+          className="p-3 border border-gray-200 rounded-xl w-full max-w-sm focus:outline-none focus:ring-2 focus:ring-[#36013F] bg-white"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -266,41 +356,47 @@ export default function Messages() {
               d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
             />
           </svg>
-          Loading messages...
+          Loading {activeTab === "questions" ? "questions" : "requests"}...
         </div>
       ) : currentItems.length === 0 ? (
-        <p className="text-gray-600">
-          {filteredQuestions.length === 0 && searchTerm
-            ? "No matching messages found."
-            : "No questions available."}
-        </p>
+        <div className="text-center py-20 bg-white rounded-3xl border border-dashed">
+           <p className="text-gray-400 font-medium">
+            {searchTerm ? "No matching results found." : `No ${activeTab === "questions" ? "questions" : "requests"} available yet.`}
+          </p>
+        </div>
       ) : (
         <div className="overflow-x-auto bg-white border rounded-xl shadow">
           <table className="min-w-full text-sm text-left">
-            <thead className="bg-yellow-300 text-[#36013F]">
+            <thead className="bg-[#36013F] text-white">
               <tr>
-                <th className="p-3 border">Date</th>
-                <th className="p-3 border">User Name</th>
-                <th className="p-3 border">Source</th>
-                <th className="p-3 border">Status</th>
-                <th className="p-3 border">Action</th>
-                <th className="p-3 border w-12"></th>
+                <th className="p-4 border-none first:rounded-tl-xl">Date</th>
+                <th className="p-4 border-none">User</th>
+                <th className="p-4 border-none">{activeTab === "questions" ? "Source" : "Service"}</th>
+                <th className="p-4 border-none">Status</th>
+                <th className="p-4 border-none">Action</th>
+                <th className="p-4 border-none last:rounded-tr-xl w-12"></th>
               </tr>
             </thead>
             <tbody>
               {currentItems.map((q) => (
                 <React.Fragment key={q.id}>
                   <tr className="hover:bg-gray-50 transition">
-                    <td className="p-3 border font-medium">{q.timestamp || "N/A"}</td>
-                    <td className="p-3 border font-medium">{q.userName || "N/A"}</td>
-                    <td className="p-3 border">
-                      {isAdminPrompt(q) ? (
-                        <span className="bg-blue-100 text-blue-800 font-medium px-3 py-1 text-xs rounded-lg">
-                          Admin
-                        </span>
+                    <td className="p-4 border-b">{q.timestamp || "N/A"}</td>
+                    <td className="p-4 border-b font-bold">{q.userName || "N/A"}</td>
+                    <td className="p-4 border-b">
+                      {activeTab === "questions" ? (
+                        isAdminPrompt(q) ? (
+                          <span className="bg-blue-100 text-blue-800 font-bold px-3 py-1 text-[10px] rounded-full uppercase tracking-wider">
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="bg-green-100 text-green-800 font-bold px-3 py-1 text-[10px] rounded-full uppercase tracking-wider">
+                            User
+                          </span>
+                        )
                       ) : (
-                        <span className="bg-green-100 text-green-800 font-medium px-3 py-1 text-xs rounded-lg">
-                          User
+                        <span className="bg-purple-100 text-purple-800 font-bold px-3 py-1 text-[10px] rounded-full uppercase tracking-wider">
+                          {q.serviceType || "Custom"}
                         </span>
                       )}
                     </td>
@@ -342,12 +438,37 @@ export default function Messages() {
                   </tr>
                   {expandedRows[q.id] && (
                     <tr key={`${q.id}-details`}>
-                      <td colSpan="6" className="p-3 border bg-gray-50">
-                        <div className="flex flex-col md:flex-row gap-4 text-gray-700">
-                          <div className="w-[30%] border-r pr-4">
-                            <p>
-                              <strong>Question:</strong> {q.question || "N/A"}
-                            </p>
+                      <td colSpan="6" className="p-4 border-b bg-gray-50">
+                        <div className="flex flex-col md:flex-row gap-6 text-gray-700">
+                          <div className="w-full md:w-1/2 space-y-3">
+                            <div>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                {activeTab === "questions" ? "The Question" : "Service Context"}
+                              </p>
+                              <p className="text-sm font-medium leading-relaxed">
+                                {q.question || "N/A"}
+                              </p>
+                            </div>
+
+                            {activeTab === "leads" && (
+                              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                                <div>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase">Destination</p>
+                                  <p className="text-xs font-bold text-[#36013F]">{q.destination || "N/A"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-gray-400 uppercase">Dates</p>
+                                  <p className="text-xs font-bold text-[#36013F]">{q.trip_dates || "N/A"}</p>
+                                </div>
+                                {q.formData?.budget && (
+                                  <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Budget</p>
+                                    <p className="text-xs font-bold text-[#36013F]">{q.formData.budget}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {isAdminPrompt(q) && q.suggestedAnswer && (
                               <div className="mt-2 p-3 bg-yellow-50 border-l-4 border-yellow-400 rounded-r">
                                 <strong>Suggested Answer (Admin):</strong>
@@ -355,7 +476,6 @@ export default function Messages() {
                               </div>
                             )}
 
-                            {/* Session Info Injection */}
                             {q.sessionId && (
                               <div className="mt-3">
                                 <button
@@ -367,13 +487,21 @@ export default function Messages() {
                                 </button>
                               </div>
                             )}
-
                           </div>
-                          <div className="w-[70%]">
-                            <p>
-                              <strong>Your Reply:</strong>{" "}
-                              {q.reply && q.reply.trim() !== "" ? q.reply : "No reply yet"}
+                          
+                          <div className="w-full md:w-1/2">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
+                              {q.status === "answered" ? "Final Prescription" : "Status Note"}
                             </p>
+                            <div className="p-3 bg-white rounded-xl border border-gray-200 min-h-[80px]">
+                              {q.reply && q.reply.trim() !== "" ? (
+                                <p className="text-sm italic text-gray-600">
+                                  {q.reply.length > 300 ? q.reply.substring(0, 300) + "..." : q.reply}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic">No reply sent yet. Expert needs to review this case.</p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -404,77 +532,66 @@ export default function Messages() {
       )}
 
       {replyModal && (
-        <div className="fixed inset-0 bg-gradient-to-br from-black/30 via-gray-900/30 to-black/30 flex items-center justify-center z-50">
-          <div className="bg-transparent backdrop-blur-lg rounded-2xl shadow-xl p-8 w-full max-w-lg relative border border-white/30">
-            <button
-              onClick={() => {
-                setReplyModal(null);
-                setReplyText("");
-                setReplyError(null);
-              }}
-              className="absolute top-4 right-4 text-primary text-lg font-bold"
-              aria-label="Close reply modal"
-            >
-              ✕
-            </button>
-            <h2 className="text-3xl font-bold bg-clip-text text-primary mb-6">
-              {isAdminPrompt(replyModal) ? "Review Admin Prompt" : "Reply to"}{" "}
-              {replyModal.userName || "User"}
-            </h2>
-            <p className="mb-6 text-primary">
-              <strong className="font-semibold">Question:</strong> {replyModal.question || "N/A"}
-            </p>
-            {isAdminPrompt(replyModal) && replyModal.suggestedAnswer && (
-              <div className="mb-6 p-4 border border-yellow-200 rounded-xl">
-                <strong className="font-semibold text-primary">Suggested Answer from Admin:</strong>
-                <p className="text-sm mt-2 text-primary whitespace-pre-wrap">
-                  {replyModal.suggestedAnswer}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleAgreeSuggested(replyModal)}
-                  disabled={replyLoading}
-                  className="mt-3 w-full bg-secondary text-primary py-2 px-4 rounded-lg font-medium cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {replyLoading ? <Loader className="animate-spin h-4 w-4" /> : "Agree & Send Reply"}
-                </button>
-                <p className="text-xs text-primary mt-2 text-center">
-                  Or write your own answer below if you disagree
-                </p>
-              </div>
-            )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleReply(replyModal);
-              }}
-              className="space-y-6"
-            >
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-50 rounded-[32px] shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden border border-white">
+            {/* Modal Header */}
+            <div className="p-6 bg-white border-b flex justify-between items-center">
               <div>
-                <label className="block text-sm font-semibold text-primary mb-2">
-                  Your Reply {isAdminPrompt(replyModal) && "(if you disagree with suggested answer)"}
-                </label>
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  className={`mt-1 p-4 w-full border rounded-xl bg-white/5 text-primary placeholder-primary focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300 ${replyError ? "border-red-500" : "border-white/20"
-                    }`}
-                  rows="5"
-                  placeholder="Type your custom reply here..."
-                  required
-                />
-                {replyError && <p className="text-red-400 text-sm mt-2">{replyError}</p>}
+                <h2 className="text-xl font-bold text-[#36013F]">
+                  {isAdminPrompt(replyModal) ? "Review Admin Prompt" : "Responding to"} {replyModal.userName || "User"}
+                </h2>
+                <p className="text-xs text-gray-500">Case ID: {replyModal.id}</p>
               </div>
               <button
-                type="submit"
-                disabled={replyLoading || !replyText.trim()}
-                className={`w-full bg-gradient-to-r from-primary to-secondary text-primary p-4 rounded-full font-semibold text-lg transition-all duration-300 transform hover:scale-105 cursor-pointer ${replyLoading ? "opacity-70 cursor-not-allowed" : ""
-                  }`}
+                onClick={() => {
+                  setReplyModal(null);
+                  setReplyText("");
+                  setReplyError(null);
+                }}
+                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
               >
-                {replyLoading ? "Sending..." : "Send Custom Reply"}
+                <X size={20} />
               </button>
+            </div>
 
-            </form>
+            {/* Modal Body: Two Column Layout */}
+            <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+              {/* Left: Case Sheet (Scrollable) */}
+              <div className="w-full md:w-1/2 p-6 overflow-y-auto border-r custom-scrollbar bg-white">
+                <CaseSheetView question={replyModal} sessionData={sessionData} />
+              </div>
+
+              {/* Right: Prescription Builder (Scrollable) */}
+              <div className="w-full md:w-1/2 p-6 overflow-y-auto custom-scrollbar bg-gray-50">
+                {isAdminPrompt(replyModal) && replyModal.suggestedAnswer && (
+                  <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="text-yellow-600" size={16} />
+                      <strong className="text-sm font-bold text-yellow-800 uppercase tracking-wider">Admin Suggestion</strong>
+                    </div>
+                    <p className="text-xs text-yellow-900 mb-4 leading-relaxed italic">
+                      "{replyModal.suggestedAnswer}"
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleAgreeSuggested(replyModal)}
+                      disabled={replyLoading}
+                      className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-950 py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+                    >
+                      {replyLoading ? <Loader className="animate-spin" size={14} /> : <CircleCheckBig size={14} />}
+                      Use Admin Suggestion
+                    </button>
+                  </div>
+                )}
+
+                <ExpertPrescriptionBuilder
+                  question={replyModal}
+                  onDraftGenerate={() => handleGenerateDraft(replyModal)}
+                  onSave={(data) => handleReply(replyModal, data)}
+                  isLoading={replyLoading}
+                />
+              </div>
+            </div>
           </div>
         </div>
       )}

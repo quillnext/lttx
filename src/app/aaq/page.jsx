@@ -11,6 +11,7 @@ import "react-image-lightbox/style.css";
 import Navbar from "../components/Navbar";
 import Footer from "../pages/Footer";
 import slugify from "slugify";
+import PrescriptionUserView from "../components/PrescriptionUserView";
 
 const db = getFirestore(app);
 
@@ -321,9 +322,16 @@ export default function FAQPage() {
 
                           return (
                             <div key={ag.reply} className="border-b border-gray-100 pb-4 last:border-b-0">
-                              <p className="mb-6 text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                {ag.reply || "No answer available yet."}
-                              </p>
+                              <div className="mb-6">
+                                {(() => {
+                                  try {
+                                    const parsed = JSON.parse(ag.reply);
+                                    return <PrescriptionUserView prescription={parsed} />;
+                                  } catch (e) {
+                                    return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{ag.reply || "No answer available yet."}</p>;
+                                  }
+                                })()}
+                              </div>
                               <div className="flex flex-wrap justify-between items-center gap-4">
                                 <div className="flex items-center gap-3">
                                   {isSingleExpert && profile && (
