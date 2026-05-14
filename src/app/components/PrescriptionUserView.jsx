@@ -1,16 +1,38 @@
 "use client";
 import React from "react";
-import { CheckCircle2, AlertTriangle, Lightbulb, Compass, Star, ChevronRight } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Lightbulb, Compass, Star, ChevronRight, Route } from "lucide-react";
+
+const optionalLabels = {
+  nextSteps: "Next Steps You Should Take",
+  dayWiseStructure: "Day-wise Structure Suggestion",
+  stayStrategy: "Stay Strategy",
+  routeLogic: "Route Logic",
+  reworkedVersion: "Reworked Version Suggestion",
+  bestOption: "Best Option",
+  whyThisWorks: "Why this works",
+  areaVerdict: "Area Verdict",
+};
 
 export default function PrescriptionUserView({ prescription }) {
   if (typeof prescription === 'string') {
     return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{prescription}</p>;
   }
 
-  const { diagnosis, coreAdvice, risks, optimizedApproach, confidence, nextSteps } = prescription;
+  const {
+    diagnosis,
+    coreAdvice,
+    risks,
+    optimizedApproach,
+    confidence,
+    optionalSections = {},
+    nextStepCta,
+  } = prescription;
+  const visibleOptionalSections = Object.entries(optionalSections).filter(([, value]) =>
+    String(value || "").trim()
+  );
 
   return (
-    <div className="space-y-8 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+    <div className="space-y-8 bg-white rounded-2xl p-8 border border-gray-100 shadow-sm">
       {/* 1. DIAGNOSIS */}
       <section className="space-y-3">
         <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
@@ -60,6 +82,26 @@ export default function PrescriptionUserView({ prescription }) {
         </p>
       </section>
 
+      {visibleOptionalSections.length > 0 && (
+        <section className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-6">
+          <h3 className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
+            <Route size={14} /> Service-specific Direction
+          </h3>
+          <div className="space-y-4">
+            {visibleOptionalSections.map(([key, value]) => (
+              <div key={key}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">
+                  {optionalLabels[key] || key}
+                </p>
+                <p className="mt-1 text-sm font-medium leading-relaxed text-amber-950 whitespace-pre-wrap">
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* FOOTER: CONFIDENCE & CTA */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t">
         <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
@@ -70,7 +112,7 @@ export default function PrescriptionUserView({ prescription }) {
         </div>
         
         <button className="group flex items-center gap-3 bg-[#36013F] text-white px-6 py-3 rounded-full text-sm font-bold hover:shadow-xl hover:shadow-purple-100 transition-all">
-          Upgrade to Master Plan
+          {nextStepCta || "Upgrade to Master Plan"}
           <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
         </button>
       </div>

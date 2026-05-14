@@ -24,6 +24,12 @@ export default function UserLayout({ children }) {
   const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); // Track pending questions count
   const isMounted = useRef(true);
 
+  const handleNavClick = (href) => {
+    if (href !== pathname) {
+      setNavLoading(true);
+    }
+  };
+
   // Ensure the component is marked as "client" after initial render
   useEffect(() => {
     setIsClient(true);
@@ -97,36 +103,9 @@ export default function UserLayout({ children }) {
     return () => unsubscribe();
   }, [router, pathname]);
 
-  // Debounced navigation loading state
   useEffect(() => {
-    let timeoutId;
-
-    const handleStart = () => {
-      clearTimeout(timeoutId);
-      if (isMounted.current) {
-        setNavLoading(true);
-      }
-    };
-
-    const handleComplete = () => {
-      timeoutId = setTimeout(() => {
-        if (isMounted.current) {
-          setNavLoading(false);
-        }
-      }, 100);
-    };
-
-    router.events?.on("routeChangeStart", handleStart);
-    router.events?.on("routeChangeComplete", handleComplete);
-    router.events?.off("routeChangeError", handleComplete);
-
-    return () => {
-      clearTimeout(timeoutId);
-      router.events?.off("routeChangeStart", handleStart);
-      router.events?.off("routeChangeComplete", handleComplete);
-      router.events?.off("routeChangeError", handleComplete);
-    };
-  }, [router]);
+    setNavLoading(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -205,6 +184,7 @@ export default function UserLayout({ children }) {
           <nav className="flex flex-col space-y-4">
             <Link
               href="/expert-dashboard/messages"
+              onClick={() => handleNavClick("/expert-dashboard/messages")}
               className={`flex items-center gap-2 p-2 relative ${
                 pathname === "/expert-dashboard/messages"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -224,6 +204,7 @@ export default function UserLayout({ children }) {
             </Link>
             <Link
               href="/expert-dashboard/edit-profile"
+              onClick={() => handleNavClick("/expert-dashboard/edit-profile")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/expert-dashboard/edit-profile"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -237,6 +218,7 @@ export default function UserLayout({ children }) {
             </Link>
             <Link
               href="/expert-dashboard/change-password"
+              onClick={() => handleNavClick("/expert-dashboard/change-password")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/expert-dashboard/change-password"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -250,6 +232,7 @@ export default function UserLayout({ children }) {
             </Link>
             <Link
               href="/expert-forgot-password"
+              onClick={() => handleNavClick("/expert-forgot-password")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/expert-forgot-password"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -263,6 +246,7 @@ export default function UserLayout({ children }) {
             </Link>
             <Link
     href="/expert-dashboard/contact-us"
+    onClick={() => handleNavClick("/expert-dashboard/contact-us")}
     className={`flex items-center gap-2 p-2 ${
       pathname === "/expert-dashboard/contact-us"
         ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -278,6 +262,7 @@ export default function UserLayout({ children }) {
 
     <Link
     href="/expert-dashboard/availability"
+    onClick={() => handleNavClick("/expert-dashboard/availability")}
     className={`flex items-center gap-2 p-2 ${
       pathname === "/expert-dashboard/availability"
         ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -293,6 +278,7 @@ export default function UserLayout({ children }) {
   
     <Link
     href="/expert-dashboard/bookings"
+    onClick={() => handleNavClick("/expert-dashboard/bookings")}
     className={`flex items-center gap-2 p-2 ${
       pathname === "/expert-dashboard/bookings"
         ? "bg-[#F4D35E] rounded-3xl text-black"

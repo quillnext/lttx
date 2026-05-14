@@ -1,28 +1,132 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Loader, Sparkles, Plus, Trash2, ChevronDown, CheckCircle } from "lucide-react";
+import { Loader, Sparkles, Plus, Trash2, ChevronDown, CheckCircle, Gauge } from "lucide-react";
+
+const getServiceConfig = (serviceType = "") => {
+  const normalized = serviceType.toLowerCase();
+
+  if (normalized.includes("consult")) {
+    return {
+      type: "consultation",
+      label: "Next Steps You Should Take",
+      fields: [{ key: "nextSteps", label: "Next Steps You Should Take", rows: 3 }],
+    };
+  }
+
+  if (normalized.includes("master")) {
+    return {
+      type: "master-plan",
+      label: "Master Plan Direction",
+      fields: [
+        { key: "dayWiseStructure", label: "Day-wise or Structure Suggestion", rows: 3 },
+        { key: "stayStrategy", label: "Stay Strategy", rows: 3 },
+        { key: "routeLogic", label: "Route Logic", rows: 3 },
+      ],
+    };
+  }
+
+  if (normalized.includes("itinerary") || normalized.includes("review")) {
+    return {
+      type: "itinerary-review",
+      label: "Reworked Version Suggestion",
+      fields: [{ key: "reworkedVersion", label: "Reworked Version Suggestion", rows: 4 }],
+    };
+  }
+
+  if (normalized.includes("flight")) {
+    return {
+      type: "flight-choice",
+      label: "Flight Choice",
+      fields: [
+        { key: "bestOption", label: "Best Option", rows: 2 },
+        { key: "whyThisWorks", label: "Why this works", rows: 3 },
+      ],
+    };
+  }
+
+  if (normalized.includes("hotel")) {
+    return {
+      type: "hotel-check",
+      label: "Hotel Check",
+      fields: [
+        { key: "areaVerdict", label: "Area Verdict", rows: 2, options: ["Good", "Avoid", "Conditional"] },
+      ],
+    };
+  }
+
+  return { type: "ask-a-question", label: "", fields: [] };
+};
+
+const scoreText = (value, targetWords) => {
+  const words = value.trim().split(/\s+/).filter(Boolean).length;
+  return Math.min(100, Math.round((words / targetWords) * 100));
+};
+
+const calculateQualityScores = (formData, serviceConfig) => {
+  const requiredValues = [
+    formData.diagnosis,
+    formData.coreAdvice,
+    formData.optimizedApproach,
+    formData.confidence,
+    ...serviceConfig.fields.map((field) => formData.optionalSections?.[field.key] || ""),
+  ];
+
+  const completed = requiredValues.filter((value) => String(value || "").trim()).length;
+  const completeness = Math.round((completed / requiredValues.length) * 100);
+  const clarity = Math.round(
+    (scoreText(formData.diagnosis, 18) + scoreText(formData.coreAdvice, 45) + scoreText(formData.optimizedApproach, 20)) / 3
+  );
+
+  return {
+    completeness,
+    clarity,
+    responseScore: Math.round((completeness * 0.65) + (clarity * 0.35)),
+  };
+};
+
+const getDefaultCta = (serviceType = "") => {
+  const normalized = serviceType.toLowerCase();
+  if (normalized.includes("consult")) return "Need deeper help? Book a consultation.";
+  if (normalized.includes("master")) return "Want this turned into a full plan? Upgrade to Master Plan.";
+  return "Want this turned into a full plan? Upgrade to Master Plan.";
+};
 
 export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, onSave, isLoading }) {
+  const serviceConfig = getServiceConfig(question?.serviceType);
   const [formData, setFormData] = useState({
     diagnosis: "",
     coreAdvice: "",
     risks: [],
     optimizedApproach: "",
     confidence: "High",
+    optionalSections: {},
+    nextStepCta: getDefaultCta(question?.serviceType),
     serviceSpecifics: {},
   });
 
   const [currentRisk, setCurrentRisk] = useState("");
+  const qualityScores = calculateQualityScores(formData, serviceConfig);
 
   // Sync with AI draft if provided
   useEffect(() => {
     if (question?.aiDraft) {
       setFormData(prev => ({
         ...prev,
-        ...question.aiDraft
+        ...question.aiDraft,
+        optionalSections: {
+          ...prev.optionalSections,
+          ...(question.aiDraft.optionalSections || {}),
+        },
       }));
     }
   }, [question?.aiDraft]);
+
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      nextStepCta: prev.nextStepCta || getDefaultCta(question?.serviceType),
+    }));
+  }, [question?.serviceType]);
 
   const handleAddRisk = () => {
     if (currentRisk.trim() && currentRisk.length <= 120) {
@@ -43,10 +147,18 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    onSave({
+      ...formData,
+      serviceType: question?.serviceType || "Ask a Question",
+      optionalSectionType: serviceConfig.type,
+      qualityScores,
+    });
   };
 
-  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && formData.optimizedApproach.trim();
+  const requiredOptionalComplete = serviceConfig.fields.every((field) =>
+    String(formData.optionalSections?.[field.key] || "").trim()
+  );
+  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && formData.optimizedApproach.trim() && requiredOptionalComplete;
 
   return (
     <div className="space-y-8 bg-white/50 backdrop-blur-md rounded-2xl p-6 border border-gray-100 shadow-xl">
@@ -64,6 +176,21 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
           {isLoading ? <Loader className="animate-spin" size={16} /> : <Sparkles size={16} />}
           AI Assist Draft
         </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          ["Completeness", qualityScores.completeness],
+          ["Clarity", qualityScores.clarity],
+          ["Response Score", qualityScores.responseScore],
+        ].map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-gray-100 bg-white p-3">
+            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <Gauge size={12} /> {label}
+            </div>
+            <p className="mt-1 text-lg font-black text-[#36013F]">{value}%</p>
+          </div>
+        ))}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -159,6 +286,51 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
           />
         </section>
 
+        {serviceConfig.fields.length > 0 && (
+          <section className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
+            <div>
+              <h3 className="text-sm font-bold text-amber-900 uppercase tracking-wider">{serviceConfig.label}</h3>
+              <p className="text-xs text-amber-700">Required for this service type.</p>
+            </div>
+            {serviceConfig.fields.map((field) => (
+              <div key={field.key} className="space-y-2">
+                <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">{field.label}</label>
+                {field.options ? (
+                  <select
+                    value={formData.optionalSections?.[field.key] || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        optionalSections: { ...formData.optionalSections, [field.key]: e.target.value },
+                      })
+                    }
+                    className="w-full p-3 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none text-sm font-bold text-[#36013F]"
+                    required
+                  >
+                    <option value="">Select verdict</option>
+                    {field.options.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <textarea
+                    value={formData.optionalSections?.[field.key] || ""}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        optionalSections: { ...formData.optionalSections, [field.key]: e.target.value },
+                      })
+                    }
+                    className="w-full p-4 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none transition-all text-sm"
+                    rows={field.rows}
+                    required
+                  />
+                )}
+              </div>
+            ))}
+          </section>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
           {/* CONFIDENCE SCORE */}
           <section className="space-y-2">
@@ -177,8 +349,20 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
             </div>
           </section>
 
+          <section className="space-y-2">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Follow-up CTA</label>
+            <input
+              type="text"
+              value={formData.nextStepCta}
+              onChange={(e) => setFormData({ ...formData, nextStepCta: e.target.value })}
+              className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold text-[#36013F]"
+              placeholder="Next step for the traveller"
+              required
+            />
+          </section>
+
           {/* SUBMIT */}
-          <div className="flex items-end">
+          <div className="flex items-end md:col-span-2">
             <button
               type="submit"
               disabled={!isFormValid || isLoading}

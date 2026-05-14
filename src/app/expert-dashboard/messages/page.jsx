@@ -4,14 +4,64 @@ import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import { ChevronDown, ChevronUp, CircleCheckBig, Loader, Sparkles, X } from "lucide-react";
+import { AlertTriangle, Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, Send, Sparkles, X } from "lucide-react";
 import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 import CaseSheetView from "@/app/components/CaseSheetView";
 import ExpertPrescriptionBuilder from "@/app/components/ExpertPrescriptionBuilder";
+import PrescriptionUserView from "@/app/components/PrescriptionUserView";
 import { supabase } from "@/lib/supabase";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+const parsePrescription = (reply) => {
+  if (!reply || typeof reply !== "string") return null;
+  try {
+    const parsed = JSON.parse(reply);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const getReplyPreview = (reply) => {
+  const parsed = parsePrescription(reply);
+  if (parsed) {
+    return parsed.coreAdvice || parsed.diagnosis || "Structured prescription saved.";
+  }
+  return reply || "";
+};
+
+const formatPrescriptionForEmail = (reply) => {
+  if (!reply || typeof reply !== "object") return reply;
+
+  const sections = [
+    ["What I understand from your plan", reply.diagnosis],
+    ["Expert Recommendation", reply.coreAdvice],
+    ["What to Avoid / Watch Out For", Array.isArray(reply.risks) ? reply.risks.map((risk) => `- ${risk}`).join("\n") : ""],
+    ["Better Way to Plan This", reply.optimizedApproach],
+    ...Object.entries(reply.optionalSections || {}).map(([key, value]) => [key.replace(/([A-Z])/g, " $1"), value]),
+    ["Confidence in Recommendation", reply.confidence],
+    ["Next Step", reply.nextStepCta],
+  ];
+
+  return sections
+    .filter(([, value]) => String(value || "").trim())
+    .map(([label, value]) => `${label}:\n${value}`)
+    .join("\n\n");
+};
+
+const getStatusLabel = (status) => {
+  const labels = {
+    pending: "Pending",
+    accepted: "Accepted",
+    clarification_requested: "Clarification Requested",
+    answered: "Completed",
+    admin_prompt: "Admin Prompt",
+    escalated: "Escalated",
+  };
+  return labels[status] || status || "Pending";
+};
 
 export default function Messages() {
   const [questions, setQuestions] = useState([]);
@@ -28,10 +78,12 @@ export default function Messages() {
   const [selectedSessionId, setSelectedSessionId] = useState(null);
   const [activeTab, setActiveTab] = useState("questions");
   const [leads, setLeads] = useState([]);
+  const [expertProfile, setExpertProfile] = useState(null);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
+        fetchExpertProfile(user.uid);
         fetchQuestions(user.uid);
         fetchLeads(user.uid);
       } else {
@@ -41,6 +93,17 @@ export default function Messages() {
 
     return () => unsubscribe();
   }, []);
+
+  const fetchExpertProfile = async (expertId) => {
+    try {
+      const profileSnap = await getDocs(query(collection(db, "Profiles"), where(documentId(), "==", expertId)));
+      if (!profileSnap.empty) {
+        setExpertProfile({ id: expertId, ...profileSnap.docs[0].data() });
+      }
+    } catch (error) {
+      console.error("Error fetching expert profile:", error.message);
+    }
+  };
 
   const fetchQuestions = async (expertId) => {
     try {
@@ -88,6 +151,8 @@ export default function Messages() {
         rawTimestamp: new Date(item.created_at),
         timestamp: new Date(item.created_at).toLocaleDateString("en-GB") + " " + new Date(item.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
         userName: item.user_name || item.form_data?.name || "Traveller",
+        userEmail: item.user_email || item.form_data?.email || "",
+        expertName: item.expert_name || expertProfile?.fullName || "XMyTravel Expert",
         question: item.form_data?.confusion || item.form_data?.question || item.form_data?.context || "New Service Request",
         serviceType: item.service_type,
         formData: item.form_data,
@@ -141,21 +206,28 @@ export default function Messages() {
           reply: finalReplyToSave,
           status: "answered",
           repliedAt: new Date().toISOString(),
+          responseQuality: structuredReply?.qualityScores || null,
+          prescriptionVersion: structuredReply ? 1 : null,
         });
       } else {
-        const { error } = await supabase
-          .from('leads')
-          .update({
+        const saveResponse = await fetch("/api/leads/update-response", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadId: question.id,
             reply: finalReplyToSave,
             status: "answered",
-            replied_at: new Date().toISOString()
-          })
-          .eq('id', question.id);
-        
-        if (error) throw error;
+            expertName: question.expertName || question.expert_name || expertProfile?.fullName || "XMyTravel Expert",
+          }),
+        });
+
+        const saveResult = await saveResponse.json();
+        if (!saveResponse.ok) {
+          throw new Error(saveResult.error || "Failed to save reply in Supabase");
+        }
       }
 
-      const response = await fetch("/api/send-reply-email", {
+      const response = await fetch("/api/send-expert-reply-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -163,9 +235,10 @@ export default function Messages() {
         body: JSON.stringify({
           userEmail: question.userEmail || question.user_email || "",
           userName: question.userName,
-          expertName: question.expertName || question.expert_name,
+          expertName: question.expertName || question.expert_name || expertProfile?.fullName || "XMyTravel Expert",
           question: question.question,
-          reply: typeof finalReply === 'object' ? finalReply.coreAdvice : finalReply,
+          serviceType: question.serviceType || question.service_type,
+          reply: formatPrescriptionForEmail(finalReply),
         }),
       });
 
@@ -179,7 +252,7 @@ export default function Messages() {
         setQuestions((prev) =>
           prev.map((q) =>
             q.id === question.id
-              ? { ...q, reply: finalReplyToSave, status: "answered", repliedAt: new Date().toISOString() }
+              ? { ...q, reply: finalReplyToSave, status: "answered", repliedAt: new Date().toISOString(), responseQuality: structuredReply?.qualityScores || null }
               : q
           )
         );
@@ -187,7 +260,7 @@ export default function Messages() {
         setLeads((prev) =>
           prev.map((q) =>
             q.id === question.id
-              ? { ...q, reply: finalReplyToSave, status: "answered", replied_at: new Date().toISOString() }
+              ? { ...q, reply: finalReplyToSave, status: "answered", replied_at: new Date().toISOString(), expertName: question.expertName || question.expert_name || expertProfile?.fullName || "XMyTravel Expert" }
               : q
           )
         );
@@ -243,7 +316,7 @@ export default function Messages() {
         repliedAt: new Date().toISOString(),
       });
 
-      const response = await fetch("/api/send-reply-email", {
+      const response = await fetch("/api/send-expert-reply-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -281,6 +354,55 @@ export default function Messages() {
     }
   };
 
+  const handleStatusChange = async (caseItem, nextStatus) => {
+    setReplyError(null);
+    setReplyLoading(true);
+    try {
+      const updatedAt = new Date().toISOString();
+
+      if (activeTab === "questions") {
+        await updateDoc(doc(db, "Questions", caseItem.id), {
+          status: nextStatus,
+          workflowUpdatedAt: updatedAt,
+        });
+        setQuestions((prev) =>
+          prev.map((item) =>
+            item.id === caseItem.id ? { ...item, status: nextStatus, workflowUpdatedAt: updatedAt } : item
+          )
+        );
+      } else {
+        const response = await fetch("/api/leads/update-response", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            leadId: caseItem.id,
+            status: nextStatus,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to update lead status in Supabase");
+        }
+
+        setLeads((prev) =>
+          prev.map((item) =>
+            item.id === caseItem.id ? { ...item, status: nextStatus, updated_at: updatedAt } : item
+          )
+        );
+      }
+
+      setReplyModal((prev) =>
+        prev && prev.id === caseItem.id ? { ...prev, status: nextStatus, workflowUpdatedAt: updatedAt } : prev
+      );
+    } catch (error) {
+      console.error("Error updating case status:", error.message);
+      setReplyError(error.message || "Failed to update case status.");
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
   const toggleRow = (id) => {
     setExpandedRows((prev) => ({
       ...prev,
@@ -290,9 +412,14 @@ export default function Messages() {
 
   const currentData = activeTab === "questions" ? questions : leads;
 
-  const filteredData = currentData.filter((item) =>
-    item.userName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = currentData.filter((item) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      item.userName?.toLowerCase().includes(term) ||
+      item.question?.toLowerCase().includes(term) ||
+      item.status?.toLowerCase().includes(term)
+    );
+  });
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -401,19 +528,20 @@ export default function Messages() {
                       )}
                     </td>
                     <td className="p-3 border">
-                      {q.status === "answered" ? (
-                        <span className="bg-primary text-white font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-2">
-                          <CircleCheckBig size={14} /> Answered
-                        </span>
-                      ) : q.status === "pending" ? (
-                        <span className="bg-secondary text-[#36013F] font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-2">
-                          <Loader className="spin-animation" size={14} /> Pending
-                        </span>
-                      ) : q.status === "admin_prompt" ? (
-                        <span className="bg-yellow-200 text-yellow-800 font-medium px-3 py-1 text-xs rounded-lg flex items-center gap-2">
-                          <Loader className="spin-animation" size={14} /> Admin Prompt
-                        </span>
-                      ) : null}
+                      <span className={`font-medium px-3 py-1 text-xs rounded-lg inline-flex items-center gap-2 ${
+                        q.status === "answered"
+                          ? "bg-green-100 text-green-800"
+                          : q.status === "accepted"
+                            ? "bg-blue-100 text-blue-800"
+                            : q.status === "clarification_requested"
+                              ? "bg-amber-100 text-amber-800"
+                              : q.status === "escalated" || q.status === "admin_prompt"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-secondary text-[#36013F]"
+                      }`}>
+                        {q.status === "answered" ? <CircleCheckBig size={14} /> : <Loader className="spin-animation" size={14} />}
+                        {getStatusLabel(q.status)}
+                      </span>
                     </td>
                     <td className="p-3 border">
                       {q.status !== "answered" && (
@@ -421,7 +549,7 @@ export default function Messages() {
                           onClick={() => setReplyModal(q)}
                           className="px-3 py-1 rounded-lg text-xs font-medium bg-[#36013F] text-white hover:bg-[#4a0150] focus:outline-none focus:ring-2 focus:ring-[#36013F]"
                         >
-                          {isAdminPrompt(q) ? "Review Prompt" : "Reply"}
+                          {isAdminPrompt(q) ? "Review Prompt" : q.status === "accepted" ? "Start Response" : "Reply"}
                         </button>
                       )}
                     </td>
@@ -495,9 +623,13 @@ export default function Messages() {
                             </p>
                             <div className="p-3 bg-white rounded-xl border border-gray-200 min-h-[80px]">
                               {q.reply && q.reply.trim() !== "" ? (
-                                <p className="text-sm italic text-gray-600">
-                                  {q.reply.length > 300 ? q.reply.substring(0, 300) + "..." : q.reply}
-                                </p>
+                                parsePrescription(q.reply) ? (
+                                  <PrescriptionUserView prescription={parsePrescription(q.reply)} />
+                                ) : (
+                                  <p className="text-sm italic text-gray-600">
+                                    {getReplyPreview(q.reply).length > 300 ? getReplyPreview(q.reply).substring(0, 300) + "..." : getReplyPreview(q.reply)}
+                                  </p>
+                                )
                               ) : (
                                 <p className="text-sm text-gray-400 italic">No reply sent yet. Expert needs to review this case.</p>
                               )}
@@ -540,18 +672,49 @@ export default function Messages() {
                 <h2 className="text-xl font-bold text-[#36013F]">
                   {isAdminPrompt(replyModal) ? "Review Admin Prompt" : "Responding to"} {replyModal.userName || "User"}
                 </h2>
-                <p className="text-xs text-gray-500">Case ID: {replyModal.id}</p>
+                <p className="text-xs text-gray-500">
+                  Case ID: {replyModal.id} - Status: {getStatusLabel(replyModal.status)}
+                </p>
               </div>
-              <button
-                onClick={() => {
-                  setReplyModal(null);
-                  setReplyText("");
-                  setReplyError(null);
-                }}
-                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-              >
-                <X size={20} />
-              </button>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {replyModal.status === "pending" && (
+                  <button
+                    onClick={() => handleStatusChange(replyModal, "accepted")}
+                    disabled={replyLoading}
+                    className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-800 hover:bg-blue-100 disabled:opacity-50"
+                  >
+                    <Check size={14} /> Accept Case
+                  </button>
+                )}
+                {replyModal.status !== "answered" && (
+                  <>
+                    <button
+                      onClick={() => handleStatusChange(replyModal, "clarification_requested")}
+                      disabled={replyLoading}
+                      className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      <Send size={14} /> Request Clarification
+                    </button>
+                    <button
+                      onClick={() => handleStatusChange(replyModal, "escalated")}
+                      disabled={replyLoading}
+                      className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100 disabled:opacity-50"
+                    >
+                      <AlertTriangle size={14} /> Escalate
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={() => {
+                    setReplyModal(null);
+                    setReplyText("");
+                    setReplyError(null);
+                  }}
+                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body: Two Column Layout */}
@@ -563,6 +726,11 @@ export default function Messages() {
 
               {/* Right: Prescription Builder (Scrollable) */}
               <div className="w-full md:w-1/2 p-6 overflow-y-auto custom-scrollbar bg-gray-50">
+                {replyError && (
+                  <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-700">
+                    {replyError}
+                  </div>
+                )}
                 {isAdminPrompt(replyModal) && replyModal.suggestedAnswer && (
                   <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl">
                     <div className="flex items-center gap-2 mb-2">

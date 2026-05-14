@@ -2,12 +2,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
-import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, CalendarDays } from "lucide-react";
+import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList } from "lucide-react";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
@@ -15,11 +15,16 @@ const db = getFirestore(app);
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [navLoading, setNavLoading] = useState(false); // Track navigation loading
   const [isLoggingOut, setIsLoggingOut] = useState(false); // Track logout loading
   const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); // Track pending questions count
+
+  const handleNavClick = (href) => {
+    if (href !== pathname) {
+      setNavLoading(true);
+    }
+  };
 
   // Fetch pending questions count
   useEffect(() => {
@@ -36,19 +41,10 @@ export default function AdminLayout({ children }) {
     fetchPendingQuestions();
   }, []);
 
-  // Listen to route change events to show a loading indicator
   useEffect(() => {
-    const handleStart = () => setNavLoading(true);
-    const handleComplete = () => setNavLoading(false);
-
-    // Next.js 13+ App Router doesn't have router.events.
-    // This effect might not work as intended without a custom solution.
-    // For now, we'll keep it for potential compatibility.
-
-    return () => {
-      // Cleanup if needed
-    };
-  }, [router]);
+    setNavLoading(false);
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -99,6 +95,7 @@ export default function AdminLayout({ children }) {
           <nav className="flex flex-col space-y-4 px-5">
             <Link
               href="/dashboard/profiles"
+              onClick={() => handleNavClick("/dashboard/profiles")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/dashboard/profiles"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -110,6 +107,7 @@ export default function AdminLayout({ children }) {
 
             <Link
               href="/dashboard/requests"
+              onClick={() => handleNavClick("/dashboard/requests")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/dashboard/requests"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -121,6 +119,7 @@ export default function AdminLayout({ children }) {
 
             <Link
               href="/dashboard/form-leads"
+              onClick={() => handleNavClick("/dashboard/form-leads")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/dashboard/form-leads"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -131,7 +130,20 @@ export default function AdminLayout({ children }) {
             </Link>
 
             <Link
+              href="/dashboard/service-requests"
+              onClick={() => handleNavClick("/dashboard/service-requests")}
+              className={`flex items-center gap-2 p-2 ${
+                pathname === "/dashboard/service-requests"
+                  ? "bg-[#F4D35E] rounded-3xl text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+              }`}
+            >
+              <ClipboardList /> Service Requests
+            </Link>
+
+            <Link
               href="/dashboard/questions"
+              onClick={() => handleNavClick("/dashboard/questions")}
               className={`flex items-center gap-2 p-2 relative ${
                 pathname === "/dashboard/questions"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -148,6 +160,7 @@ export default function AdminLayout({ children }) {
             </Link>
             <Link
               href="/dashboard/contact-us-messages"
+              onClick={() => handleNavClick("/dashboard/contact-us-messages")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/dashboard/contact-us-messages"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
@@ -159,6 +172,7 @@ export default function AdminLayout({ children }) {
 
             <Link
               href="/dashboard/scheduling"
+              onClick={() => handleNavClick("/dashboard/scheduling")}
               className={`flex items-center gap-2 p-2 ${
                 pathname === "/dashboard/scheduling"
                   ? "bg-[#F4D35E] rounded-3xl text-black"

@@ -26,6 +26,12 @@ export async function POST(request) {
       3. Key Corrections: Up to 3 critical risks or things to avoid (max 120 chars each).
       4. Optimized Approach: A short actionable restructuring of their plan.
       5. Confidence Score: Choose from "High", "Medium", or "Situational".
+      6. Optional Sections: Add service-specific direction when relevant:
+         - Consultation: nextSteps
+         - Master Plan: dayWiseStructure, stayStrategy, routeLogic
+         - Itinerary Review: reworkedVersion
+         - Flight Choice: bestOption, whyThisWorks
+         - Hotel Check: areaVerdict ("Good", "Avoid", or "Conditional")
 
       Return ONLY valid JSON matching this schema:
       {
@@ -33,7 +39,17 @@ export async function POST(request) {
         "coreAdvice": "string",
         "risks": ["string"],
         "optimizedApproach": "string",
-        "confidence": "High" | "Medium" | "Situational"
+        "confidence": "High" | "Medium" | "Situational",
+        "optionalSections": {
+          "nextSteps": "string",
+          "dayWiseStructure": "string",
+          "stayStrategy": "string",
+          "routeLogic": "string",
+          "reworkedVersion": "string",
+          "bestOption": "string",
+          "whyThisWorks": "string",
+          "areaVerdict": "Good" | "Avoid" | "Conditional"
+        }
       }
     `;
 
