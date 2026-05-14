@@ -41,7 +41,7 @@ export default function ServiceRequestsDashboardPage() {
               rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
             name: row.user_name || row.form_data?.name || "Traveller",
             email: row.user_email || row.form_data?.email || "",
-            phone: row.form_data?.phone || row.form_data?.whatsapp || "",
+            phone: row.user_phone || row.form_data?.phone || row.form_data?.whatsapp || "",
             serviceType: row.service_type || "Service Request",
             expertName: row.expert_name || "Unknown Expert",
             status: row.status || "pending",

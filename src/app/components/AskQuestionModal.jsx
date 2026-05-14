@@ -12,11 +12,13 @@ import { useSearchParams } from "next/navigation";
 import { FaPaperPlane, FaSpinner } from "react-icons/fa";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 const db = getFirestore(app);
 const auth = getAuth(app);
 
 export default function AskQuestionModal({ expert, onClose, sessionId }) {
+  const { user: centralUser, isAuthenticated: isCentralUserAuthenticated } = useUserAuthStore();
   const searchParams = useSearchParams();
   const urlKeywordsParam = searchParams.get("keywords") || "";
   const urlKeywords = urlKeywordsParam === "all" ? [] : urlKeywordsParam.split(",").filter(k => k.trim());
@@ -35,6 +37,15 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
+    if (isCentralUserAuthenticated && centralUser) {
+      setName(centralUser.name || "");
+      setEmail(centralUser.email || "");
+      setPhone(centralUser.phone || "");
+      setHasSubmitted(true);
+      setIsEmailVerified(true);
+      return;
+    }
+
     const savedData = localStorage.getItem("userFormData");
     if (savedData) {
       const parsedData = JSON.parse(savedData);
@@ -57,7 +68,7 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [centralUser, isCentralUserAuthenticated]);
 
   useEffect(() => {
     return () => {
