@@ -90,6 +90,37 @@ const ChipSelect = ({ label, required, options, multi = false, selected, onChang
   </div>
 );
 
+const getPriceAmount = (price) => {
+  const value = String(price || "").replace(/[^\d]/g, "");
+  return value ? Number(value) : 0;
+};
+
+const loadRazorpayScript = () =>
+  new Promise((resolve) => {
+    if (typeof window === "undefined") {
+      resolve(false);
+      return;
+    }
+
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(true), { once: true });
+      existingScript.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+
 export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -252,6 +283,76 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
     }
   };
 
+  const collectPayment = async () => {
+    const amount = getPriceAmount(data.price);
+    if (!amount) return null;
+
+    const isLoaded = await loadRazorpayScript();
+    if (!isLoaded) {
+      throw new Error("Unable to load Razorpay checkout. Please try again.");
+    }
+
+    const orderResponse = await fetch("/api/payments/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount,
+        currency: "INR",
+        receipt: `svc_${Date.now()}`,
+      }),
+    });
+
+    const order = await orderResponse.json();
+    if (!orderResponse.ok || !order.id) {
+      throw new Error(order.error || "Failed to create payment order.");
+    }
+
+    return new Promise((resolve, reject) => {
+      const checkout = new window.Razorpay({
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "XmyTravel",
+        description: data.name,
+        order_id: order.id,
+        prefill: {
+          name: formData.name || "",
+          email: formData.email || "",
+          contact: formData.whatsapp || formData.phone || "",
+        },
+        notes: {
+          serviceType,
+          expertId: expertData?.id || "unknown",
+        },
+        theme: { color: "#36013F" },
+        handler: async (response) => {
+          try {
+            const verifyResponse = await fetch("/api/payments/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(response),
+            });
+            const verification = await verifyResponse.json();
+
+            if (!verifyResponse.ok || !verification.verified) {
+              reject(new Error(verification.error || "Payment verification failed."));
+              return;
+            }
+
+            resolve({ order, response, amount });
+          } catch (error) {
+            reject(error);
+          }
+        },
+        modal: {
+          ondismiss: () => reject(new Error("Payment was cancelled.")),
+        },
+      });
+
+      checkout.open();
+    });
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     
@@ -263,11 +364,23 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
     setIsSubmitting(true);
     try {
+      const payment = await collectPayment();
+
       const { error } = await supabase
         .from('leads')
         .insert([{
           service_type: serviceType,
-          form_data: formData,
+          form_data: {
+            ...formData,
+            payment: payment
+              ? {
+                  status: "paid",
+                  amount: payment.amount,
+                  orderId: payment.response?.razorpay_order_id || payment.order?.id || null,
+                  paymentId: payment.response?.razorpay_payment_id || null,
+                }
+              : { status: "not_required" },
+          },
           expert_id: expertData?.id || "unknown",
           expert_name: expertData?.fullName || "Unknown Expert",
           status: "pending",

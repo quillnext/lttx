@@ -3,19 +3,12 @@ import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-
-console.log("FIREBASE_ADMIN_SDK (partial):", process.env.FIREBASE_ADMIN_SDK?.substring(0, 50) + "...");
-
-
 if (!getApps().length) {
   try {
-    console.log("Attempting to initialize Firebase Admin SDK...");
     const parsedCert = JSON.parse(process.env.FIREBASE_ADMIN_SDK);
-    console.log("Parsed service account - project_id:", parsedCert.project_id);
     initializeApp({
       credential: cert(parsedCert),
     });
-    console.log("Firebase Admin SDK initialized successfully");
   } catch (error) {
     console.error("Failed to initialize Firebase Admin SDK:", error.message);
     throw error;
