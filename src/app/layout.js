@@ -7,6 +7,7 @@ import Navbar from "./components/Navbar";
 import GTMHead from "@/components/GTMHead";
 import GTMNoScript from "@/components/GTMNoScript";
 import ClarityScript from "@/components/ClarityScript";
+import AuthProvider from "@/app/components/AuthProvider";
 
 
 const ralewaySans = Raleway({
@@ -121,7 +122,9 @@ export default function RootLayout({ children }) {
         {/* <Navbar/> */}
         <GTMNoScript/>
 
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
         {/* <Footer/> */}
       </body>
 

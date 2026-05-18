@@ -2,8 +2,9 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { supabase } from "@/lib/supabase";
 
-const initialOtpState = {
+const initialState = {
   otpSent: false,
   otpEmail: "",
 };
@@ -13,112 +14,152 @@ export const useUserAuthStore = create(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      loading: false,
+      loading: true,
       error: "",
-      ...initialOtpState,
+      ...initialState,
 
-      setUser: (user) =>
-        set({
-          user,
-          isAuthenticated: Boolean(user),
-          error: "",
-          loading: false,
-        }),
+      // Initialize Auth
+      initializeAuth: async () => {
+        set({ loading: true });
 
-      sendOtp: async ({ email, name }) => {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const mappedUser = {
+            ...session.user,
+            name: session.user.user_metadata?.name || "",
+            phone: session.user.user_metadata?.phone || "",
+          };
+
+          set({
+            user: mappedUser,
+            isAuthenticated: true,
+            loading: false,
+          });
+        } else {
+          set({
+            user: null,
+            isAuthenticated: false,
+            loading: false,
+          });
+        }
+
+        supabase.auth.onAuthStateChange((event, session) => {
+          const mappedUser = session?.user
+            ? {
+                ...session.user,
+                name: session.user.user_metadata?.name || "",
+                phone: session.user.user_metadata?.phone || "",
+              }
+            : null;
+
+          set({
+            user: mappedUser,
+            isAuthenticated: !!session,
+            loading: false,
+          });
+        });
+      },
+
+      // 1. SEND OTP
+      sendOtp: async ({ email, name, phone }) => {
         set({ loading: true, error: "" });
-        const normalizedEmail = email.trim().toLowerCase();
+
+        const cleanEmail = email.trim().toLowerCase();
 
         try {
-          const response = await fetch("/api/send-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: normalizedEmail, userName: name }),
+          const { error } = await supabase.auth.signInWithOtp({
+            email: cleanEmail,
+            options: {
+              shouldCreateUser: true,
+              data: { name, phone },
+            },
           });
 
-          const result = await response.json();
-          if (!response.ok) {
-            throw new Error(result.error || "Failed to send OTP");
-          }
+          if (error) throw error;
 
           set({
             loading: false,
             otpSent: true,
-            otpEmail: normalizedEmail,
-            error: "",
+            otpEmail: cleanEmail,
           });
-
-          return result;
         } catch (error) {
           set({ loading: false, error: error.message });
           throw error;
         }
       },
 
+      // 2. VERIFY OTP + LOGIN
       verifyOtpAndLogin: async ({ email, otp, name, phone }) => {
         set({ loading: true, error: "" });
 
         try {
-          const response = await fetch("/api/user-auth/verify-otp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email: email.trim().toLowerCase(),
-              otp,
-              name,
-              phone,
-            }),
+          const cleanEmail = email.trim().toLowerCase();
+
+          const { data, error } = await supabase.auth.verifyOtp({
+            email: cleanEmail,
+            token: otp,
+            type: "email",
           });
 
-          const result = await response.json();
-          if (!response.ok) {
-            throw new Error(result.error || "Failed to verify OTP");
-          }
+          if (error) throw error;
 
+          const user = data.user;
+
+          // SAVE extra user data
+          await supabase.from("profiles").upsert({
+            id: user.id,
+            email: cleanEmail,
+            name,
+            phone,
+          });
+
+          // Wait for session to be established via onAuthStateChange or just update immediately
           set({
-            user: result.user,
+            user: { ...user, name, phone },
             isAuthenticated: true,
             loading: false,
             error: "",
-            ...initialOtpState,
+            ...initialState,
           });
 
-          return result.user;
+          return user;
         } catch (error) {
           set({ loading: false, error: error.message });
           throw error;
         }
       },
 
+      // UPDATE USER
       updateUser: (updates) => {
-        const currentUser = get().user;
-        if (!currentUser) return;
+        const current = get().user;
+        if (!current) return;
 
         set({
-          user: {
-            ...currentUser,
-            ...updates,
-          },
+          user: { ...current, ...updates },
         });
       },
 
-      clearError: () => set({ error: "" }),
+      // LOGOUT
+      logout: async () => {
+        await supabase.auth.signOut();
 
-      logout: () =>
         set({
           user: null,
           isAuthenticated: false,
           loading: false,
           error: "",
-          ...initialOtpState,
-        }),
+          ...initialState,
+        });
+      },
+
+      clearError: () => set({ error: "" }),
     }),
     {
-      name: "xmytravel-user-auth",
-      partialize: (state) => ({
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      name: "xmytravel-auth",
+      partialize: () => ({}),
     }
   )
 );

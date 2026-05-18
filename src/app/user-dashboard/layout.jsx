@@ -10,19 +10,14 @@ import { useUserAuthStore } from "@/stores/useUserAuthStore";
 export default function UserDashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAuthenticated, logout } = useUserAuthStore();
-  const [hydrated, setHydrated] = useState(false);
+  const { user, isAuthenticated, loading, logout } = useUserAuthStore();
   const [navLoading, setNavLoading] = useState(false);
 
   useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated && !isAuthenticated) {
+    if (!loading && !isAuthenticated) {
       router.replace("/user-login");
     }
-  }, [hydrated, isAuthenticated, router]);
+  }, [loading, isAuthenticated, router]);
 
   useEffect(() => {
     setNavLoading(false);
@@ -39,7 +34,7 @@ export default function UserDashboardLayout({ children }) {
     }
   };
 
-  if (!hydrated || !isAuthenticated) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-100">
         <p className="text-sm font-medium text-gray-500">Loading user dashboard...</p>

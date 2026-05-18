@@ -30,7 +30,7 @@ export default function UserLoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/user-dashboard");
+      router.replace("/");
     }
   }, [isAuthenticated, router]);
 
@@ -56,7 +56,7 @@ export default function UserLoginPage() {
     }
 
     try {
-      await sendOtp({ email: form.email, name: form.name });
+      await sendOtp({ email: form.email, name: form.name, phone: form.phone });
       setMessage("OTP sent to your email.");
     } catch {
       setMessage("");
