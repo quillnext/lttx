@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Upload, Calendar, Clock, IndianRupee, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 const SERVICES_DATA = {
   "1:1 STRATEGIC CONSULTATION": {
@@ -122,6 +123,7 @@ const loadRazorpayScript = () =>
   });
 
 export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
+  const { user } = useUserAuthStore();
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -384,8 +386,9 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           expert_id: expertData?.id || "unknown",
           expert_name: expertData?.fullName || "Unknown Expert",
           status: "pending",
-          user_name: formData.name || "Traveller",
-          user_email: formData.email || "",
+          user_name: user?.name || formData.name || "Traveller",
+          user_email: user?.email || formData.email || "",
+          user_phone: user?.phone || formData.phone || formData.whatsapp || "",
           // Flatten some common fields for easier querying/display if needed
           destination: formData.destination || formData.dest || "",
           trip_dates: (formData.startDate && formData.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData.dates || ""),

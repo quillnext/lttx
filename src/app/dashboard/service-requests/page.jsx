@@ -112,7 +112,29 @@ export default function ServiceRequestsDashboardPage() {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
-        setRequests((data || []).map(normalizeRequest));
+
+        const list = (data || []).map((row) => {
+          const rawDate = row.created_at ? new Date(row.created_at) : new Date();
+
+          return {
+            id: row.id,
+            rawTimestamp: rawDate,
+            timestamp:
+              rawDate.toLocaleDateString("en-GB") +
+              " " +
+              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+            name: row.user_name || row.form_data?.name || "Traveller",
+            email: row.user_email || row.form_data?.email || "",
+            phone: row.form_data?.phone || row.form_data?.whatsapp || "",
+            serviceType: row.service_type || "Service Request",
+            expertName: row.expert_name || "Unknown Expert",
+            status: row.status || "pending",
+            message: getMessage(row),
+            reply: row.reply || "",
+          };
+        });
+
+        setRequests(list);
       } catch (error) {
         console.error("Error fetching service requests:", error);
       } finally {

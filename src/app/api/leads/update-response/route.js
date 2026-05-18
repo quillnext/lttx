@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 const allowedStatuses = new Set([
   "pending",
@@ -9,23 +9,6 @@ const allowedStatuses = new Set([
   "admin_prompt",
   "escalated",
 ]);
-
-const supabaseAdmin = () => {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Supabase server configuration missing");
-  }
-
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-};
 
 export async function POST(request) {
   try {
@@ -77,7 +60,7 @@ export async function POST(request) {
       );
     }
 
-    const { data, error } = await supabaseAdmin()
+    const { data, error } = await createSupabaseAdminClient()
       .from("leads")
       .update(updates)
       .eq("id", leadId)
