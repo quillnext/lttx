@@ -571,7 +571,7 @@ export default function Profile2u0({ profile, sortedExperience, onBookService })
           isOpen={!!activeService} 
           onClose={() => setActiveService(null)} 
           serviceType={activeService} 
-          expertData={{ id: profile.id, fullName: profile.fullName }} 
+          expertData={{ id: profile.id, fullName: profile.fullName, email: profile.email }} 
         />
         <ProfileAddOnModal isOpen={!!activeAddOn} onClose={() => setActiveAddOn(null)} addOnType={activeAddOn} />
       </main>

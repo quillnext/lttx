@@ -594,6 +594,14 @@ export default function Messages() {
                                     <p className="text-xs font-bold text-[#36013F]">{q.formData.budget}</p>
                                   </div>
                                 )}
+                                {q.formData?.payment?.status && (
+                                  <div>
+                                    {/* <p className="text-[10px] font-bold text-gray-400 uppercase">Payment</p>
+                                    <p className="text-xs font-bold text-[#36013F]">
+                                      {q.formData.payment.status === "paid" ? `Paid Rs. ${q.formData.payment.amount}` : "Not required"}
+                                    </p> */}
+                                  </div>
+                                )}
                               </div>
                             )}
 

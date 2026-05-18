@@ -133,9 +133,21 @@ export const useUserAuthStore = create(
       },
 
       // UPDATE USER
-      updateUser: (updates) => {
+      updateUser: async (updates) => {
         const current = get().user;
         if (!current) return;
+
+        try {
+          if (current.id) {
+            const profileUpdates = { id: current.id, email: current.email };
+            if (updates.name !== undefined) profileUpdates.name = updates.name;
+            if (updates.phone !== undefined) profileUpdates.phone = updates.phone;
+            
+            await supabase.from("profiles").upsert(profileUpdates);
+          }
+        } catch (error) {
+          console.error("Failed to update profile in database:", error);
+        }
 
         set({
           user: { ...current, ...updates },

@@ -123,7 +123,7 @@ const loadRazorpayScript = () =>
   });
 
 export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
-  const { user } = useUserAuthStore();
+  const { user, updateUser } = useUserAuthStore();
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -132,11 +132,18 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   useEffect(() => {
     if (isOpen) {
       if (!isSubmitting && !isSuccess) {
-        // Load draft for this serviceType if any
-        // setFormData(JSON.parse(localStorage.getItem(`draft_${serviceType}`)));
+        // Pre-fill user data if they are logged in
+        if (user) {
+          setFormData(prev => ({
+            ...prev,
+            name: prev.name || user.name || "",
+            email: prev.email || user.email || "",
+            phone: prev.phone || user.phone || ""
+          }));
+        }
       }
     }
-  }, [isOpen, serviceType]);
+  }, [isOpen, serviceType, user, isSubmitting, isSuccess]);
 
   if (!isOpen || !serviceType) return null;
 
@@ -146,6 +153,15 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   const updateForm = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
+
+  const renderContactInfo = () => (
+    <div className="mb-8 p-5 border border-[#FDC700]/30 bg-[#FDC700]/5 rounded-2xl">
+      <h4 className="block text-sm font-bold text-[#36013F] mb-4">Your Contact Details <span className="text-red-500">*</span></h4>
+      <CustomInput label="Full Name" required placeholder="Enter your full name" value={formData.name || ""} onChange={e => updateForm("name", e.target.value)} />
+      <CustomInput label="Email Address" required type="email" placeholder="you@example.com" value={formData.email || ""} onChange={e => updateForm("email", e.target.value)} />
+      <CustomInput label="WhatsApp / Phone" required placeholder="+91 9999999999" value={formData.phone || ""} onChange={e => updateForm("phone", e.target.value)} />
+    </div>
+  );
 
   const renderFormContent = () => {
     switch (serviceType) {
@@ -388,7 +404,6 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           status: "pending",
           user_name: user?.name || formData.name || "Traveller",
           user_email: user?.email || formData.email || "",
-          user_phone: user?.phone || formData.phone || formData.whatsapp || "",
           // Flatten some common fields for easier querying/display if needed
           destination: formData.destination || formData.dest || "",
           trip_dates: (formData.startDate && formData.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData.dates || ""),
@@ -397,6 +412,40 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
       if (error) throw error;
       
+      // Update user auth store if they are logged in to persist contact details
+      if (user) {
+        updateUser({
+          name: formData.name || user.name,
+          phone: formData.phone || formData.whatsapp || user.phone
+        });
+      }
+
+      // Send email notification
+      try {
+        const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
+        const finalEmail = user?.email || formData.email;
+        const finalName = user?.name || formData.name || "Traveller";
+        const finalPhone = user?.phone || formData.phone || formData.whatsapp || "";
+
+        if (finalEmail && expertData?.email) {
+          await fetch("/api/send-question-emails", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userName: finalName,
+              userEmail: finalEmail,
+              userPhone: finalPhone,
+              expertName: expertData?.fullName || "XMyTravel Expert",
+              expertEmail: expertData.email,
+              question: questionText,
+              isHandedOver: true // true so it sends to all parties
+            }),
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send email notification", emailError);
+      }
+
       setIsSuccess(true);
     } catch (error) {
       console.error("Error submitting lead to Supabase:", error);
@@ -449,8 +498,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
                 ) : (
                   <form onSubmit={handleSubmit} className="p-6 md:p-8 flex flex-col h-full">
 
-
-
+                    {renderContactInfo()}
 
                     {renderFormContent()}
 
