@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { X, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const ADDON_DATA = {
     "Itinerary Review": {
@@ -72,9 +75,20 @@ const ChipSelect = ({ label, required, options, multi = false, selected, onChang
 );
 
 export default function ProfileAddOnModal({ isOpen, onClose, addOnType }) {
+    const { user } = useUserAuthStore();
+    const router = useRouter();
     const [formData, setFormData] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            if (!user) {
+                router.push("/user-login");
+                onClose(); // Close the modal as we're redirecting
+            }
+        }
+    }, [isOpen, user, router, onClose]);
 
     if (!isOpen || !addOnType) return null;
     const data = ADDON_DATA[addOnType];

@@ -3,7 +3,11 @@
 import React, { useEffect, useState } from "react";
 import { AlertTriangle, Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, Send, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { app } from "@/lib/firebase";
 import CaseSheetView from "@/app/components/CaseSheetView";
+
+const db = getFirestore(app);
 import ExpertPrescriptionBuilder from "@/app/components/ExpertPrescriptionBuilder";
 import PrescriptionUserView from "@/app/components/PrescriptionUserView";
 
@@ -102,6 +106,26 @@ export default function ServiceRequestsDashboardPage() {
   const [replyError, setReplyError] = useState(null);
   const [replyLoading, setReplyLoading] = useState(false);
 
+  const [reminding, setReminding] = useState({});
+  const [experts, setExperts] = useState([]);
+  const [redirectModal, setRedirectModal] = useState(null);
+  const [selectedNewExpert, setSelectedNewExpert] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
+
+  useEffect(() => {
+    const fetchExperts = async () => {
+      try {
+        const q = query(collection(db, "Profiles"), where("profileType", "==", "expert"));
+        const snapshot = await getDocs(q);
+        const expertList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setExperts(expertList);
+      } catch (err) {
+        console.error("Error fetching experts:", err);
+      }
+    };
+    fetchExperts();
+  }, []);
+
   useEffect(() => {
     const fetchRequests = async () => {
       setLoading(true);
@@ -138,6 +162,88 @@ export default function ServiceRequestsDashboardPage() {
     }
 
     setRequests((prev) => prev.filter((request) => request.id !== id));
+  };
+
+  const handleSendReminder = async (q) => {
+    setReminding(prev => ({ ...prev, [q.id]: true }));
+    try {
+      const expertEmail = experts.find(e => e.id === q.expert_id)?.email || "";
+      const res = await fetch("/api/leads/send-reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: q.id,
+          expertEmail: expertEmail,
+          expertName: q.expertName,
+          questionText: q.question
+        })
+      });
+      if (res.ok) {
+        alert("Reminder sent successfully!");
+        setRequests(prev => prev.map(item =>
+          item.id === q.id
+            ? { ...item, formData: { ...item.formData, reminderCount: (item.formData?.reminderCount || 0) + 1 } }
+            : item
+        ));
+      } else {
+        const d = await res.json();
+        alert(d.error || "Failed to send reminder");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error sending reminder");
+    } finally {
+      setReminding(prev => ({ ...prev, [q.id]: false }));
+    }
+  };
+
+  const handleRedirectSubmit = async () => {
+    if (!redirectModal || !selectedNewExpert) return;
+
+    setRedirecting(true);
+    try {
+      const expertObj = experts.find(e => e.id === selectedNewExpert);
+      if (!expertObj) throw new Error("Selected expert not found");
+
+      const res = await fetch("/api/leads/redirect-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: redirectModal.id,
+          newExpertId: expertObj.id,
+          newExpertName: expertObj.fullName || expertObj.full_name || expertObj.name,
+          newExpertEmail: expertObj.email,
+          questionText: redirectModal.question,
+          userName: redirectModal.userName,
+          userEmail: redirectModal.userEmail
+        })
+      });
+
+      if (res.ok) {
+        alert("Request redirected successfully!");
+        setRequests(prev => prev.map(q =>
+          q.id === redirectModal.id
+            ? { 
+                ...q, 
+                expert_id: expertObj.id, 
+                expertName: expertObj.fullName || expertObj.full_name || expertObj.name, 
+                status: "pending",
+                formData: { ...q.formData, isRedirected: true, reminderCount: 0 }
+              }
+            : q
+        ));
+        setRedirectModal(null);
+        setSelectedNewExpert("");
+      } else {
+        const d = await res.json();
+        alert(d.error || "Redirect failed");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error redirecting request: " + e.message);
+    } finally {
+      setRedirecting(false);
+    }
   };
 
   const updateLead = async (request, updates) => {
@@ -240,6 +346,48 @@ export default function ServiceRequestsDashboardPage() {
 
   return (
     <div className="p-4 text-gray-800">
+      {/* Redirect Modal */}
+      {redirectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95">
+            <h3 className="text-xl font-bold mb-4 text-[#36013F]">Redirect Service Request</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select a new expert for: <strong>"{redirectModal.question?.substring(0, 50)}..."</strong>
+            </p>
+
+            <div className="mb-6">
+              <label className="block text-xs font-bold uppercase text-gray-500 mb-1">New Expert</label>
+              <select
+                className="w-full p-3 border rounded-xl bg-gray-50 font-medium outline-none focus:ring-2 focus:ring-[#36013F]"
+                value={selectedNewExpert}
+                onChange={(e) => setSelectedNewExpert(e.target.value)}
+              >
+                <option value="">-- Select Expert --</option>
+                {experts.filter(e => e.id !== redirectModal.expert_id).map(e => (
+                  <option key={e.id} value={e.id}>{e.fullName || e.full_name || e.name} ({e.email})</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRedirectModal(null)}
+                className="flex-1 py-3 rounded-xl bg-gray-100 font-bold text-gray-600 hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRedirectSubmit}
+                disabled={redirecting || !selectedNewExpert}
+                className="flex-1 py-3 rounded-xl bg-[#36013F] text-white font-bold hover:bg-[#4a0152] disabled:opacity-50 flex justify-center items-center gap-2"
+              >
+                {redirecting && <Loader className="animate-spin w-4 h-4" />} Confirm Redirect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-3xl font-black text-[#36013F]">Service Requests</h1>
         <input
@@ -292,41 +440,72 @@ export default function ServiceRequestsDashboardPage() {
                         {request.serviceType}
                       </span>
                     </td>
-                    <td className="p-4 border-b font-bold">{request.expertName}</td>
+                    <td className="p-4 border-b font-bold">
+                      {request.expertName}
+                      {request.formData?.isRedirected && <span className="block text-[10px] text-red-500 font-bold uppercase mt-1">Redirected</span>}
+                    </td>
                     <td className="p-3 border-b">
-                      <span
-                        className={`font-medium px-3 py-1 text-xs rounded-lg inline-flex items-center gap-2 ${
-                          request.status === "answered"
-                            ? "bg-green-100 text-green-800"
-                            : request.status === "accepted"
-                              ? "bg-blue-100 text-blue-800"
-                              : request.status === "clarification_requested"
-                                ? "bg-amber-100 text-amber-800"
-                                : request.status === "escalated"
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-secondary text-[#36013F]"
-                        }`}
-                      >
-                        {request.status === "answered" ? <CircleCheckBig size={14} /> : <Loader className="spin-animation" size={14} />}
-                        {getStatusLabel(request.status)}
-                      </span>
+                      <div className="space-y-1">
+                        <span
+                          className={`font-medium px-3 py-1 text-xs rounded-lg inline-flex items-center gap-2 ${
+                            request.status === "answered"
+                              ? "bg-green-100 text-green-800"
+                              : request.status === "accepted"
+                                ? "bg-blue-100 text-blue-800"
+                                : request.status === "clarification_requested"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : request.status === "escalated"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-secondary text-[#36013F]"
+                          }`}
+                        >
+                          {request.status === "answered" ? <CircleCheckBig size={14} /> : <Loader className="spin-animation" size={14} />}
+                          {getStatusLabel(request.status)}
+                        </span>
+                        {/* Reminder Status Badge */}
+                        {request.status !== "answered" && request.formData?.reminderCount > 0 && (
+                          <span className="block text-[10px] font-bold text-orange-600 mt-1">
+                            {request.formData.reminderCount} Reminders Sent
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3 border-b">
                       <div className="flex flex-col gap-2">
-                        {request.status !== "answered" && (
-                          <button
-                            onClick={() => setReplyModal(request)}
-                            className="px-3 py-1 rounded-lg text-xs font-medium bg-[#36013F] text-white hover:bg-[#4a0150]"
-                          >
-                            {request.status === "accepted" ? "Start Response" : "Reply"}
-                          </button>
-                        )}
                         <button
                           onClick={() => handleDelete(request.id)}
                           className="px-3 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200"
                         >
                           Delete
                         </button>
+                        
+                        {request.status !== "answered" && (
+                          <>
+                            <button
+                              onClick={() => setReplyModal(request)}
+                              className="px-3 py-1 w-full rounded-lg text-xs font-medium bg-[#36013F] text-white hover:bg-[#4a0150]"
+                            >
+                              {request.status === "accepted" ? "Start Response" : "Reply"}
+                            </button>
+                            
+                            <button
+                              onClick={() => handleSendReminder(request)}
+                              disabled={reminding[request.id]}
+                              className="px-3 py-1 w-full rounded-lg text-xs font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200 disabled:opacity-50"
+                            >
+                              {reminding[request.id] ? "Sending..." : "Send Reminder"}
+                            </button>
+
+                            {(request.formData?.reminderCount >= 3) && (
+                              <button
+                                onClick={() => setRedirectModal(request)}
+                                className="px-3 py-1 w-full rounded-lg text-xs font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
+                              >
+                                Redirect
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </td>
                     <td className="p-3 border-b">

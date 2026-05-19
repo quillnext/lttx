@@ -36,7 +36,7 @@ export default function PrescriptionUserView({ prescription }) {
       {/* 1. DIAGNOSIS */}
       <section className="space-y-3">
         <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-          <Compass size={14} className="text-purple-500" /> What I understand
+          <Compass size={14} className="text-purple-500" /> What I understand from your plan
         </h3>
         <p className="text-lg font-medium text-[#36013F] leading-snug">
           "{diagnosis}"
