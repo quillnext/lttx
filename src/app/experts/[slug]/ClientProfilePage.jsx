@@ -76,11 +76,17 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
       try {
         const q = query(
           collection(db, "Bookings"),
-          where("expertId", "==", expertId),
-          where("createdAt", ">=", Timestamp.fromDate(startOfMonth))
+          where("expertId", "==", expertId)
         );
         const snap = await getDocs(q);
-        setScarcityCount(snap.size + 5); 
+        let recentBookings = 0;
+        snap.forEach(doc => {
+          const data = doc.data();
+          if (data.createdAt && data.createdAt.toDate() >= startOfMonth) {
+            recentBookings++;
+          }
+        });
+        setScarcityCount(recentBookings + 5); 
       } catch (err) {
         console.error("Scarcity fetch error:", err);
         setScarcityCount(5);

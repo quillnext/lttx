@@ -122,11 +122,11 @@ export default function Profile2u0({ profile, sortedExperience, onBookService })
       <CustomStyles />
 
       {/* REFINED FLOATING ICON HEADER - CLONED FROM DEMO */}
-      <div className="fixed top-6 md:top-6 bottom-6 md:bottom-auto left-1/2 -translate-x-1/2 z-[1000] w-[95%] max-w-[1400px]">
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] w-[95%] max-w-[1400px] pointer-events-none">
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-[#36013F]/95 backdrop-blur-2xl border border-white/10 rounded-full py-2.5 px-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between gap-4"
+          className="bg-[#36013F]/95 backdrop-blur-2xl border border-white/10 rounded-full py-2.5 px-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between gap-4 pointer-events-auto"
         >
           <div className="flex items-center gap-3 pr-4 border-r border-white/10 shrink-0">
             <img src="/logolttx.svg" alt="Xmytravel" className="w-[150px] h-auto object-contain" />
