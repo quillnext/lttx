@@ -147,7 +147,66 @@ export default function ServiceRequestsDashboardPage() {
       }
     };
 
+    const fetchRequestsSilent = async () => {
+      try {
+        const { data = [], error } = await supabase
+          .from("leads")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const list = (data || []).map((row) => normalizeRequest(row));
+        setRequests(list);
+      } catch (error) {
+        console.error("Error fetching service requests silently:", error);
+      }
+    };
+
     fetchRequests();
+
+    // Subscribe to real-time changes on 'leads' table for admin dashboard
+    const channel = supabase
+      .channel('admin_leads')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads',
+        },
+        (payload) => {
+          console.log('Admin real-time update on leads table:', payload);
+          const { eventType, new: newRow, old: oldRow } = payload;
+
+          if (eventType === 'INSERT') {
+            const newRequest = normalizeRequest(newRow);
+            setRequests((prev) => {
+              // Avoid duplicate inserts
+              if (prev.some((r) => r.id === newRequest.id)) return prev;
+              return [newRequest, ...prev];
+            });
+          } else if (eventType === 'UPDATE') {
+            const updatedRequest = normalizeRequest(newRow);
+            setRequests((prev) =>
+              prev.map((r) => (r.id === updatedRequest.id ? updatedRequest : r))
+            );
+          } else if (eventType === 'DELETE') {
+            setRequests((prev) => prev.filter((r) => r.id !== oldRow.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // Robust silent background polling fallback every 5 seconds
+    const pollInterval = setInterval(() => {
+      fetchRequestsSilent();
+    }, 5000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, []);
 
   const handleDelete = async (id) => {

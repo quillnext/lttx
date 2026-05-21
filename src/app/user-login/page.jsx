@@ -78,7 +78,7 @@ export default function UserLoginPage() {
 
     try {
       await verifyOtpAndLogin(form);
-      router.replace("/user-dashboard");
+      router.replace("/ask-an-expert");
     } catch {
       setMessage("");
     }

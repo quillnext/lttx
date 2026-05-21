@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { User, MapPin, Calendar, Compass, MessageSquare, Paperclip, Clock, ShieldAlert } from "lucide-react";
 
 export default function CaseSheetView({ question, sessionData }) {
@@ -28,6 +28,52 @@ export default function CaseSheetView({ question, sessionData }) {
   const displayStyle = formData.budget || summary?.style || "Standard";
   const displayType = Array.isArray(formData.type) ? formData.type.join(", ") : (formData.exp || summary?.type || "N/A");
   const displayProblem = formData.confusion || formData.question || formData.context || formData.mustHaves || legacyQuestion;
+
+  const [dynamicSummary, setDynamicSummary] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  useEffect(() => {
+    if (summary?.caseSummary) {
+      setDynamicSummary(summary.caseSummary);
+      return;
+    }
+
+    const generateSummary = async () => {
+      setIsGenerating(true);
+      setDynamicSummary("");
+      try {
+        const response = await fetch("/api/generate-case-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            caseData: {
+              userName,
+              serviceType,
+              destination: displayDest,
+              dates: displayDates,
+              who: displayWho,
+              budget: displayStyle,
+              type: displayType,
+              problem: displayProblem
+            }
+          })
+        });
+        const result = await response.json();
+        if (result.success && result.summary) {
+          setDynamicSummary(result.summary);
+        } else {
+          setDynamicSummary("A custom travel consultation request.");
+        }
+      } catch (err) {
+        console.error("Error generating dynamic summary:", err);
+        setDynamicSummary("A custom travel consultation request.");
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    generateSummary();
+  }, [id, summary?.caseSummary, displayDest, displayDates, displayWho, displayStyle, displayType, displayProblem, userName, serviceType]);
 
   const getUrgencyColor = (u) => {
     switch (u.toLowerCase()) {
@@ -73,7 +119,12 @@ export default function CaseSheetView({ question, sessionData }) {
           <Clock size={16} /> Case Summary (AI Generated)
         </h3>
         <p className="text-sm text-indigo-800 leading-relaxed font-medium">
-          {summary?.caseSummary || "AI is analyzing this case... A 7-day trip planning request for Japan with focus on luxury and comfort."}
+          {summary?.caseSummary || dynamicSummary || (isGenerating ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent"></span>
+              AI is analyzing this case...
+            </span>
+          ) : "AI is analyzing this case... A 7-day trip planning request for Japan with focus on luxury and comfort.")}
         </p>
       </div>
 

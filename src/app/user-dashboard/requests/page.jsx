@@ -29,9 +29,9 @@ export default function UserRequestsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user?.email) return;
+    if (!user?.email) return;
 
+    const fetchRequests = async () => {
       setLoading(true);
       try {
         const { data = [], error } = await supabase
@@ -49,7 +49,70 @@ export default function UserRequestsPage() {
       }
     };
 
+    const fetchRequestsSilent = async () => {
+      try {
+        const { data = [], error } = await supabase
+          .from("leads")
+          .select("*")
+          .eq("user_email", user.email)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setRequests(data || []);
+      } catch (error) {
+        console.error("Error silently fetching user requests:", error);
+      }
+    };
+
     fetchRequests();
+
+    // Subscribe to real-time changes on 'leads' table for this user
+    const channel = supabase
+      .channel(`user_leads_${user.email}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads',
+        },
+        (payload) => {
+          console.log('User real-time update on leads table:', payload);
+          const { eventType, new: newRow, old: oldRow } = payload;
+
+          if (eventType === 'INSERT') {
+            if (newRow.user_email === user.email) {
+              setRequests((prev) => {
+                // Avoid duplicate inserts
+                if (prev.some((r) => r.id === newRow.id)) return prev;
+                return [newRow, ...prev];
+              });
+            }
+          } else if (eventType === 'UPDATE') {
+            if (newRow.user_email === user.email) {
+              setRequests((prev) =>
+                prev.map((r) => (r.id === newRow.id ? newRow : r))
+              );
+            } else {
+              // If email changed, filter it out
+              setRequests((prev) => prev.filter((r) => r.id !== newRow.id));
+            }
+          } else if (eventType === 'DELETE') {
+            setRequests((prev) => prev.filter((r) => r.id !== oldRow.id));
+          }
+        }
+      )
+      .subscribe();
+
+    // Robust silent background polling fallback every 5 seconds
+    const pollInterval = setInterval(() => {
+      fetchRequestsSilent();
+    }, 5000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
   }, [user?.email]);
 
   if (loading) {

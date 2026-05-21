@@ -81,17 +81,108 @@ export default function Messages() {
   const [expertProfile, setExpertProfile] = useState(null);
 
   useEffect(() => {
+    let channel;
+    let pollInterval;
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         fetchExpertProfile(user.uid);
         fetchQuestions(user.uid);
         fetchLeads(user.uid);
+
+        // Subscribe to real-time changes on 'leads' table
+        channel = supabase
+          .channel(`expert_leads_${user.uid}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'leads',
+            },
+            (payload) => {
+              console.log('Real-time update on leads table:', payload);
+              const { eventType, new: newRow, old: oldRow } = payload;
+
+              if (eventType === 'INSERT') {
+                // Check if this lead belongs to this expert
+                if (newRow.expert_id === user.uid) {
+                  const item = newRow;
+                  const newLead = {
+                    ...item,
+                    rawTimestamp: new Date(item.created_at),
+                    timestamp: new Date(item.created_at).toLocaleDateString("en-GB") + " " + new Date(item.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+                    userName: item.user_name || item.form_data?.name || "Traveller",
+                    userEmail: item.user_email || item.form_data?.email || "",
+                    expertName: item.expert_name || "XMyTravel Expert",
+                    question: item.form_data?.confusion || item.form_data?.question || item.form_data?.context || "New Service Request",
+                    serviceType: item.service_type,
+                    formData: item.form_data,
+                  };
+                  setLeads((prev) => {
+                    // Avoid duplicate inserts
+                    if (prev.some((l) => l.id === newLead.id)) return prev;
+                    return [newLead, ...prev];
+                  });
+                }
+              } else if (eventType === 'UPDATE') {
+                if (newRow.expert_id === user.uid) {
+                  const item = newRow;
+                  setLeads((prev) =>
+                    prev.map((l) => {
+                      if (l.id === item.id) {
+                        return {
+                          ...l,
+                          ...item,
+                          rawTimestamp: new Date(item.created_at),
+                          timestamp: new Date(item.created_at).toLocaleDateString("en-GB") + " " + new Date(item.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+                          userName: item.user_name || item.form_data?.name || "Traveller",
+                          userEmail: item.user_email || item.form_data?.email || "",
+                          question: item.form_data?.confusion || item.form_data?.question || item.form_data?.context || "New Service Request",
+                          serviceType: item.service_type,
+                          formData: item.form_data,
+                        };
+                      }
+                      return l;
+                    })
+                  );
+                } else {
+                  // If the expert_id has changed (e.g. redirected to another expert), filter it out
+                  setLeads((prev) => prev.filter((l) => l.id !== newRow.id));
+                }
+              } else if (eventType === 'DELETE') {
+                setLeads((prev) => prev.filter((l) => l.id !== oldRow.id));
+              }
+            }
+          )
+          .subscribe();
+
+        // Robust silent background polling fallback every 5 seconds
+        pollInterval = setInterval(() => {
+          fetchQuestions(user.uid);
+          fetchLeads(user.uid);
+        }, 5000);
       } else {
         setLoading(false);
+        if (channel) {
+          supabase.removeChannel(channel);
+          channel = null;
+        }
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
   }, []);
 
   const fetchExpertProfile = async (expertId) => {
