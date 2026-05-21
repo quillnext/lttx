@@ -4,18 +4,20 @@ import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getFirestore, collection, query, where, getDocs, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs, getCountFromServer, limit, Timestamp } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import Profile2u0Component from "@/app/components/Profile2u0";
 
-// Safe component wrapper to prevent "Element type is invalid" if an import fails
-const Profile2u0 = Profile2u0Component || (() => (
+const ProfileLoadingShell = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-100 italic text-gray-500">
-    Initializing profile experience...
+    Loading profile experience...
   </div>
-));
+);
 
 const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), { ssr: false });
+const Profile2u0 = dynamic(() => import("@/app/components/Profile2u0"), {
+  ssr: false,
+  loading: ProfileLoadingShell,
+});
 const db = getFirestore(app);
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -76,17 +78,11 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
       try {
         const q = query(
           collection(db, "Bookings"),
-          where("expertId", "==", expertId)
+          where("expertId", "==", expertId),
+          where("createdAt", ">=", Timestamp.fromDate(startOfMonth))
         );
-        const snap = await getDocs(q);
-        let recentBookings = 0;
-        snap.forEach(doc => {
-          const data = doc.data();
-          if (data.createdAt && data.createdAt.toDate() >= startOfMonth) {
-            recentBookings++;
-          }
-        });
-        setScarcityCount(recentBookings + 5); 
+        const snap = await getCountFromServer(q);
+        setScarcityCount(snap.data().count + 5);
       } catch (err) {
         console.error("Scarcity fetch error:", err);
         setScarcityCount(5);
@@ -103,7 +99,8 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
         const q = query(
           collection(db, "Questions"),
           where("expertId", "==", expertId),
-          where("status", "==", "answered")
+          where("status", "==", "answered"),
+          limit(6)
         );
         const querySnapshot = await getDocs(q);
         const questionList = querySnapshot.docs.map((docSnap) => {
@@ -124,8 +121,18 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
     };
 
     fetchNextSlot();
-    fetchScarcity();
-    fetchAnsweredQuestions();
+    const loadSecondaryData = () => {
+      fetchScarcity();
+      fetchAnsweredQuestions();
+    };
+
+    if ("requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(loadSecondaryData, { timeout: 1500 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timer = window.setTimeout(loadSecondaryData, 500);
+    return () => window.clearTimeout(timer);
   }, [expertId, weeklySchedule]);
 
   const handleBookService = async (service) => {
@@ -203,7 +210,6 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
         onBookService={handleBookService} 
       />
       <ToastContainer position="top-right" autoClose={3000} theme="light" />
-      <script src="https://checkout.razorpay.com/v1/checkout.js" async></script>
       {isModalOpen && (
         <AskQuestionModal
           expert={profile}

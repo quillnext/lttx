@@ -215,16 +215,15 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
           isHandedOver: expert.isHandedOver,
         };
 
-        const response = await fetch("/api/send-question-emails", {
+        const emailRequest = fetch("/api/send-question-emails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(emailPayload),
+          keepalive: true,
+        }).catch((error) => {
+          console.warn("Question notification email failed after question save:", error);
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Failed to send emails: ${errorData.error || "Unknown error"}`);
-        }
+        void emailRequest;
       }
 
       setQuestion("");

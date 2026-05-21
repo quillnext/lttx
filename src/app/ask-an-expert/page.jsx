@@ -4,18 +4,30 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { getFirestore, collection, getDocs, query, limit, startAfter, where, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import { FaSearch, FaPlane, FaTimes, FaMapMarkerAlt, FaStar, FaFilter, FaRupeeSign, FaSuitcase, FaPassport, FaCheckCircle, FaUserTie, FaBuilding, FaArrowRight, FaCommentDots, FaRegidCard } from "react-icons/fa";
 import { useSearchParams, useRouter } from "next/navigation";
-import AskQuestionModal from "@/app/components/AskQuestionModal";
-import SearchLayout from "./SearchLayout";
 import { motion, AnimatePresence } from "framer-motion";
-import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import { toast } from "react-toastify";
 
 const db = getFirestore(app);
+const PAGE_SIZE = 30;
+
+const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), {
+  ssr: false,
+});
+
+const SearchLayout = dynamic(() => import("./SearchLayout"), {
+  ssr: false,
+  loading: () => <SearchSkeleton />,
+});
+
+const Lightbox = dynamic(() => import("react-image-lightbox"), {
+  ssr: false,
+});
 
 // Skeleton Component for better UX during AI Search
 const SearchSkeleton = () => (
@@ -289,11 +301,12 @@ export default function ExpertsDirectory() {
     try {
       let q;
       if (isReset) {
-        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(30));
+        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(PAGE_SIZE));
         setExperts([]);
         setLastDoc(null);
       } else {
-        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(30), startAfter(lastDoc));
+        if (!lastDoc) return;
+        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(PAGE_SIZE), startAfter(lastDoc));
       }
 
       const querySnapshot = await getDocs(q);
@@ -323,8 +336,8 @@ export default function ExpertsDirectory() {
         });
       }
 
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-      setHasMore(querySnapshot.docs.length === 9);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
+      setHasMore(querySnapshot.docs.length === PAGE_SIZE);
     } catch (error) {
       console.error("Error fetching experts:", error);
     } finally {

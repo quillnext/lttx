@@ -51,6 +51,19 @@ const formatPrescriptionForEmail = (reply) => {
     .join("\n\n");
 };
 
+const fetchExpertLeads = async (expertId) => {
+  const response = await fetch(`/api/leads?expertId=${encodeURIComponent(expertId)}`, {
+    cache: "no-store",
+  });
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to fetch expert leads");
+  }
+
+  return result.leads || [];
+};
+
 const getStatusLabel = (status) => {
   const labels = {
     pending: "Pending",
@@ -227,13 +240,7 @@ export default function Messages() {
   const fetchLeads = async (expertId) => {
     try {
       console.log("Fetching leads for expert:", expertId);
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('expert_id', expertId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await fetchExpertLeads(expertId);
 
       console.log("Supabase response data:", data);
 

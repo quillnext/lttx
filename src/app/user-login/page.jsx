@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -10,6 +10,7 @@ import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 export default function UserLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     sendOtp,
     verifyOtpAndLogin,
@@ -27,12 +28,17 @@ export default function UserLoginPage() {
     otp: "",
   });
   const [message, setMessage] = useState("");
+  const returnToParam = searchParams.get("returnTo");
+  const returnTo =
+    returnToParam?.startsWith("/") && !returnToParam.startsWith("//") && !returnToParam.startsWith("/user-login")
+      ? returnToParam
+      : "/ask-an-expert";
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/");
+      router.replace(returnTo);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, returnTo, router]);
 
   const updateForm = (key, value) => {
     clearError();
@@ -78,7 +84,7 @@ export default function UserLoginPage() {
 
     try {
       await verifyOtpAndLogin(form);
-      router.replace("/ask-an-expert");
+      router.replace(returnTo);
     } catch {
       setMessage("");
     }

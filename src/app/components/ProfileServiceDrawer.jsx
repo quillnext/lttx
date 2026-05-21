@@ -5,7 +5,7 @@ import { X, Upload, Calendar, Clock, IndianRupee, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const SERVICES_DATA = {
   "1:1 STRATEGIC CONSULTATION": {
@@ -126,6 +126,8 @@ const loadRazorpayScript = () =>
 export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
   const { user, updateUser } = useUserAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -133,11 +135,13 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   useEffect(() => {
     if (isOpen) {
       if (!user) {
-        router.push("/user-login");
+        const queryString = searchParams.toString();
+        const currentUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+        router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
         onClose(); // Close the drawer as we're redirecting
       }
     }
-  }, [isOpen, user, router, onClose]);
+  }, [isOpen, user, router, onClose, pathname, searchParams]);
 
   if (!isOpen || !serviceType) return null;
 
@@ -406,30 +410,29 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
         });
       }
 
-      // Send email notification
-      try {
-        const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
-        const finalEmail = user?.email;
-        const finalName = user?.name || "Traveller";
-        const finalPhone = user?.phone || formData.whatsapp || "";
+      const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
+      const finalEmail = user?.email;
+      const finalName = user?.name || "Traveller";
+      const finalPhone = user?.phone || formData.whatsapp || "";
 
-        if (finalEmail && expertData?.email) {
-          await fetch("/api/send-question-emails", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              userName: finalName,
-              userEmail: finalEmail,
-              userPhone: finalPhone,
-              expertName: expertData?.fullName || "XMyTravel Expert",
-              expertEmail: expertData.email,
-              question: questionText,
-              isHandedOver: true // true so it sends to all parties
-            }),
-          });
-        }
-      } catch (emailError) {
-        console.error("Failed to send email notification", emailError);
+      if (finalEmail && expertData?.email) {
+        const emailRequest = fetch("/api/send-question-emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userName: finalName,
+            userEmail: finalEmail,
+            userPhone: finalPhone,
+            expertName: expertData?.fullName || "XMyTravel Expert",
+            expertEmail: expertData.email,
+            question: questionText,
+            isHandedOver: true
+          }),
+          keepalive: true,
+        }).catch((emailError) => {
+          console.error("Failed to send email notification", emailError);
+        });
+        void emailRequest;
       }
 
       setIsSuccess(true);

@@ -35,6 +35,17 @@ const getMessage = (row) =>
   row.form_data?.exp ||
   "New service request";
 
+const fetchLeads = async () => {
+  const response = await fetch("/api/leads", { cache: "no-store" });
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to fetch service requests");
+  }
+
+  return result.leads || [];
+};
+
 const getStatusLabel = (status) => {
   const labels = {
     pending: "Pending",
@@ -130,14 +141,8 @@ export default function ServiceRequestsDashboardPage() {
     const fetchRequests = async () => {
       setLoading(true);
       try {
-        const { data = [], error } = await supabase
-          .from("leads")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        const list = (data || []).map((row) => normalizeRequest(row));
+        const data = await fetchLeads();
+        const list = data.map((row) => normalizeRequest(row));
 
         setRequests(list);
       } catch (error) {
@@ -149,14 +154,8 @@ export default function ServiceRequestsDashboardPage() {
 
     const fetchRequestsSilent = async () => {
       try {
-        const { data = [], error } = await supabase
-          .from("leads")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        const list = (data || []).map((row) => normalizeRequest(row));
+        const data = await fetchLeads();
+        const list = data.map((row) => normalizeRequest(row));
         setRequests(list);
       } catch (error) {
         console.error("Error fetching service requests silently:", error);
@@ -213,10 +212,14 @@ export default function ServiceRequestsDashboardPage() {
     const confirm = window.confirm("Are you sure you want to delete this service request?");
     if (!confirm) return;
 
-    const { error } = await supabase.from("leads").delete().eq("id", id);
-    if (error) {
-      console.error("Error deleting service request:", error);
-      alert("Failed to delete service request.");
+    const response = await fetch(`/api/leads?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error("Error deleting service request:", result.error);
+      alert(result.error || "Failed to delete service request.");
       return;
     }
 

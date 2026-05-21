@@ -7,24 +7,29 @@ import Footer from "@/app/pages/Footer";
 import Link from "next/link";
 import { redirect } from "next/navigation"; 
 import JsonLd from "@/app/components/JsonLd";
+import { cache } from "react";
+
+const getProfileBySlug = cache(async (slug) => {
+  const db = getFirestore(app);
+  const q = query(collection(db, "Profiles"), where("username", "==", slug));
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) return null;
+
+  const docSnap = querySnapshot.docs[0];
+  return {
+    id: docSnap.id,
+    ...docSnap.data(),
+  };
+});
 
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", slug));
-  let profile = null;
-
-  try {
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      querySnapshot.forEach((doc) => {
-        profile = { ...doc.data(), id: doc.id };
-      });
-    }
-  } catch (error) {
+  const profile = await getProfileBySlug(slug).catch((error) => {
     console.error("Meta error:", error);
-  }
+    return null;
+  });
 
   if (!profile || profile.isPublic === false) {
     return {
@@ -69,24 +74,19 @@ export async function generateMetadata({ params }) {
 export default async function ExpertProfilePage({ params }) {
   const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", slug));
   let profile = null;
   let weeklySchedule = {};
 
   try {
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) return <div>Profile not found</div>;
+    const profileData = await getProfileBySlug(slug);
+    if (!profileData) return <div>Profile not found</div>;
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      profile = {
-        id: doc.id,
-        ...data,
-        profileType: data.profileType || 'expert', // Get profileType, default to 'expert'
-        timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : null,
-        isOnline: data.isOnline !== false,
-      };
-    });
+    profile = {
+      ...profileData,
+      profileType: profileData.profileType || 'expert',
+      timestamp: profileData.timestamp ? profileData.timestamp.toDate().toISOString() : null,
+      isOnline: profileData.isOnline !== false,
+    };
 
     if (profile?.profileType === 'agency') {
       redirect(`/agency/${slug}`);

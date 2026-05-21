@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 const ADDON_DATA = {
@@ -77,6 +77,8 @@ const ChipSelect = ({ label, required, options, multi = false, selected, onChang
 export default function ProfileAddOnModal({ isOpen, onClose, addOnType }) {
     const { user } = useUserAuthStore();
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [formData, setFormData] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
@@ -84,11 +86,13 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType }) {
     useEffect(() => {
         if (isOpen) {
             if (!user) {
-                router.push("/user-login");
+                const queryString = searchParams.toString();
+                const currentUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+                router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
                 onClose(); // Close the modal as we're redirecting
             }
         }
-    }, [isOpen, user, router, onClose]);
+    }, [isOpen, user, router, onClose, pathname, searchParams]);
 
     if (!isOpen || !addOnType) return null;
     const data = ADDON_DATA[addOnType];

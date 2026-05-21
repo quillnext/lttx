@@ -3,21 +3,24 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutDashboard, LogOut, MessageSquareText, UserRound } from "lucide-react";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 export default function UserDashboardLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, loading, logout } = useUserAuthStore();
   const [navLoading, setNavLoading] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      router.replace("/user-login");
+      const queryString = searchParams.toString();
+      const currentUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+      router.replace(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
     }
-  }, [loading, isAuthenticated, router]);
+  }, [loading, isAuthenticated, router, pathname, searchParams]);
 
   useEffect(() => {
     setNavLoading(false);

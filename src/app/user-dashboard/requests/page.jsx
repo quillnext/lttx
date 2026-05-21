@@ -23,6 +23,19 @@ const parsePrescription = (reply) => {
   }
 };
 
+const fetchUserLeads = async (email) => {
+  const response = await fetch(`/api/leads?userEmail=${encodeURIComponent(email)}`, {
+    cache: "no-store",
+  });
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || "Failed to fetch user requests");
+  }
+
+  return result.leads || [];
+};
+
 export default function UserRequestsPage() {
   const { user } = useUserAuthStore();
   const [requests, setRequests] = useState([]);
@@ -34,13 +47,7 @@ export default function UserRequestsPage() {
     const fetchRequests = async () => {
       setLoading(true);
       try {
-        const { data = [], error } = await supabase
-          .from("leads")
-          .select("*")
-          .eq("user_email", user.email)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
+        const data = await fetchUserLeads(user.email);
         setRequests(data || []);
       } catch (error) {
         console.error("Error fetching user requests:", error);
@@ -51,13 +58,7 @@ export default function UserRequestsPage() {
 
     const fetchRequestsSilent = async () => {
       try {
-        const { data = [], error } = await supabase
-          .from("leads")
-          .select("*")
-          .eq("user_email", user.email)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
+        const data = await fetchUserLeads(user.email);
         setRequests(data || []);
       } catch (error) {
         console.error("Error silently fetching user requests:", error);
