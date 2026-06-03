@@ -27,9 +27,147 @@ const parsePrescription = (reply) => {
 const getReplyPreview = (reply) => {
   const parsed = parsePrescription(reply);
   if (parsed) {
-    return parsed.coreAdvice || parsed.diagnosis || "Structured prescription saved.";
+    return parsed.answer || parsed.coreRecommendation || parsed.planVerdict || parsed.packageConcept || parsed.coreAdvice || parsed.diagnosis || "Response saved.";
   }
   return reply || "";
+};
+
+const Block = ({ label, color = "gray", children }) => {
+  const colors = {
+    gray:   "bg-gray-50 border-gray-200 text-gray-500",
+    blue:   "bg-blue-50 border-blue-200 text-blue-600",
+    green:  "bg-green-50 border-green-200 text-green-700",
+    amber:  "bg-amber-50 border-amber-200 text-amber-700",
+    purple: "bg-purple-50 border-purple-200 text-purple-700",
+    red:    "bg-red-50 border-red-200 text-red-700",
+    dark:   "bg-[#36013F] border-[#36013F] text-white",
+  };
+  return (
+    <div className={`p-3 rounded-xl border ${colors[color]} mb-2`}>
+      <p className="text-[9px] font-black uppercase tracking-widest opacity-70 mb-1">{label}</p>
+      {children}
+    </div>
+  );
+};
+
+// Labels for the builder's saved fields — adapt per service type
+const SERVICE_LABELS = {
+  "1:1 STRATEGIC CONSULTATION": {
+    diagnosis: "Situation Read",
+    coreAdvice: "Recommendation",
+    risks: "Book Now",
+    risksIcon: "→",
+    risksColor: "green",
+    optimizedApproach: "Trip Structure",
+    optNextSteps: "Call Agenda",
+  },
+  "ASK A QUESTION": {
+    diagnosis: "Key Point",
+    coreAdvice: "Answer",
+    risks: "Watch Out",
+    risksIcon: "⚠",
+    risksColor: "red",
+    optimizedApproach: "Follow-up Advice",
+    optNextSteps: null,
+  },
+  "THE MASTER PLAN": {
+    diagnosis: "Plan Verdict",
+    coreAdvice: "Day Structure",
+    risks: "Must Dos",
+    risksIcon: "✓",
+    risksColor: "green",
+    optimizedApproach: "Getting Around",
+    optNextSteps: null,
+  },
+  "CUSTOM LUXE PACKAGE": {
+    diagnosis: "Package Concept",
+    coreAdvice: "Package Details",
+    risks: "Signature Experiences",
+    risksIcon: "★",
+    risksColor: "purple",
+    optimizedApproach: "What's Needed Next",
+    optNextSteps: null,
+  },
+};
+
+const ServiceResponseDisplay = ({ reply, serviceType }) => {
+  if (!reply?.trim()) {
+    return <p className="text-sm text-gray-400 italic">No reply sent yet.</p>;
+  }
+
+  const data = parsePrescription(reply);
+
+  if (!data) {
+    const preview = reply.length > 300 ? reply.substring(0, 300) + "…" : reply;
+    return <p className="text-sm italic text-gray-600 leading-relaxed">{preview}</p>;
+  }
+
+  const lbl = SERVICE_LABELS[serviceType] || {
+    diagnosis: "Situation Read",
+    coreAdvice: "Recommendation",
+    risks: "Watch Out",
+    risksIcon: "→",
+    risksColor: "red",
+    optimizedApproach: "Better Approach",
+    optNextSteps: "Next Steps",
+  };
+
+  const opt = data.optionalSections || {};
+
+  return (
+    <div className="space-y-2">
+      {data.diagnosis && (
+        <Block label={lbl.diagnosis} color="blue">
+          <p className="text-sm leading-relaxed">{data.diagnosis}</p>
+        </Block>
+      )}
+      {data.coreAdvice && (
+        <Block label={lbl.coreAdvice} color="gray">
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{data.coreAdvice}</p>
+        </Block>
+      )}
+      {Array.isArray(data.risks) && data.risks.length > 0 && (
+        <Block label={lbl.risks} color={lbl.risksColor}>
+          <ul className="space-y-1">
+            {data.risks.map((r, i) => (
+              <li key={i} className="text-sm flex gap-2"><span>{lbl.risksIcon}</span>{r}</li>
+            ))}
+          </ul>
+        </Block>
+      )}
+      {data.optimizedApproach && (
+        <Block label={lbl.optimizedApproach} color="amber">
+          <p className="text-sm">{data.optimizedApproach}</p>
+        </Block>
+      )}
+      {lbl.optNextSteps && opt.nextSteps && (
+        <Block label={lbl.optNextSteps} color="purple">
+          <p className="text-sm whitespace-pre-line">{opt.nextSteps}</p>
+        </Block>
+      )}
+      {opt.dayWiseStructure && (
+        <Block label="Day-wise Structure" color="blue">
+          <p className="text-sm whitespace-pre-line">{opt.dayWiseStructure}</p>
+        </Block>
+      )}
+      {opt.stayStrategy && (
+        <Block label="Stay Strategy" color="amber">
+          <p className="text-sm">{opt.stayStrategy}</p>
+        </Block>
+      )}
+      {opt.routeLogic && (
+        <Block label="Route Logic" color="gray">
+          <p className="text-sm">{opt.routeLogic}</p>
+        </Block>
+      )}
+      {data.nextStepCta && (
+        <div className="p-3 bg-[#36013F] rounded-xl mt-1">
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/60 mb-1">Next Step for Traveller</p>
+          <p className="text-sm text-white font-bold">{data.nextStepCta}</p>
+        </div>
+      )}
+    </div>
+  );
 };
 
 const fetchExpertLeads = async (expertId) => {
@@ -378,8 +516,11 @@ export default function Messages() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question,
-          sessionData: sessionData[question.sessionId]
+          question: {
+            ...question,
+            serviceType: question.serviceType || question.service_type,
+          },
+          sessionData: sessionData[question.sessionId],
         }),
       });
       const result = await response.json();
@@ -727,17 +868,10 @@ export default function Messages() {
                               {q.status === "answered" ? "Final Prescription" : "Status Note"}
                             </p>
                             <div className="p-3 bg-white rounded-xl border border-gray-200 min-h-[80px]">
-                              {q.reply && q.reply.trim() !== "" ? (
-                                parsePrescription(q.reply) ? (
-                                  <PrescriptionUserView prescription={parsePrescription(q.reply)} />
-                                ) : (
-                                  <p className="text-sm italic text-gray-600">
-                                    {getReplyPreview(q.reply).length > 300 ? getReplyPreview(q.reply).substring(0, 300) + "..." : getReplyPreview(q.reply)}
-                                  </p>
-                                )
-                              ) : (
-                                <p className="text-sm text-gray-400 italic">No reply sent yet. Expert needs to review this case.</p>
-                              )}
+                              <ServiceResponseDisplay
+                                reply={q.reply}
+                                serviceType={q.serviceType || q.service_type}
+                              />
                             </div>
                           </div>
                         </div>

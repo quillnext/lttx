@@ -155,24 +155,54 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
   const [currentRisk, setCurrentRisk] = useState("");
   const qualityScores = calculateQualityScores(formData, serviceConfig);
 
-  // Sync with AI draft if provided
+  // Sync with AI draft — map service-specific field names to builder fields
   useEffect(() => {
-    if (question?.aiDraft) {
-      const draft = question.aiDraft;
-      setFormData(prev => ({
-        ...prev,
-        ...draft,
-        optionalSections: {
-          ...prev.optionalSections,
-          ...(draft.optionalSections || {}),
-        },
-        // If AI returned a CTA option, pre-select it; otherwise keep first default
-        nextStepCta: (draft.ctaOptions?.[0]) || prev.nextStepCta,
-      }));
-      if (draft.ctaOptions?.length === 3) {
-        setCtaOptions(draft.ctaOptions);
-        setCustomCta(false);
-      }
+    if (!question?.aiDraft) return;
+    const draft = question.aiDraft;
+    const sType = (question?.serviceType || "").toLowerCase();
+
+    let mapped = {
+      diagnosis: draft.diagnosis || "",
+      coreAdvice: draft.coreAdvice || "",
+      optimizedApproach: draft.optimizedApproach || "",
+      risks: Array.isArray(draft.risks) ? draft.risks : [],
+      confidence: draft.confidence || "High",
+      optionalSections: { ...(draft.optionalSections || {}) },
+      nextStepCta: draft.ctaOptions?.[0] || "",
+    };
+
+    if (sType.includes("consult") || sType.includes("strategic")) {
+      mapped.diagnosis       = draft.situationRead || draft.diagnosis || "";
+      mapped.coreAdvice      = draft.coreRecommendation || draft.coreAdvice || "";
+      mapped.optimizedApproach = draft.structureSuggestion || draft.optimizedApproach || "";
+      mapped.risks           = Array.isArray(draft.bookNow) ? draft.bookNow : mapped.risks;
+      mapped.optionalSections.nextSteps =
+        [draft.holdOff, draft.callAgenda].filter(Boolean).join("\n\n") ||
+        mapped.optionalSections.nextSteps || "";
+    } else if (sType.includes("ask") || sType.includes("question")) {
+      mapped.diagnosis       = draft.keyPoint || draft.diagnosis || "";
+      mapped.coreAdvice      = draft.answer || draft.coreAdvice || "";
+      mapped.optimizedApproach = draft.watchOut ? `Watch out: ${draft.watchOut}` : (draft.optimizedApproach || "");
+    } else if (sType.includes("master")) {
+      mapped.diagnosis       = draft.planVerdict || draft.diagnosis || "";
+      mapped.coreAdvice      = draft.dayStructure || draft.coreAdvice || "";
+      mapped.optimizedApproach = [draft.howToMove, draft.verdict].filter(Boolean).join("\n\n") || draft.optimizedApproach || "";
+      mapped.risks           = Array.isArray(draft.mustDos) ? draft.mustDos : mapped.risks;
+      mapped.optionalSections.dayWiseStructure = draft.dayStructure || "";
+      mapped.optionalSections.stayStrategy     = draft.stayStrategy || "";
+      mapped.optionalSections.routeLogic       = draft.howToMove || "";
+    } else if (sType.includes("luxe") || sType.includes("custom")) {
+      mapped.diagnosis       = draft.packageConcept || draft.diagnosis || "";
+      mapped.coreAdvice      = [draft.packageConcept, draft.stayIdeas].filter(Boolean).join("\n\n") || draft.coreAdvice || "";
+      mapped.optimizedApproach = draft.whatINeedFromYou || draft.optimizedApproach || "";
+      mapped.risks           = Array.isArray(draft.signatureExperiences) ? draft.signatureExperiences : mapped.risks;
+    }
+
+    setFormData(prev => ({ ...prev, ...mapped }));
+
+    if (draft.ctaOptions?.length === 3) {
+      setCtaOptions(draft.ctaOptions);
+      setCustomCta(false);
     }
   }, [question?.aiDraft]);
 

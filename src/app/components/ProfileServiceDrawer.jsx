@@ -38,14 +38,14 @@ const SERVICES_DATA = {
   }
 };
 
-const CustomInput = ({ label, required, placeholder, limit, type = "text", ...props }) => (
+const CustomInput = ({ label, required, placeholder, limit, type = "text", error, ...props }) => (
   <div className="mb-5 last:mb-0">
     <label className="block text-sm font-bold text-[#36013F] mb-1">
       {label} {required ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span>}
     </label>
     {type === "textarea" ? (
       <textarea
-        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] focus:border-[#FDC700] transition-all resize-none"
+        className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:border-[#FDC700] transition-all resize-none ${error ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-[#FDC700]"}`}
         placeholder={placeholder}
         rows={4}
         {...props}
@@ -53,21 +53,24 @@ const CustomInput = ({ label, required, placeholder, limit, type = "text", ...pr
     ) : (
       <input
         type={type}
-        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] focus:border-[#FDC700] transition-all"
+        className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:border-[#FDC700] transition-all ${error ? "border-red-400 focus:ring-red-200" : "border-gray-200 focus:ring-[#FDC700]"}`}
         placeholder={placeholder}
         {...props}
       />
     )}
-    {limit && <p className="text-[10px] text-gray-400 mt-1 text-right">{limit}</p>}
+    {error
+      ? <p className="text-xs text-red-500 font-semibold mt-1">{error}</p>
+      : limit && <p className="text-[10px] text-gray-400 mt-1 text-right">{limit}</p>
+    }
   </div>
 );
 
-const ChipSelect = ({ label, required, options, multi = false, selected, onChange }) => (
+const ChipSelect = ({ label, required, options, multi = false, selected, onChange, error }) => (
   <div className="mb-5 last:mb-0">
     <label className="block text-sm font-bold text-[#36013F] mb-2">
       {label} {required ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span>}
     </label>
-    <div className="flex flex-wrap gap-2">
+    <div className={`flex flex-wrap gap-2 p-2 rounded-xl transition-all ${error ? "border border-red-300 bg-red-50" : ""}`}>
       {options.map(opt => {
         const isSelected = multi ? selected?.includes(opt) : selected === opt;
         return (
@@ -82,13 +85,14 @@ const ChipSelect = ({ label, required, options, multi = false, selected, onChang
                 onChange(opt);
               }
             }}
-            className={`px-4 py-2 rounded-lg text-[12px] font-bold border transition-all ${isSelected ? 'bg-[#36013F] text-white border-[#36013F]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#36013F]'}`}
+            className={`px-4 py-2 rounded-lg text-[12px] font-bold border transition-all ${isSelected ? "bg-[#36013F] text-white border-[#36013F]" : "bg-white text-gray-600 border-gray-200 hover:border-[#36013F]"}`}
           >
             {opt}
           </button>
         );
       })}
     </div>
+    {error && <p className="text-xs text-red-500 font-semibold mt-1">{error}</p>}
   </div>
 );
 
@@ -129,6 +133,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [validationError, setValidationError] = useState("");
@@ -196,9 +201,69 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
   const updateForm = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
+    if (fieldErrors[key]) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+    // Date fields share one error key
+    if ((key === "startDate" || key === "flexibleDates") && fieldErrors.dates) {
+      setFieldErrors(prev => { const n = { ...prev }; delete n.dates; return n; });
+    }
   };
 
-  const renderContactInfo = () => null; // Contact info is taken from user state, no longer shown in UI
+  const validate = () => {
+    const e = {};
+    if (serviceType === "1:1 STRATEGIC CONSULTATION") {
+      if (!formData.destination?.trim()) e.destination = "Please enter your travel destination";
+      if (!formData.startDate && !formData.flexibleDates) e.dates = "Please enter travel dates or check 'Dates are flexible'";
+      if (!formData.who) e.who = "Please select who is travelling";
+      if ((formData.who === "Family" || formData.who === "Friends") && !formData.pax)
+        e.pax = "Please enter the number of travellers";
+      if (!formData.helpWith?.length) e.helpWith = "Please select at least one area you need help with";
+      if (!formData.confusion?.trim()) {
+        e.confusion = "Please describe what you're confused about";
+      } else if (formData.confusion.trim().length < 80) {
+        e.confusion = `Too short — write at least 80 characters (${formData.confusion.trim().length}/80)`;
+      }
+      if (!formData.booked) e.booked = "Please select your booking status";
+      if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+    }
+
+    if (serviceType === "ASK A QUESTION") {
+      if (!formData.question?.trim()) e.question = "Please enter your question";
+      if (!formData.context?.trim()) {
+        e.context = "Please add some context so the expert can give a useful answer";
+      } else if (formData.context.trim().length < 50) {
+        e.context = `Too short — write at least 50 characters (${formData.context.trim().length}/50)`;
+      }
+      if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+    }
+
+    if (serviceType === "THE MASTER PLAN") {
+      if (!formData.dest?.trim()) e.dest = "Please enter your destination(s)";
+      if (!formData.startDate && !formData.flexibleDates) e.dates = "Please enter travel dates or check 'Dates are flexible'";
+      if (!formData.who) e.who = "Please select who is travelling";
+      if (formData.who && formData.who !== "Solo" && !formData.pax)
+        e.pax = "Please enter the number of travellers";
+      if (!formData.budget) e.budget = "Please select your approximate budget";
+      if (!formData.type?.length) e.type = "Please select at least one trip type";
+      if (!formData.structure?.length) e.structure = "Please select at least one area for the expert to help with";
+      if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+    }
+
+    if (serviceType === "CUSTOM LUXE PACKAGE") {
+      if (!formData.dest?.trim()) e.dest = "Please enter your destination or trip idea";
+      if (!formData.pax) e.pax = "Please enter the number of travellers";
+      if (!formData.budget) e.budget = "Please select your budget expectation";
+      if (!formData.exp?.trim()) e.exp = "Please describe the experience you're looking for";
+      if (!formData.whatsapp?.trim()) e.whatsapp = "Please enter your WhatsApp number";
+    }
+
+    return e;
+  };
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const renderContactInfo = () => null;
 
   const renderPhoneField = () => (
     <CustomInput
@@ -207,6 +272,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       placeholder="e.g. +91 98765 43210"
       value={formData.phone || ""}
       onChange={(e) => updateForm("phone", e.target.value)}
+      error={fieldErrors.phone}
     />
   );
 
@@ -215,30 +281,31 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       case "1:1 STRATEGIC CONSULTATION":
         return (
           <>
-            <CustomInput label="Where are you planning to travel?" required placeholder="Japan, Bali, Europe, Dubai..." value={formData.destination || ""} onChange={(e) => updateForm("destination", e.target.value)} />
+            <CustomInput label="Where are you planning to travel?" required placeholder="Japan, Bali, Europe, Dubai..." value={formData.destination || ""} onChange={(e) => updateForm("destination", e.target.value)} error={fieldErrors.destination} />
             <div className="mb-5">
               <label className="block text-sm font-bold text-[#36013F] mb-2">When are you planning to travel? <span className="text-red-500">*</span></label>
-              <div className="flex flex-col gap-3">
+              <div className={`flex flex-col gap-3 p-2 rounded-xl transition-all ${fieldErrors.dates ? "border border-red-300 bg-red-50" : ""}`}>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Start Date</label>
-                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" value={formData.startDate || ""} onChange={(e) => updateForm("startDate", e.target.value)} />
+                    <input type="date" className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none ${fieldErrors.dates ? "border-red-400" : "border-gray-200"}`} min={today} value={formData.startDate || ""} onChange={(e) => updateForm("startDate", e.target.value)} />
                   </div>
                   <div className="flex-1">
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">End Date</label>
-                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" value={formData.endDate || ""} onChange={(e) => updateForm("endDate", e.target.value)} />
+                    <input type="date" className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none ${fieldErrors.dates ? "border-red-400" : "border-gray-200"}`} min={formData.startDate || today} value={formData.endDate || ""} onChange={(e) => updateForm("endDate", e.target.value)} />
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[#36013F] focus:ring-[#36013F]" checked={formData.flexibleDates || false} onChange={e => updateForm("flexibleDates", e.target.checked)} /> Dates are flexible</label>
               </div>
+              {fieldErrors.dates && <p className="text-xs text-red-500 font-semibold mt-1">{fieldErrors.dates}</p>}
             </div>
-            <ChipSelect label="Who is travelling?" required options={["Solo", "Couple", "Family", "Friends", "Business"]} selected={formData.who} onChange={val => updateForm("who", val)} />
+            <ChipSelect label="Who is travelling?" required options={["Solo", "Couple", "Family", "Friends", "Business"]} selected={formData.who} onChange={val => updateForm("who", val)} error={fieldErrors.who} />
             {(formData.who === "Family" || formData.who === "Friends") && (
-              <CustomInput label="Number of travellers" type="number" required placeholder="e.g. 4" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} />
+              <CustomInput label="Number of travellers" type="number" required placeholder="e.g. 4" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} error={fieldErrors.pax} />
             )}
-            <ChipSelect label="What do you need help with?" required multi options={["Itinerary planning", "Flight choice", "Hotel area selection", "Visa guidance", "Budget planning", "Trip structure", "Multi-city routing", "General expert advice"]} selected={formData.helpWith} onChange={val => updateForm("helpWith", val)} />
-            <CustomInput label="Tell the expert what you are confused about" type="textarea" required placeholder="We are planning 8 days in Japan and are confused whether to do Tokyo, Kyoto and Osaka or focus on just two cities. We want comfort, good food and not too much rushing." limit="80 to 500 characters" value={formData.confusion || ""} onChange={(e) => updateForm("confusion", e.target.value)} />
-            <ChipSelect label="Have you already booked anything?" required options={["Nothing booked", "Flights booked", "Hotels booked", "Partially booked"]} selected={formData.booked} onChange={val => updateForm("booked", val)} />
+            <ChipSelect label="What do you need help with?" required multi options={["Itinerary planning", "Flight choice", "Hotel area selection", "Visa guidance", "Budget planning", "Trip structure", "Multi-city routing", "General expert advice"]} selected={formData.helpWith} onChange={val => updateForm("helpWith", val)} error={fieldErrors.helpWith} />
+            <CustomInput label="Tell the expert what you are confused about" type="textarea" required placeholder="We are planning 8 days in Japan and are confused whether to do Tokyo, Kyoto and Osaka or focus on just two cities. We want comfort, good food and not too much rushing." limit="80 to 500 characters" value={formData.confusion || ""} onChange={(e) => updateForm("confusion", e.target.value)} error={fieldErrors.confusion} />
+            <ChipSelect label="Have you already booked anything?" required options={["Nothing booked", "Flights booked", "Hotels booked", "Partially booked"]} selected={formData.booked} onChange={val => updateForm("booked", val)} error={fieldErrors.booked} />
             {formData.booked && formData.booked !== "Nothing booked" && (
               <div className="mb-5 p-4 border border-gray-200 rounded-xl bg-white">
                 <label className="block text-sm font-bold text-[#36013F] mb-1">Add booking details or upload files <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span></label>
@@ -264,6 +331,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
                 )}
               </div>
             )}
+
             {renderPhoneField()}
           </>
         );
@@ -271,8 +339,8 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       case "ASK A QUESTION":
         return (
           <>
-            <CustomInput label="Your question" required placeholder="Is 7 days enough for Switzerland and Italy together?" limit="Max 90 characters" value={formData.question || ""} onChange={e => updateForm("question", e.target.value)} maxLength={90} />
-            <CustomInput label="Add context" type="textarea" required placeholder="We are a couple travelling in June from Delhi. We want scenic places, not too much rushing, and a mid-range budget." limit="50 to 400 characters" value={formData.context || ""} onChange={e => updateForm("context", e.target.value)} />
+            <CustomInput label="Your question" required placeholder="Is 7 days enough for Switzerland and Italy together?" limit="Max 90 characters" value={formData.question || ""} onChange={e => updateForm("question", e.target.value)} maxLength={90} error={fieldErrors.question} />
+            <CustomInput label="Add context" type="textarea" required placeholder="We are a couple travelling in June from Delhi. We want scenic places, not too much rushing, and a mid-range budget." limit="50 to 400 characters" value={formData.context || ""} onChange={e => updateForm("context", e.target.value)} error={fieldErrors.context} />
             <CustomInput label="Destination or route" placeholder="Europe, Vietnam, Delhi to Bali..." value={formData.dest || ""} onChange={e => updateForm("dest", e.target.value)} />
             <CustomInput label="Travel dates or month" placeholder="June 2026, first week of October..." value={formData.dates || ""} onChange={e => updateForm("dates", e.target.value)} />
             <div className="mb-5">
@@ -317,39 +385,40 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       case "THE MASTER PLAN":
         return (
           <>
-            <CustomInput label="Destination(s)" required placeholder="Japan, Spain + Portugal, South Africa..." value={formData.dest || ""} onChange={e => updateForm("dest", e.target.value)} />
+            <CustomInput label="Destination(s)" required placeholder="Japan, Spain + Portugal, South Africa..." value={formData.dest || ""} onChange={e => updateForm("dest", e.target.value)} error={fieldErrors.dest} />
             <div className="mb-5">
               <label className="block text-sm font-bold text-[#36013F] mb-2">Trip dates <span className="text-red-500">*</span></label>
-              <div className="flex flex-col gap-3">
+              <div className={`flex flex-col gap-3 p-2 rounded-xl transition-all ${fieldErrors.dates ? "border border-red-300 bg-red-50" : ""}`}>
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Start Date</label>
-                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" value={formData.startDate || ""} onChange={(e) => updateForm("startDate", e.target.value)} />
+                    <input type="date" className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none ${fieldErrors.dates ? "border-red-400" : "border-gray-200"}`} min={today} value={formData.startDate || ""} onChange={(e) => updateForm("startDate", e.target.value)} />
                   </div>
                   <div className="flex-1">
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">End Date</label>
-                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" value={formData.endDate || ""} onChange={(e) => updateForm("endDate", e.target.value)} />
+                    <input type="date" className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none ${fieldErrors.dates ? "border-red-400" : "border-gray-200"}`} min={formData.startDate || today} value={formData.endDate || ""} onChange={(e) => updateForm("endDate", e.target.value)} />
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[#36013F] focus:ring-[#36013F]" checked={formData.flexibleDates || false} onChange={e => updateForm("flexibleDates", e.target.checked)} /> Dates are flexible</label>
               </div>
+              {fieldErrors.dates && <p className="text-xs text-red-500 font-semibold mt-1">{fieldErrors.dates}</p>}
             </div>
-            <ChipSelect label="Number and type of travellers" required options={["Solo", "Couple", "Family", "Friends", "Business"]} selected={formData.who} onChange={val => updateForm("who", val)} />
+            <ChipSelect label="Number and type of travellers" required options={["Solo", "Couple", "Family", "Friends", "Business"]} selected={formData.who} onChange={val => updateForm("who", val)} error={fieldErrors.who} />
             {formData.who && formData.who !== "Solo" && (
-              <CustomInput label="Total Number of Travellers" type="number" required placeholder="e.g. 4" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} />
+              <CustomInput label="Total Number of Travellers" type="number" required placeholder="e.g. 4" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} error={fieldErrors.pax} />
             )}
-            <ChipSelect label="Approximate budget" required options={["Budget", "Comfortable", "Premium", "Luxury", "Not sure yet"]} selected={formData.budget} onChange={val => updateForm("budget", val)} />
-            <ChipSelect label="What kind of trip do you want?" required multi options={["Relaxing", "Experiential", "Fast-paced", "Nature", "Culture", "Food", "Shopping", "Nightlife", "Luxury", "Adventure"]} selected={formData.type} onChange={val => updateForm("type", val)} />
-            <ChipSelect label="What do you want the expert to help structure?" required multi options={["Route planning", "City split", "Hotel area choice", "Flight logic", "Day flow", "Budget fit", "Family suitability"]} selected={formData.structure} onChange={val => updateForm("structure", val)} />
+            <ChipSelect label="Approximate budget" required options={["Budget", "Comfortable", "Premium", "Luxury", "Not sure yet"]} selected={formData.budget} onChange={val => updateForm("budget", val)} error={fieldErrors.budget} />
+            <ChipSelect label="What kind of trip do you want?" required multi options={["Relaxing", "Experiential", "Fast-paced", "Nature", "Culture", "Food", "Shopping", "Nightlife", "Luxury", "Adventure"]} selected={formData.type} onChange={val => updateForm("type", val)} error={fieldErrors.type} />
+            <ChipSelect label="What do you want the expert to help structure?" required multi options={["Route planning", "City split", "Hotel area choice", "Flight logic", "Day flow", "Budget fit", "Family suitability"]} selected={formData.structure} onChange={val => updateForm("structure", val)} error={fieldErrors.structure} />
 
             {/* Progressive Disclosure */}
             {((formData.who === "Family") || (formData.budget === "Premium" || formData.budget === "Luxury")) && (
               <div className="my-6 p-5 border border-[#36013F]/20 bg-[#36013F]/5 rounded-2xl">
                 <h4 className="text-[#36013F] font-bold text-sm mb-4 flex items-center gap-2"><Info size={16} /> Add more preferences <span className="opacity-60 font-normal text-xs">(Optional)</span></h4>
-                <CustomInput label="Hotel style" placeholder="e.g. Boutique, Resort, Chain..." />
-                <CustomInput label="Flight preference" placeholder="e.g. Direct flights only, Business class..." />
-                <CustomInput label="Pace preference" placeholder="e.g. Relaxed, early start..." />
-                <CustomInput label="Special occasion" placeholder="e.g. Honeymoon, 50th Birthday..." />
+                <CustomInput label="Hotel style" placeholder="e.g. Boutique, Resort, Chain..." value={formData.hotelStyle || ""} onChange={e => updateForm("hotelStyle", e.target.value)} />
+                <CustomInput label="Flight preference" placeholder="e.g. Direct flights only, Business class..." value={formData.flightPreference || ""} onChange={e => updateForm("flightPreference", e.target.value)} />
+                <CustomInput label="Pace preference" placeholder="e.g. Relaxed, early start..." value={formData.pacePreference || ""} onChange={e => updateForm("pacePreference", e.target.value)} />
+                <CustomInput label="Special occasion" placeholder="e.g. Honeymoon, 50th Birthday..." value={formData.specialOccasion || ""} onChange={e => updateForm("specialOccasion", e.target.value)} />
               </div>
             )}
 
@@ -361,27 +430,27 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       case "CUSTOM LUXE PACKAGE":
         return (
           <>
-            <CustomInput label="Destination or trip idea" required placeholder="Greece honeymoon, Europe summer, luxury safari..." value={formData.dest || ""} onChange={e => updateForm("dest", e.target.value)} />
+            <CustomInput label="Destination or trip idea" required placeholder="Greece honeymoon, Europe summer, luxury safari..." value={formData.dest || ""} onChange={e => updateForm("dest", e.target.value)} error={fieldErrors.dest} />
             <div className="mb-5">
-              <label className="block text-sm font-bold text-[#36013F] mb-2">Travel dates <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-bold text-[#36013F] mb-2">Travel dates <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span></label>
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Start Date</label>
-                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" value={formData.startDate || ""} onChange={(e) => updateForm("startDate", e.target.value)} />
+                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" min={today} value={formData.startDate || ""} onChange={(e) => updateForm("startDate", e.target.value)} />
                   </div>
                   <div className="flex-1">
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">End Date</label>
-                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" value={formData.endDate || ""} onChange={(e) => updateForm("endDate", e.target.value)} />
+                    <input type="date" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none" min={formData.startDate || today} value={formData.endDate || ""} onChange={(e) => updateForm("endDate", e.target.value)} />
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-gray-600"><input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-[#36013F] focus:ring-[#36013F]" checked={formData.flexibleDates || false} onChange={e => updateForm("flexibleDates", e.target.checked)} /> Dates are flexible</label>
               </div>
             </div>
-            <CustomInput label="Number of travellers" type="number" required placeholder="" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} />
-            <ChipSelect label="Budget expectation" required options={["₹1L to ₹2L pp", "₹2L to ₹4L pp", "₹4L+ pp", "Not sure yet"]} selected={formData.budget} onChange={val => updateForm("budget", val)} />
-            <CustomInput label="What kind of experience are you looking for?" type="textarea" required placeholder="private transfers, premium stays, relaxed pace, scenic places, good food, minimal planning stress" value={formData.exp || ""} onChange={e => updateForm("exp", e.target.value)} />
-            <CustomInput label="WhatsApp number" required placeholder="Enter WhatsApp number" value={formData.whatsapp || ""} onChange={e => updateForm("whatsapp", e.target.value)} />
+            <CustomInput label="Number of travellers" type="number" required placeholder="e.g. 4" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} error={fieldErrors.pax} />
+            <ChipSelect label="Budget expectation" required options={["₹1L to ₹2L pp", "₹2L to ₹4L pp", "₹4L+ pp", "Not sure yet"]} selected={formData.budget} onChange={val => updateForm("budget", val)} error={fieldErrors.budget} />
+            <CustomInput label="What kind of experience are you looking for?" type="textarea" required placeholder="private transfers, premium stays, relaxed pace, scenic places, good food, minimal planning stress" value={formData.exp || ""} onChange={e => updateForm("exp", e.target.value)} error={fieldErrors.exp} />
+            <CustomInput label="WhatsApp number" required placeholder="Enter WhatsApp number" value={formData.whatsapp || ""} onChange={e => updateForm("whatsapp", e.target.value)} error={fieldErrors.whatsapp} />
           </>
         );
 
@@ -474,31 +543,13 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
     if (e) e.preventDefault();
     setValidationError("");
 
-    // Basic validation with user-visible error
-    if (serviceType === "ASK A QUESTION" && !formData.question?.trim()) {
-      setValidationError("Please enter your question before submitting.");
+    const errs = validate();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setValidationError("Please fill in all required fields highlighted below.");
       return;
     }
-    if (serviceType === "1:1 STRATEGIC CONSULTATION" && !formData.destination?.trim()) {
-      setValidationError("Please enter your travel destination.");
-      return;
-    }
-    if (serviceType === "THE MASTER PLAN" && !formData.dest?.trim()) {
-      setValidationError("Please enter your destination(s).");
-      return;
-    }
-    if (serviceType === "CUSTOM LUXE PACKAGE" && !formData.dest?.trim()) {
-      setValidationError("Please enter your destination or trip idea.");
-      return;
-    }
-    if (!formData.phone?.trim() && serviceType !== "CUSTOM LUXE PACKAGE") {
-      setValidationError("Please enter your WhatsApp / phone number so the expert can reach you.");
-      return;
-    }
-    if (serviceType === "CUSTOM LUXE PACKAGE" && !formData.whatsapp?.trim()) {
-      setValidationError("Please enter your WhatsApp number.");
-      return;
-    }
+    setFieldErrors({});
 
     setIsSubmitting(true);
     try {
