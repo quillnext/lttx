@@ -51,6 +51,53 @@ const SERVICE_CONFIG = {
   "timeline": "Realistic timeline to put this package together. One sentence."
 }`,
   },
+
+  "Itinerary Review": {
+    persona: "You are a travel expert reviewing a traveller's itinerary before they lock it in.",
+    tone: "Be direct. Spot what's wrong immediately and say it clearly. Don't hedge or soften bad news about a bad plan.",
+    schema: `{
+  "verdict": "Your honest verdict on the overall itinerary. 2-3 sentences. Is it good, rushed, illogical?",
+  "issues": ["up to 3 specific problems — be concrete, reference actual days or cities if possible"],
+  "fixes": "How to improve it. 50-80 words. Reference specific days or cities.",
+  "reworkedVersion": "A brief restructured version if the itinerary needs changing. 50-80 words. If it's fine, write empty string.",
+  "verdict1Line": "One-line final verdict — proceed as-is, minor tweaks, or needs a rework."
+}`,
+  },
+
+  "Hotel/Area Check": {
+    persona: "You are a travel expert checking whether a hotel area suits this specific traveller.",
+    tone: "Give a clear verdict. Don't hedge. Say Good, Avoid, or Conditional and explain why for their trip type.",
+    schema: `{
+  "areaVerdict": "Good" or "Avoid" or "Conditional",
+  "reasoning": "Why this area works or doesn't for their specific trip type and priorities. 50-80 words.",
+  "bestFor": "Who this area is actually best for, if it's not right for them. 20-30 words.",
+  "alternative": "A better area or neighbourhood to consider if applicable. 20-30 words.",
+  "finalNote": "One practical tip about this area — transport, noise, access, hidden issue. Max 25 words."
+}`,
+  },
+
+  "Flight Choice": {
+    persona: "You are a travel expert helping someone decide between flight options.",
+    tone: "Give a direct recommendation. Don't list pros and cons forever — tell them which one to book and why.",
+    schema: `{
+  "recommendation": "Which option to pick and why. 50-80 words. Be specific about the airline, timing, or routing logic.",
+  "reasoning": "The key deciding factor — what made this the right call over the others. 30-40 words.",
+  "watchOut": "One thing to check before confirming — baggage policy, transit visa, layover time, etc. Max 30 words.",
+  "verdict": "One sentence. Book it now, wait for a better deal, or avoid?"
+}`,
+  },
+
+  "Packing Checklist": {
+    persona: "You are a travel expert building a practical packing checklist for this specific trip.",
+    tone: "Be specific to their destination, season, and trip type. No generic lists that apply to any destination.",
+    schema: `{
+  "essentials": ["5-7 destination-specific must-haves they should not forget"],
+  "clothing": ["4-5 specific clothing recommendations based on their weather and trip type"],
+  "documents": ["3-4 documents or cards specific to their destination — visa, insurance, local currency, etc."],
+  "proTip": "One non-obvious, destination-specific packing tip. Max 40 words.",
+  "packingVerdict": "One sentence summary of what kind of packing this trip actually needs — light, moderate, heavy."
+}`,
+  },
 };
 
 export async function POST(request) {
@@ -80,7 +127,7 @@ export async function POST(request) {
     const tripType = Array.isArray(fd.type) ? fd.type.join(", ") : (fd.type || "");
     const structure = Array.isArray(fd.structure) ? fd.structure.join(", ") : (fd.structure || "");
     const booked = fd.booked || "";
-    const mainQuestion = question.question || fd.confusion || fd.question || fd.context || fd.exp || "";
+    const mainQuestion = question.question || fd.confusion || fd.question || fd.context || fd.exp || fd.itinerary?.substring(0, 500) || fd.flightOptions || "";
     const mustHaves = fd.mustHaves || fd.exp || "";
     const hotelStyle = fd.hotelStyle || "";
     const flightPref = fd.flightPreference || "";
@@ -103,6 +150,15 @@ export async function POST(request) {
       pacePref          && `Pace preference: ${pacePref}`,
       specialOccasion   && `Special occasion: ${specialOccasion}`,
       specialNeeds      && `Dietary / accessibility needs: ${specialNeeds}`,
+      fd.hotelArea      && `Hotel / area being checked: ${fd.hotelArea}`,
+      fd.route          && `Flight route: ${fd.route}`,
+      fd.flightOptions  && `Flight options: ${fd.flightOptions?.substring(0, 300)}`,
+      fd.mattersMost    && `Priorities: ${Array.isArray(fd.mattersMost) ? fd.mattersMost.join(", ") : fd.mattersMost}`,
+      fd.focus          && `Review focus: ${Array.isArray(fd.focus) ? fd.focus.join(", ") : fd.focus}`,
+      fd.travelMonth    && `Travel month: ${fd.travelMonth}`,
+      fd.duration       && `Trip duration: ${fd.duration}`,
+      fd.tripType       && `Trip type: ${fd.tripType}`,
+      fd.preferences    && `Preferences: ${fd.preferences}`,
     ].filter(Boolean).join("\n");
 
     const sessionContext = sessionData && Object.keys(sessionData).length > 0

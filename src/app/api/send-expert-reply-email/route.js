@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
 import { sendWhatsAppReply } from "@/lib/aisensy";
 import { buildEmailFooter } from "@/app/utils/emailComponents";
-import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -102,81 +101,39 @@ const renderPrescriptionEmail = (prescription) => {
     coreAdvice,
     risks,
     optimizedApproach,
-    confidence,
     optionalSections = {},
     nextStepCta,
   } = prescription;
-  const visibleOptionalSections = Object.entries(optionalSections).filter(([, value]) =>
-    plainText(value)
-  );
+
+  const visibleOptionalSections = Object.entries(optionalSections).filter(([, value]) => plainText(value));
 
   const riskItems = Array.isArray(risks)
-    ? risks
-        .filter((risk) => plainText(risk))
-        .map((risk) => `<li style="font-size:14px;line-height:24px;color:#8a2d2d;margin-bottom:8px;">${escapeHtml(risk)}</li>`)
+    ? risks.filter((r) => plainText(r))
+        .map((r) => `<li style="font-size:14px;line-height:24px;color:#8a2d2d;margin-bottom:8px;">${escapeHtml(r)}</li>`)
         .join("")
     : "";
 
   const optionalHtml = visibleOptionalSections
     .map(([key, value]) => `<div style="margin-top:14px;">
-      <div style="font-size:10px;line-height:14px;text-transform:uppercase;letter-spacing:1.2px;color:#9a6b00;font-weight:800;">${escapeHtml(optionalLabels[key] || key)}</div>
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:#9a6b00;font-weight:800;">${escapeHtml(optionalLabels[key] || key)}</div>
       <div style="font-size:14px;line-height:24px;color:#4f3600;font-weight:600;margin-top:4px;">${escapeHtml(value)}</div>
-    </div>`)
-    .join("");
+    </div>`).join("");
 
-  return `<div style="padding:24px;">
-    ${sectionBlock({
-      eyebrow: "What I understand from your plan",
-      title: "Trip Diagnosis",
-      body: diagnosis,
-      background: "#ffffff",
-      border: "#eee3f0",
-      color: "#66516c",
-    })}
-
-    ${sectionBlock({
-      eyebrow: "Expert Recommendation",
-      title: "Recommended Direction",
-      body: coreAdvice,
-      background: "#ffffff",
-      border: "#e7f5ec",
-      color: "#476654",
-    })}
-
-    ${riskItems ? `<div style="margin-top:18px;background:#fff8f8;border:1px solid #ffe0e0;border-radius:18px;padding:20px;">
-      <div style="font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1.4px;color:#c24141;font-weight:800;">What to Avoid</div>
-      <div style="font-size:18px;line-height:24px;color:#36013F;font-weight:800;margin-top:6px;">Watch-outs</div>
-      <ul style="padding-left:20px;margin:12px 0 0;">${riskItems}</ul>
+  return `<div style="padding:20px 16px;">
+    ${sectionBlock({ eyebrow: "What the expert understood", title: "Situation Read", body: diagnosis, background: "#faf6fb", border: "#eee3f0", color: "#66516c" })}
+    ${sectionBlock({ eyebrow: "Expert Recommendation", title: "Recommended Direction", body: coreAdvice, background: "#f3fbf6", border: "#c8e6d4", color: "#2d6048" })}
+    ${riskItems ? `<div style="margin-top:16px;background:#fff8f8;border:1px solid #ffe0e0;border-radius:16px;padding:18px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#c24141;font-weight:800;">Watch-outs</div>
+      <ul style="padding-left:18px;margin:10px 0 0;">${riskItems}</ul>
     </div>` : ""}
-
-    ${sectionBlock({
-      eyebrow: "Better Way to Plan",
-      title: "Optimized Approach",
-      body: optimizedApproach,
-      background: "#f4f6ff",
-      border: "#dfe5ff",
-      color: "#33407a",
-    })}
-
-    ${optionalHtml ? `<div style="margin-top:18px;background:#fffaf0;border:1px solid #f4d35e;border-radius:18px;padding:20px;">
-      <div style="font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1.4px;color:#9a6b00;font-weight:800;">Service-specific Direction</div>
+    ${sectionBlock({ eyebrow: "Better Approach", title: "Optimized Plan", body: optimizedApproach, background: "#f4f6ff", border: "#dfe5ff", color: "#33407a" })}
+    ${optionalHtml ? `<div style="margin-top:16px;background:#fffaf0;border:1px solid #f4d35e;border-radius:16px;padding:18px;">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#9a6b00;font-weight:800;">Additional Direction</div>
       ${optionalHtml}
     </div>` : ""}
-
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #f1e9f3;padding-top:20px;">
-      <tr>
-        <td valign="middle">
-          <div style="display:inline-block;background:#faf6fb;border:1px solid #eee3f0;border-radius:999px;padding:10px 16px;font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1px;color:#7b6a80;font-weight:800;">
-            Confidence: <span style="color:#36013F;">${escapeHtml(confidence || "Situational")}</span>
-          </div>
-        </td>
-        <td class="stack" align="right" valign="middle">
-          <div style="display:inline-block;background:#36013F;color:#ffffff;border-radius:999px;padding:12px 18px;font-size:13px;line-height:18px;font-weight:800;">
-            ${escapeHtml(nextStepCta || "Want this turned into a full plan? Upgrade to Master Plan.")}
-          </div>
-        </td>
-      </tr>
-    </table>
+    ${nextStepCta ? `<div style="margin-top:20px;background:#36013F;color:#ffffff;border-radius:14px;padding:16px 18px;font-size:14px;line-height:22px;font-weight:800;text-align:center;word-break:break-word;">
+      ${escapeHtml(nextStepCta)}
+    </div>` : ""}
   </div>`;
 };
 
@@ -204,137 +161,112 @@ const renderReplyEmail = (reply) => {
   </div>`;
 };
 
-const emailTemplate = ({ userName, expertName, expertPhoto, expertUsername, caseTitle, serviceType, reply, year, type }) => {
+const emailTemplate = ({ userName, expertName, expertPhoto, caseTitle, serviceType, reply, year, type }) => {
   const isAdmin = type === "admin";
   const subjectLabel = serviceType || "Travel Request";
   const displayName = userName || "Traveller";
   const replyHtml = renderReplyEmail(reply);
-  const footer = buildEmailFooter({ expertName: isAdmin ? "" : expertName, expertPhoto: isAdmin ? "" : expertPhoto, expertUsername: isAdmin ? "" : expertUsername, year });
 
-  return `
-<!DOCTYPE html>
+  const expertAvatar = expertPhoto
+    ? `<img src="${escapeUrl(expertPhoto)}" alt="${escapeHtml(expertName)}" width="44" height="44"
+        style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #F4D35E;display:inline-block;vertical-align:middle;margin-right:10px;" />`
+    : `<div style="width:44px;height:44px;border-radius:50%;background:#36013F;color:#F4D35E;text-align:center;line-height:44px;font-size:18px;font-weight:800;display:inline-block;vertical-align:middle;margin-right:10px;">${escapeHtml((expertName || "E").charAt(0).toUpperCase())}</div>`;
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    @media only screen and (max-width: 600px) {
-      .xmt-shell  { width: 100% !important; border-radius: 0 !important; }
-      .xmt-pad    { padding: 16px !important; }
-      .xmt-hero-title { font-size: 20px !important; line-height: 28px !important; }
-      .xmt-case-title { font-size: 16px !important; }
-      .xmt-h1    { font-size: 18px !important; line-height: 26px !important; }
-      .xmt-stack { display: block !important; width: 100% !important; text-align: left !important; padding: 12px 0 0 !important; }
-      .xmt-rp-title { font-size: 16px !important; }
-      .xmt-logo-img { width: 120px !important; height: auto !important; }
-      body { padding: 0 !important; }
+    body { margin:0; padding:0; background:#f4f1f6; font-family:Arial,Helvetica,sans-serif; }
+    @media only screen and (max-width:600px) {
+      .shell { width:100% !important; border-radius:0 !important; }
+      .pad { padding:16px !important; }
+      .hero-title { font-size:20px !important; line-height:28px !important; }
+      .case-title { font-size:16px !important; line-height:24px !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:20px 8px;background:#f7f4f8;font-family:Arial,Helvetica,sans-serif;color:#36013F;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-    <tr>
-      <td align="center">
-        <table role="presentation" class="xmt-shell" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border:1px solid #ece3ee;border-radius:24px;overflow:hidden;">
+<body>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f1f6;padding:24px 12px;">
+    <tr><td align="center">
 
-          <!-- Top accent bar -->
-          <tr>
-            <td height="4" style="height:4px;background:#36013F;border-right:160px solid #F4D35E;font-size:0;line-height:0;">&nbsp;</td>
-          </tr>
+      <table role="presentation" class="shell" width="600" cellpadding="0" cellspacing="0"
+        style="max-width:600px;width:100%;background:#ffffff;border-radius:20px;overflow:hidden;border:1px solid #ece3ee;">
 
-          <!-- Header: logo + expert photo -->
-          <tr>
-            <td class="xmt-pad" style="padding:20px 24px;border-bottom:1px solid #f1e9f3;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                <tr>
-                  <td valign="middle">
-                    <img src="https://www.xmytravel.com/logolttx.svg" alt="XMyTravel" class="xmt-logo-img" width="140" height="auto" style="display:block;max-width:140px;height:auto;" />
-                    <div style="font-size:11px;color:#7b6a80;margin-top:4px;">Expert Travel Advisory</div>
-                  </td>
-                  <td class="xmt-stack" align="right" valign="middle">
-                    ${isAdmin
-                      ? `<div style="display:inline-block;background:#faf6fb;border:1px solid #eee3f0;border-radius:12px;padding:8px 14px;text-align:right;">
-                           <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#8d7b91;font-weight:700;">Status</div>
-                           <div style="font-size:13px;color:#36013F;font-weight:700;">Admin Notification</div>
-                         </div>`
-                      : expertPhoto
-                        ? `<div style="text-align:center;">
-                             <img src="${escapeUrl(expertPhoto)}" alt="${escapeHtml(expertName)}" width="52" height="52"
-                               style="border-radius:50%;object-fit:cover;border:3px solid #F4D35E;display:block;margin:0 auto 5px;" />
-                             <div style="font-size:11px;font-weight:800;color:#36013F;">${escapeHtml(expertName)}</div>
-                             <div style="font-size:9px;color:#9a8ea0;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Your Expert</div>
-                           </div>`
-                        : `<div style="text-align:center;">
-                             <div style="width:44px;height:44px;border-radius:50%;background:#36013F;color:#F4D35E;text-align:center;line-height:44px;font-size:18px;font-weight:800;margin:0 auto 5px;">${escapeHtml(expertName.charAt(0).toUpperCase())}</div>
-                             <div style="font-size:11px;font-weight:800;color:#36013F;">${escapeHtml(expertName)}</div>
-                             <div style="font-size:9px;color:#9a8ea0;text-transform:uppercase;letter-spacing:1px;font-weight:600;">Your Expert</div>
-                           </div>`
-                    }
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
+        <!-- TOP BAR -->
+        <tr>
+          <td height="5" style="height:5px;background:linear-gradient(90deg,#36013F 70%,#F4D35E 100%);font-size:0;">&nbsp;</td>
+        </tr>
 
-          <!-- Body -->
-          <tr>
-            <td class="xmt-pad" style="padding:24px;">
+        <!-- HEADER: logo + expert -->
+        <tr>
+          <td class="pad" style="padding:20px 24px;border-bottom:1px solid #f0eaf2;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td valign="middle">
+                  <div style="font-size:20px;font-weight:800;color:#36013F;line-height:1;">XMyTravel</div>
+                  <div style="font-size:11px;color:#9a8ea0;margin-top:3px;">Expert Travel Advisory</div>
+                </td>
+                <td align="right" valign="middle" style="padding-left:16px;">
+                  ${isAdmin
+                    ? `<span style="background:#faf6fb;border:1px solid #eee3f0;border-radius:8px;padding:6px 12px;font-size:11px;color:#7b6a80;font-weight:700;">Admin Notification</span>`
+                    : `<div style="text-align:right;">
+                        <div style="display:inline-block;vertical-align:middle;">${expertAvatar}</div>
+                        <div style="display:inline-block;vertical-align:middle;text-align:left;">
+                          <div style="font-size:12px;font-weight:800;color:#36013F;">${escapeHtml(expertName)}</div>
+                          <div style="font-size:10px;color:#9a8ea0;text-transform:uppercase;letter-spacing:0.8px;">Your Expert</div>
+                        </div>
+                      </div>`
+                  }
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
 
-              <!-- Prepared for + request type -->
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
-                <tr>
-                  <td valign="top">
-                    <div style="font-size:12px;color:#85758a;">${isAdmin ? "Traveller" : "Prepared For"}</div>
-                    <div class="xmt-h1" style="font-size:22px;line-height:30px;font-weight:800;color:#36013F;">${escapeHtml(displayName)}</div>
-                  </td>
-                  <td class="xmt-stack" align="right" valign="top">
-                    <div style="display:inline-block;background:#faf6fb;border:1px solid #eee3f0;border-radius:12px;padding:10px 14px;text-align:left;">
-                      <div style="font-size:11px;color:#85758a;">Request Type</div>
-                      <div style="font-size:13px;font-weight:700;color:#36013F;">${escapeHtml(subjectLabel)}</div>
-                    </div>
-                  </td>
-                </tr>
-              </table>
+        <!-- BODY -->
+        <tr>
+          <td class="pad" style="padding:24px;">
 
-              <!-- Dark hero banner -->
-              <div style="background:#36013F;border-radius:16px;padding:20px;">
-                <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#F4D35E;font-weight:700;">User Request</div>
-                <div class="xmt-hero-title" style="font-size:22px;line-height:30px;color:#ffffff;font-weight:800;margin-top:6px;word-break:break-word;">${escapeHtml(caseTitle || subjectLabel)}</div>
-                <div style="font-size:13px;line-height:22px;color:#d8ccd9;margin-top:8px;">${isAdmin ? `Expert ${escapeHtml(expertName)} has replied to this traveller request.` : `Your request has been reviewed by ${escapeHtml(expertName)}.`}</div>
+            <!-- Prepared for + service type -->
+            <div style="margin-bottom:20px;">
+              <div style="font-size:12px;color:#9a8ea0;">${isAdmin ? "Traveller" : "Prepared for"}</div>
+              <div style="font-size:22px;font-weight:800;color:#36013F;line-height:1.2;margin-top:2px;">${escapeHtml(displayName)}</div>
+              <div style="display:inline-block;margin-top:8px;background:#faf6fb;border:1px solid #eee3f0;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;color:#7b6a80;">${escapeHtml(subjectLabel)}</div>
+            </div>
+
+            <!-- Case hero -->
+            <div style="background:#36013F;border-radius:16px;padding:20px;margin-bottom:24px;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#F4D35E;font-weight:700;margin-bottom:6px;">User Request</div>
+              <div class="case-title" style="font-size:20px;line-height:28px;color:#ffffff;font-weight:800;word-break:break-word;">${escapeHtml(caseTitle || subjectLabel)}</div>
+              <div style="font-size:13px;line-height:22px;color:#d8ccd9;margin-top:8px;">
+                ${isAdmin ? `Expert ${escapeHtml(expertName)} has replied to this request.` : `Your request has been reviewed by ${escapeHtml(expertName)}.`}
               </div>
+            </div>
 
-              <!-- Prescription card -->
-              <div style="margin-top:24px;border:1px solid #ece3ee;border-radius:18px;overflow:hidden;">
-                <div style="padding:16px 20px;background:#faf6fb;border-bottom:1px solid #ece3ee;">
-                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-                    <tr>
-                      <td width="44" valign="middle">
-                        <div style="width:36px;height:36px;border-radius:10px;background:#36013F;color:#F4D35E;text-align:center;line-height:36px;font-size:14px;font-weight:700;">RP</div>
-                      </td>
-                      <td valign="middle" style="padding-left:10px;">
-                        <div class="xmt-rp-title" style="font-size:18px;font-weight:800;color:#36013F;">Expert Recommendation</div>
-                        <div style="font-size:12px;color:#7b6a80;">Personalized travel analysis and planning strategy</div>
-                      </td>
-                    </tr>
-                  </table>
-                </div>
-                ${replyHtml}
+            <!-- Prescription card -->
+            <div style="border:1px solid #ece3ee;border-radius:18px;overflow:hidden;">
+              <div style="padding:16px 20px;background:#faf6fb;border-bottom:1px solid #ece3ee;">
+                <div style="font-size:16px;font-weight:800;color:#36013F;">Expert Recommendation</div>
+                <div style="font-size:12px;color:#9a8ea0;margin-top:2px;">Personalised travel analysis and planning strategy</div>
               </div>
+              ${replyHtml}
+            </div>
 
-              <!-- Footer -->
-              <div style="margin-top:28px;">
-                ${footer}
-              </div>
-            </td>
-          </tr>
+            <!-- Footer (no expert card) -->
+            <div style="margin-top:28px;">
+              ${buildEmailFooter({ year })}
+            </div>
 
-        </table>
-      </td>
-    </tr>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
   </table>
 </body>
-</html>
-`;
+</html>`;
 };
 
 export async function POST(request) {
@@ -344,35 +276,8 @@ export async function POST(request) {
     const userPhone = body.userPhone || body.user_phone || "";
     const userName = body.userName || body.user_name || "Traveller";
     const expertName = body.expertName || body.expert_name || "XMyTravel Expert";
-    let expertPhoto = body.expertPhoto || body.expert_photo || "";
-    let expertUsername = body.expertUsername || body.expert_username || "";
+    const expertPhoto = body.expertPhoto || body.expert_photo || "";
     const serviceType = body.serviceType || body.service_type || "";
-
-    // Server-side fallback: fetch expert photo + username from Supabase if client didn't pass it
-    if (!expertPhoto || !expertUsername) {
-      try {
-        const supabase = createSupabaseAdminClient();
-        let query = supabase.from("profiles").select("photo_url, photo, username");
-        if (expertUsername) {
-          query = query.ilike("username", expertUsername);
-        } else if (expertName && expertName !== "XMyTravel Expert") {
-          query = query.ilike("full_name", expertName);
-        }
-        const { data } = await query.maybeSingle();
-        if (data) {
-          expertPhoto = expertPhoto || data.photo_url || data.photo || "";
-          expertUsername = expertUsername || data.username || "";
-        }
-      } catch { /* non-critical — fall back to initial letter */ }
-    }
-
-    // Ensure the photo URL is absolute (Supabase sometimes stores relative paths)
-    if (expertPhoto && !expertPhoto.startsWith("http")) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-      expertPhoto = supabaseUrl
-        ? `${supabaseUrl}/storage/v1/object/public/${expertPhoto}`
-        : "";
-    }
     const caseTitle = body.question || body.requestTitle || serviceType || body.subject || "Travel request";
     const reply = body.reply || body.response || "";
 
@@ -406,7 +311,7 @@ export async function POST(request) {
       sendEmail({
         to: process.env.ADMIN_EMAIL,
         subject: `Expert Reply Submitted by ${expertName}`,
-        html: emailTemplate({ userName, expertName, expertPhoto, expertUsername, caseTitle, serviceType, reply, year, type: "admin" }),
+        html: emailTemplate({ userName, expertName, expertPhoto, caseTitle, serviceType, reply, year, type: "admin" }),
       }),
     ];
 
@@ -416,7 +321,7 @@ export async function POST(request) {
         sendEmail({
           to: userEmail,
           subject: `Reply from ${expertName} on XMyTravel`,
-          html: emailTemplate({ userName, expertName, expertPhoto, expertUsername, caseTitle, serviceType, reply, year, type: "user" }),
+          html: emailTemplate({ userName, expertName, expertPhoto, caseTitle, serviceType, reply, year, type: "user" }),
         })
       );
     }

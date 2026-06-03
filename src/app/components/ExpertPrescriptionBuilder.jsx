@@ -196,6 +196,30 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
       mapped.coreAdvice      = [draft.packageConcept, draft.stayIdeas].filter(Boolean).join("\n\n") || draft.coreAdvice || "";
       mapped.optimizedApproach = draft.whatINeedFromYou || draft.optimizedApproach || "";
       mapped.risks           = Array.isArray(draft.signatureExperiences) ? draft.signatureExperiences : mapped.risks;
+    } else if (sType.includes("itinerary") || sType.includes("review")) {
+      mapped.diagnosis       = draft.verdict || draft.diagnosis || "";
+      mapped.coreAdvice      = draft.fixes || draft.coreAdvice || "";
+      mapped.optimizedApproach = draft.reworkedVersion || draft.verdict1Line || draft.optimizedApproach || "";
+      mapped.risks           = Array.isArray(draft.issues) ? draft.issues : mapped.risks;
+      mapped.optionalSections.reworkedVersion = draft.reworkedVersion || "";
+    } else if (sType.includes("hotel")) {
+      mapped.diagnosis       = `Verdict: ${draft.areaVerdict || ""}`.trim();
+      mapped.coreAdvice      = draft.reasoning || draft.coreAdvice || "";
+      mapped.optimizedApproach = [draft.alternative, draft.finalNote].filter(Boolean).join("\n\n") || draft.optimizedApproach || "";
+      mapped.risks           = draft.bestFor ? [draft.bestFor] : mapped.risks;
+      mapped.optionalSections.areaVerdict = draft.areaVerdict || "";
+    } else if (sType.includes("flight")) {
+      mapped.diagnosis       = draft.reasoning || draft.diagnosis || "";
+      mapped.coreAdvice      = draft.recommendation || draft.coreAdvice || "";
+      mapped.optimizedApproach = draft.verdict || draft.optimizedApproach || "";
+      mapped.risks           = draft.watchOut ? [draft.watchOut] : mapped.risks;
+      mapped.optionalSections.bestOption   = draft.recommendation || "";
+      mapped.optionalSections.whyThisWorks = draft.reasoning || "";
+    } else if (sType.includes("packing")) {
+      mapped.diagnosis       = draft.packingVerdict || draft.diagnosis || "";
+      mapped.coreAdvice      = [...(Array.isArray(draft.clothing) ? draft.clothing : []), ...(Array.isArray(draft.documents) ? draft.documents : [])].join("\n") || draft.coreAdvice || "";
+      mapped.optimizedApproach = draft.proTip || draft.optimizedApproach || "";
+      mapped.risks           = Array.isArray(draft.essentials) ? draft.essentials : mapped.risks;
     }
 
     setFormData(prev => ({ ...prev, ...mapped }));

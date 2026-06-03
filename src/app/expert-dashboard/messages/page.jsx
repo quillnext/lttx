@@ -88,6 +88,42 @@ const SERVICE_LABELS = {
     optimizedApproach: "What's Needed Next",
     optNextSteps: null,
   },
+  "Itinerary Review": {
+    diagnosis: "Itinerary Verdict",
+    coreAdvice: "Fixes & Improvements",
+    risks: "Issues Found",
+    risksIcon: "⚠",
+    risksColor: "red",
+    optimizedApproach: "Reworked Version",
+    optNextSteps: null,
+  },
+  "Hotel/Area Check": {
+    diagnosis: "Area Verdict",
+    coreAdvice: "Expert Reasoning",
+    risks: "Best Suited For",
+    risksIcon: "→",
+    risksColor: "blue",
+    optimizedApproach: "Better Alternative",
+    optNextSteps: null,
+  },
+  "Flight Choice": {
+    diagnosis: "Key Reasoning",
+    coreAdvice: "Recommendation",
+    risks: "Watch Out",
+    risksIcon: "⚠",
+    risksColor: "amber",
+    optimizedApproach: "Final Verdict",
+    optNextSteps: null,
+  },
+  "Packing Checklist": {
+    diagnosis: "Packing Verdict",
+    coreAdvice: "Clothing & Documents",
+    risks: "Must Not Forget",
+    risksIcon: "✓",
+    risksColor: "green",
+    optimizedApproach: "Pro Tip",
+    optNextSteps: null,
+  },
 };
 
 const ServiceResponseDisplay = ({ reply, serviceType }) => {

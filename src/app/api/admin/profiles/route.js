@@ -73,7 +73,8 @@ export async function GET(request) {
     }
 
     if (userId) {
-      const { data, error } = await query.eq("user_id", userId).single();
+      // Firebase UID equals the Supabase profile id (set during authenticate-profile flow)
+      const { data, error } = await query.eq("id", userId).single();
       if (error && error.code !== "PGRST116") throw error;
       return NextResponse.json({ profile: data ? mapSupabaseProfile(data) : null }, { status: 200 });
     }
