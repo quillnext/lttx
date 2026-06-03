@@ -1,5 +1,6 @@
 
 import { sendEmail } from "@/lib/email";
+import { buildSimpleFooter } from "./emailComponents";
 
 const emailTemplate = ({ data, year, isAdmin }) => {
   const {
@@ -66,10 +67,7 @@ const emailTemplate = ({ data, year, isAdmin }) => {
             <p>Thank you for submitting your profile request on <strong>XmyTravel</strong>.</p>
             <p>Our team will review your information and notify you once it's approved.</p>
           `}
-          <p class="footer">
-            © ${year} XmyTravel • <a href="https://xmytravel.com">xmytravel.com</a><br/>
-            For support: <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
-          </p>
+          ${buildSimpleFooter({ year })}
         </div>
       </div>
     </body>

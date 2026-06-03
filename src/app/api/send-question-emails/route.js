@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { buildEmailFooter } from "@/app/utils/emailComponents";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
@@ -28,6 +29,15 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
       box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
     .content { padding: 32px; }
+    @media only screen and (max-width:600px){
+      body{padding:0!important;}
+      .container{border-radius:0!important;}
+      .content{padding:20px!important;}
+      img{max-width:100%!important;height:auto!important;}
+      h2{font-size:20px!important;}
+      p{font-size:14px!important;}
+      .cta-button{display:block!important;text-align:center!important;padding:14px 20px!important;font-size:15px!important;}
+    }
     .footer {
       font-size: 13px;
       color: #888;
@@ -123,10 +133,9 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
           <p>Please review this submission in the Admin Dashboard. – XMyTravel Admin Notification</p>
         ` : ""
       }
-      <p class="footer">
-        © ${year} XMyTravel • <a href="https://xmytravel.com">xmytravel.com</a><br/>
-        For support: <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
-      </p>
+    </div>
+    <div style="padding:0 20px 20px;">
+      ${buildEmailFooter({ year })}
     </div>
   </div>
 </body>

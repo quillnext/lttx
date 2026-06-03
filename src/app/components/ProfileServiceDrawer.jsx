@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Upload, Calendar, Clock, IndianRupee, Info } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Upload, Calendar, Clock, IndianRupee, Info, CheckCircle, Loader, FileText, ImageIcon, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
@@ -132,6 +132,48 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [validationError, setValidationError] = useState("");
+  const [uploadState, setUploadState] = useState({ uploading: false, fileName: "", fileUrl: "", error: "" });
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!allowed.includes(file.type)) {
+      setUploadState(s => ({ ...s, error: "Only JPG, PNG, WebP or PDF files are allowed." }));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadState(s => ({ ...s, error: "File must be under 10 MB." }));
+      return;
+    }
+
+    setUploadState({ uploading: true, fileName: file.name, fileUrl: "", error: "" });
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("folder", "lead-uploads");
+      fd.append("namePrefix", `lead_${Date.now()}`);
+
+      const res = await fetch("/api/profile-assets/upload", { method: "POST", body: fd });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Upload failed");
+
+      setUploadState({ uploading: false, fileName: file.name, fileUrl: result.publicUrl, error: "" });
+      updateForm("uploadedFileUrl", result.publicUrl);
+      updateForm("uploadedFileName", file.name);
+    } catch (err) {
+      setUploadState({ uploading: false, fileName: file.name, fileUrl: "", error: err.message });
+    }
+  };
+
+  const clearUpload = () => {
+    setUploadState({ uploading: false, fileName: "", fileUrl: "", error: "" });
+    updateForm("uploadedFileUrl", "");
+    updateForm("uploadedFileName", "");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -201,7 +243,25 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
               <div className="mb-5 p-4 border border-gray-200 rounded-xl bg-white">
                 <label className="block text-sm font-bold text-[#36013F] mb-1">Add booking details or upload files <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span></label>
                 <textarea className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] mb-3 resize-none" placeholder="Paste flight, hotel or itinerary details here" rows={4} value={formData.bookingDetails || ""} onChange={(e) => updateForm("bookingDetails", e.target.value)} />
-                <button type="button" className="flex items-center justify-center gap-2 w-full py-2 border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-lg text-sm font-bold hover:border-[#36013F] transition-all"><Upload size={16} /> Upload screenshots or PDFs</button>
+                {uploadState.fileUrl ? (
+                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <FileText size={18} className="text-green-600 shrink-0" />
+                    <p className="text-sm font-bold text-green-800 flex-1 truncate">{uploadState.fileName}</p>
+                    <CheckCircle size={14} className="text-green-500 shrink-0" />
+                    <button type="button" onClick={clearUpload} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadState.uploading}
+                    className="flex items-center justify-center gap-2 w-full py-2 border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-lg text-sm font-bold hover:border-[#36013F] transition-all disabled:opacity-60"
+                  >
+                    {uploadState.uploading
+                      ? <><Loader size={14} className="animate-spin" /> Uploading...</>
+                      : <><Upload size={14} /> Upload screenshots or PDFs</>}
+                  </button>
+                )}
               </div>
             )}
             {renderPhoneField()}
@@ -216,8 +276,39 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
             <CustomInput label="Destination or route" placeholder="Europe, Vietnam, Delhi to Bali..." value={formData.dest || ""} onChange={e => updateForm("dest", e.target.value)} />
             <CustomInput label="Travel dates or month" placeholder="June 2026, first week of October..." value={formData.dates || ""} onChange={e => updateForm("dates", e.target.value)} />
             <div className="mb-5">
-              <label className="block text-sm font-bold text-[#36013F] mb-1">Upload supporting screenshot or file <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span></label>
-              <button type="button" className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-xl text-sm font-bold hover:border-[#36013F] transition-all"><Upload size={16} /> Upload PDF, JPG, PNG</button>
+              <label className="block text-sm font-bold text-[#36013F] mb-1">
+                Upload supporting screenshot or file{" "}
+                <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span>
+              </label>
+              {uploadState.fileUrl ? (
+                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  {formData.uploadedFileName?.match(/\.pdf$/i)
+                    ? <FileText size={20} className="text-green-600 shrink-0" />
+                    : <ImageIcon size={20} className="text-green-600 shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-green-800 truncate">{uploadState.fileName}</p>
+                    <p className="text-[10px] text-green-600">Uploaded successfully</p>
+                  </div>
+                  <CheckCircle size={16} className="text-green-500 shrink-0" />
+                  <button type="button" onClick={clearUpload} className="text-red-400 hover:text-red-600 shrink-0">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadState.uploading}
+                  className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-xl text-sm font-bold hover:border-[#36013F] hover:text-[#36013F] transition-all disabled:opacity-60"
+                >
+                  {uploadState.uploading
+                    ? <><Loader size={16} className="animate-spin" /> Uploading...</>
+                    : <><Upload size={16} /> Upload PDF, JPG, PNG (max 10 MB)</>}
+                </button>
+              )}
+              {uploadState.error && (
+                <p className="text-xs text-red-500 font-semibold mt-1">{uploadState.error}</p>
+              )}
             </div>
             {renderPhoneField()}
           </>
@@ -514,6 +605,15 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
                 {/* <div className="flex items-center gap-1.5 font-bold text-[#36013F]"><IndianRupee size={14} /> {data.price}</div> */}
                 <div className="flex items-start gap-1.5 text-gray-600 flex-1 whitespace-pre-line"> <span>{data.delivery}</span></div>
               </div>
+
+              {/* Shared hidden file input — used by any upload button in any service form */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
 
               {/* Scrollable Form Content */}
               <div className="flex-1 overflow-y-auto w-full no-scrollbar">

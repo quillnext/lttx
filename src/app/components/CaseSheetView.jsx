@@ -119,7 +119,7 @@ export default function CaseSheetView({ question, sessionData }) {
               <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-xl border border-green-200">
                 <IndianRupee className="text-green-600" size={16} />
                 <div>
-                  <p className="text-[10px] font-bold text-green-500 uppercase">Your Payout (70%)</p>
+                  <p className="text-[10px] font-bold text-green-500 uppercase">Your Payout </p>
                   <p className="text-sm font-black text-green-700">₹{expertPayout}</p>
                 </div>
               </div>
@@ -246,11 +246,52 @@ export default function CaseSheetView({ question, sessionData }) {
         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-4">
           <Paperclip size={14} /> Attachments
         </h4>
-        <div className="flex flex-wrap gap-3">
-          <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center border border-dashed border-gray-300">
-            <p className="text-[10px] text-gray-400 text-center px-2">No files attached</p>
+        {formData.uploadedFileUrl ? (
+          <div className="flex flex-wrap gap-3">
+            {/\.(jpg|jpeg|png|webp)$/i.test(formData.uploadedFileName || formData.uploadedFileUrl) ? (
+              <a
+                href={formData.uploadedFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative block w-32 h-32 rounded-xl overflow-hidden border-2 border-gray-200 hover:border-[#36013F] transition-all shadow-sm"
+                title={formData.uploadedFileName || "Attached image"}
+              >
+                <img
+                  src={formData.uploadedFileUrl}
+                  alt={formData.uploadedFileName || "Attachment"}
+                  className="w-full h-full object-cover"
+                  onError={e => { e.target.style.display = "none"; }}
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-white text-[10px] font-bold uppercase tracking-wider">Open</span>
+                </div>
+              </a>
+            ) : (
+              <a
+                href={formData.uploadedFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 hover:border-[#36013F] transition-all max-w-xs"
+              >
+                <div className="w-10 h-10 bg-[#36013F] text-white rounded-lg flex items-center justify-center text-[10px] font-black uppercase shrink-0">
+                  PDF
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-[#36013F] truncate">
+                    {formData.uploadedFileName || "Attached file"}
+                  </p>
+                  <p className="text-[10px] text-blue-600 font-semibold">Click to open</p>
+                </div>
+              </a>
+            )}
           </div>
-        </div>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center border border-dashed border-gray-300">
+              <p className="text-[10px] text-gray-400 text-center px-2">No files attached</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -340,6 +340,8 @@ export default function ServiceRequestsDashboardPage() {
           userPhone: request.userPhone || request.formData?.phone || request.formData?.whatsapp || "",
           userName: request.userName,
           expertName: request.expertName,
+          expertPhoto: experts.find(e => e.id === request.expert_id)?.photo || "",
+          expertUsername: experts.find(e => e.id === request.expert_id)?.username || "",
           question: request.question,
           serviceType: request.serviceType,
           reply: finalReply,

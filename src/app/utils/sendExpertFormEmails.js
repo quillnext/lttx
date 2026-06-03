@@ -1,5 +1,6 @@
 
 import { sendEmail } from "@/lib/email";
+import { buildSimpleFooter } from "./emailComponents";
 
 const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isExpert }) => `
 <!DOCTYPE html>
@@ -89,12 +90,7 @@ const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isE
         `}
       `}
 
-      ${!isAdmin ? `<p class="footer">This is an automated confirmation from XmyTravel. Please do not reply to this email.</p>` : ''}
-      <p class="footer">
-        &copy; ${year} XmyTravel. All rights reserved.<br />
-        <a href="http://xmytravel.com" target="_blank">www.xmytravel.com</a><br />
-        For support, email <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
-      </p>
+      ${buildSimpleFooter({ year })}
     </div>
   </div>
 </body>

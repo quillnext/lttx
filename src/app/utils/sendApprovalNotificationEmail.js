@@ -1,10 +1,12 @@
 import { sendEmail } from "@/lib/email";
+import { buildEmailFooter } from "@/app/utils/emailComponents";
 
 export async function sendApprovalNotificationEmail({ fullName, email, slug, generatedReferralCode, username, password }) {
   console.log("Preparing approval email for:", email);
 
-  const profileUrl = `https://xmytravel.com/experts/${slug}`;
+  const profileUrl = `https://www.xmytravel.com/experts/${slug}`;
   const year = new Date().getFullYear();
+  const footer = buildEmailFooter({ expertUsername: slug, year });
 
   // Define login credentials section without password
   const loginCredentialsSection = `
@@ -91,10 +93,8 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
               Thank you for joining the XmyTravel community. We’re excited to have your expertise featured on our platform.
             </p>
           </div>
-          <div class="footer">
-            © ${year} XmyTravel. All rights reserved.<br />
-            <a href="https://xmytravel.com">www.xmytravel.com</a><br />
-            For support, email <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>
+          <div style="padding: 0 8px 8px;">
+            ${footer}
           </div>
         </div>
       </body>
