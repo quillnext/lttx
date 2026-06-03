@@ -13,10 +13,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import JoinOrQueryForm from '../components/JoinOrQueryForm';
 import { X } from 'lucide-react';
-import { getFirestore, collection, query as firestoreQuery, orderBy, limit, getDocs } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
-
-const db = getFirestore(app);
+import { fetchRecentSearchQueries } from '@/lib/ask-an-expert/client';
 
 const CACHE_KEY_PREFIX = 'travel-section-cache';
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -379,11 +376,8 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
     useEffect(() => {
         const fetchRecentSearches = async () => {
             try {
-                const q = firestoreQuery(collection(db, "RecentSearches"), orderBy("timestamp", "desc"), limit(5));
-                const snapshot = await getDocs(q);
-                const searches = snapshot.docs.map(doc => doc.data().query).filter(q => q && q !== currentQuery);
-                // Deduplicate
-                setRecentSearches([...new Set(searches)].slice(0, 5));
+                const searches = await fetchRecentSearchQueries({ exclude: currentQuery, limit: 5 });
+                setRecentSearches(searches);
             } catch (error) {
                 console.error("Error fetching recent searches:", error);
             }

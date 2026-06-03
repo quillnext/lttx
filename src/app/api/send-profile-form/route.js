@@ -1,27 +1,96 @@
-
-
 import { NextResponse } from "next/server";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
-import { app } from "@/lib/firebase";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { mapProfileFormToSupabase, mapSupabaseProfile } from "@/lib/supabaseProfile";
 import { sendProfileSubmissionEmails } from "@/app/utils/sendProfileSubmissionEmails";
 
-const db = getFirestore(app);
+const MISSING_PROFILE_REQUESTS = "Supabase table profile_requests is missing. Run scripts/supabase-complete-profile.sql first.";
 
 const generateReferralCode = () => {
   const timestamp = Date.now().toString().slice(-4);
   const rand = Math.random().toString(36).substring(2, 4).toUpperCase();
   return `REFX${timestamp}${rand}`;
 };
+
+const isMissingRelationError = (error) =>
+  error?.code === "42P01" ||
+  error?.code === "PGRST205" ||
+  error?.message?.toLowerCase().includes("could not find the table") ||
+  error?.message?.toLowerCase().includes("does not exist");
+
+async function existsByColumn(supabase, table, column, value) {
+  if (!value) return false;
+  const { data, error } = await supabase.from(table).select("id").eq(column, value).limit(1);
+  if (error) {
+    if (table === "profile_requests" && isMissingRelationError(error)) return false;
+    throw error;
+  }
+  return (data || []).length > 0;
+}
+
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get("action");
+    const supabase = createSupabaseAdminClient();
+
+    if (action === "profile") {
+      const profileId = searchParams.get("profileId");
+      if (!profileId) return NextResponse.json({ error: "profileId is required" }, { status: 400 });
+
+      const { data, error } = await supabase.from("profiles").select("*").eq("id", profileId).single();
+      if (error) throw error;
+      return NextResponse.json({ profile: mapSupabaseProfile(data) }, { status: 200 });
+    }
+
+    if (action === "lead") {
+      const phone = searchParams.get("phone");
+      if (!phone) return NextResponse.json({ lead: null }, { status: 200 });
+
+      const { data, error } = await supabase
+        .from("join_queries")
+        .select("*")
+        .eq("phone", phone)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return NextResponse.json({ lead: data || null }, { status: 200 });
+    }
+
+    if (action === "username") {
+      const username = searchParams.get("username");
+      if (!username) return NextResponse.json({ available: false }, { status: 200 });
+
+      const [inProfiles, inRequests] = await Promise.all([
+        existsByColumn(supabase, "profiles", "username", username),
+        existsByColumn(supabase, "profile_requests", "username", username),
+      ]);
+
+      return NextResponse.json({ available: !inProfiles && !inRequests }, { status: 200 });
+    }
+
+    if (action === "referral") {
+      const code = searchParams.get("code");
+      if (!code) return NextResponse.json({ referrer: null }, { status: 200 });
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, username, generated_referral_code")
+        .eq("generated_referral_code", code)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      return NextResponse.json({ referrer: mapSupabaseProfile(data) }, { status: 200 });
+    }
+
+    return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+  } catch (error) {
+    console.error("Error in send-profile-form GET:", error);
+    return NextResponse.json({ error: error.message || "Request failed" }, { status: 500 });
+  }
+}
 
 export async function POST(req) {
   try {
@@ -31,112 +100,79 @@ export async function POST(req) {
       fullName,
       email,
       phone,
-      dateOfBirth,
-      tagline,
-      location,
-      languages,
-      responseTime,
-      pricing,
-      about,
-      services,
-      regions,
-      experience,
-      certifications,
       referred,
       referralCode,
       profileId,
-      photo,
-      leadId,
-      profileType,
-      yearsActive,
-      licenseNumber,
-      certificates,
-      officePhotos,
-      registeredAddress,
-      website,
-      employeeCount,
-      expertise,
     } = body;
 
     if (!email || !fullName || !phone || (!profileId && !username)) {
       return NextResponse.json({ error: "Missing required fields: email, fullName, phone, username" }, { status: 400 });
     }
 
+    const supabase = createSupabaseAdminClient();
+    const profileData = mapProfileFormToSupabase(body);
     let savedProfileId = profileId;
 
-    // Build profile data with all fields from the request
-    const profileData = {
-      username,
-      fullName,
-      email,
-      phone,
-      dateOfBirth: dateOfBirth || '',
-      tagline,
-      location,
-      languages: Array.isArray(languages) ? languages : [],
-      responseTime,
-      pricing,
-      about,
-      services: Array.isArray(services) ? services : [],
-      regions: Array.isArray(regions) ? regions : [],
-      experience: Array.isArray(experience) ? experience : [],
-      certifications: certifications || '',
-      referred: referred || 'No',
-      referralCode: referred === 'Yes' ? referralCode : null,
-      photo,
-      leadId: leadId || null,
-      profileType: profileType || 'expert',
-      yearsActive: yearsActive || '',
-      licenseNumber: licenseNumber || '',
-      certificates: Array.isArray(certificates) ? certificates : [],
-      officePhotos: Array.isArray(officePhotos) ? officePhotos : [],
-      registeredAddress: registeredAddress || '',
-      website: website || '',
-      employeeCount: employeeCount || '',
-      expertise: Array.isArray(expertise) ? expertise : [],
-      timestamp: serverTimestamp(),
-    };
-
     if (profileId) {
-      // Update existing profile in the 'Profiles' collection
-      await updateDoc(doc(db, "Profiles", profileId), profileData, { merge: true });
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          ...profileData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", profileId);
+
+      if (error) throw error;
     } else {
-      // New profile request for the 'ProfileRequests' collection
       if (!["Yes", "No"].includes(referred)) throw new Error("Referred must be 'Yes' or 'No'");
-
-      const [profilesSnap, profileRequestsSnap, emailSnap] = await Promise.all([
-        getDocs(query(collection(db, 'Profiles'), where('username', '==', username))),
-        getDocs(query(collection(db, 'ProfileRequests'), where('username', '==', username))),
-        getDocs(query(collection(db, 'Profiles'), where('email', '==', email)))
-      ]);
-
-      if (!profilesSnap.empty || !profileRequestsSnap.empty) throw new Error("Username is already taken");
       if (!/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username)) {
         throw new Error("Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores");
       }
-      if (!emailSnap.empty) throw new Error("User already exists. No duplicate profile allowed.");
+
+      const [usernameInProfiles, usernameInRequests, emailInProfiles] = await Promise.all([
+        existsByColumn(supabase, "profiles", "username", username),
+        existsByColumn(supabase, "profile_requests", "username", username),
+        existsByColumn(supabase, "profiles", "email", email),
+      ]);
+
+      if (usernameInProfiles || usernameInRequests) throw new Error("Username is already taken");
+      if (emailInProfiles) throw new Error("User already exists. No duplicate profile allowed.");
 
       if (referred === "Yes") {
         if (!referralCode) throw new Error("Referral code is required when referred is 'Yes'");
-        const codeSnap = await getDocs(query(collection(db, 'Profiles'), where('generatedReferralCode', '==', referralCode)));
-        if (codeSnap.empty) throw new Error("Invalid referral code");
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("generated_referral_code", referralCode)
+          .limit(1);
+        if (error) throw error;
+        if (!data?.length) throw new Error("Invalid referral code");
       }
 
-      profileData.generatedReferralCode = generateReferralCode();
-      
-      const docRef = await addDoc(collection(db, "ProfileRequests"), profileData);
-      savedProfileId = docRef.id;
+      const { data, error } = await supabase
+        .from("profile_requests")
+        .insert({
+          ...profileData,
+          generated_referral_code: generateReferralCode(),
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        if (isMissingRelationError(error)) throw new Error(MISSING_PROFILE_REQUESTS);
+        throw error;
+      }
+      savedProfileId = data.id;
     }
 
     await sendProfileSubmissionEmails({
-      ...profileData,
+      ...body,
       profileId: savedProfileId,
     });
 
-    const slug = `${(username || '').toLowerCase().replace(/\s+/g, '-')}`;
+    const slug = `${(username || "").toLowerCase().replace(/\s+/g, "-")}`;
 
     return NextResponse.json({ success: true, profileId: savedProfileId, slug }, { status: 200 });
-
   } catch (error) {
     console.error("Error in send-profile-form:", error.message, error.stack);
     return NextResponse.json(

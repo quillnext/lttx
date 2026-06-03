@@ -73,7 +73,7 @@ export default function HandoverModal({ profile, onClose }) {
            <div className="bg-orange-50 border border-orange-100 p-4 rounded-2xl flex gap-3">
               <AlertTriangle className="text-orange-600 shrink-0" size={20} />
               <p className="text-xs font-bold text-orange-800 leading-relaxed">
-                WARNING: This will create a Firebase Auth record using the profile's existing ID. Ensure the email is correct.
+                WARNING: This will create a Supabase Auth identity and link it to this profile. Ensure the email is correct.
               </p>
            </div>
 

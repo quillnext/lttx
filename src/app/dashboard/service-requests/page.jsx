@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, Send, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import CaseSheetView from "@/app/components/CaseSheetView";
-
-const db = getFirestore(app);
 import ExpertPrescriptionBuilder from "@/app/components/ExpertPrescriptionBuilder";
 import PrescriptionUserView from "@/app/components/PrescriptionUserView";
 
@@ -56,25 +52,6 @@ const getStatusLabel = (status) => {
     escalated: "Escalated",
   };
   return labels[status] || status || "Pending";
-};
-
-const formatPrescriptionForEmail = (reply) => {
-  if (!reply || typeof reply !== "object") return reply;
-
-  const sections = [
-    ["What I understand from your plan", reply.diagnosis],
-    ["Expert Recommendation", reply.coreAdvice],
-    ["What to Avoid / Watch Out For", Array.isArray(reply.risks) ? reply.risks.map((risk) => `- ${risk}`).join("\n") : ""],
-    ["Better Way to Plan This", reply.optimizedApproach],
-    ...Object.entries(reply.optionalSections || {}).map(([key, value]) => [key.replace(/([A-Z])/g, " $1"), value]),
-    ["Confidence in Recommendation", reply.confidence],
-    ["Next Step", reply.nextStepCta],
-  ];
-
-  return sections
-    .filter(([, value]) => String(value || "").trim())
-    .map(([label, value]) => `${label}:\n${value}`)
-    .join("\n\n");
 };
 
 const normalizeRequest = (row) => {
@@ -126,10 +103,9 @@ export default function ServiceRequestsDashboardPage() {
   useEffect(() => {
     const fetchExperts = async () => {
       try {
-        const q = query(collection(db, "Profiles"), where("profileType", "==", "expert"));
-        const snapshot = await getDocs(q);
-        const expertList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-        setExperts(expertList);
+        const response = await fetch("/api/admin/profiles");
+        const result = await response.json();
+        setExperts(result.profiles || []);
       } catch (err) {
         console.error("Error fetching experts:", err);
       }
@@ -361,11 +337,12 @@ export default function ServiceRequestsDashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userEmail: request.userEmail,
+          userPhone: request.userPhone || request.formData?.phone || request.formData?.whatsapp || "",
           userName: request.userName,
           expertName: request.expertName,
           question: request.question,
           serviceType: request.serviceType,
-          reply: formatPrescriptionForEmail(structuredReply),
+          reply: finalReply,
         }),
       });
 
@@ -677,24 +654,6 @@ export default function ServiceRequestsDashboardPage() {
                   >
                     <Check size={14} /> Accept Case
                   </button>
-                )}
-                {replyModal.status !== "answered" && (
-                  <>
-                    <button
-                      onClick={() => handleStatusChange(replyModal, "clarification_requested")}
-                      disabled={replyLoading}
-                      className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                    >
-                      <Send size={14} /> Request Clarification
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(replyModal, "escalated")}
-                      disabled={replyLoading}
-                      className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100 disabled:opacity-50"
-                    >
-                      <AlertTriangle size={14} /> Escalate
-                    </button>
-                  </>
                 )}
                 <button
                   onClick={() => {

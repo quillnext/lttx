@@ -22,6 +22,7 @@ export default function UserLayout({ children }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); // Track pending questions count
+  const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
   const isMounted = useRef(true);
 
   const handleNavClick = (href) => {
@@ -64,6 +65,17 @@ export default function UserLayout({ children }) {
         const querySnapshot = await getDocs(questionsQuery);
         if (isMounted.current) {
           setPendingQuestionsCount(querySnapshot.size);
+        }
+
+        // Fetch pending service requests (leads) count from Supabase
+        try {
+          const leadsRes = await fetch(`/api/leads?count=true&status=pending&expertId=${encodeURIComponent(user.uid)}`);
+          const leadsResult = await leadsRes.json();
+          if (isMounted.current) {
+            setPendingLeadsCount(leadsResult.count ?? 0);
+          }
+        } catch (e) {
+          console.error("Error fetching pending leads count:", e.message);
         }
 
         // Check profile for forcePasswordChange
@@ -195,10 +207,10 @@ export default function UserLayout({ children }) {
             >
               <MailPlus className="w-6 h-6" />
               <span className="hidden md:inline">Messages</span>
-              {pendingQuestionsCount > 0 && (
+              {(pendingQuestionsCount + pendingLeadsCount) > 0 && (
                 <span className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full md:ml-2">
                   <Bell size={14} />
-                  {pendingQuestionsCount}
+                  {pendingQuestionsCount + pendingLeadsCount}
                 </span>
               )}
             </Link>

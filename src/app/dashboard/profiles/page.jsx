@@ -2,16 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { 
-  getFirestore, 
-  collection, 
-  onSnapshot, 
-  doc, 
-  updateDoc, 
-  addDoc
-} from "firebase/firestore";
-import { getStorage, ref, deleteObject } from "firebase/storage";
-import { app } from "@/lib/firebase";
-import { 
   Trash2, 
   Filter, 
   Globe, 
@@ -43,13 +33,9 @@ import {
   UserPlus,
   Key
 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import CreateProfileModal from "./CreateProfileModal";
 import HandoverModal from "./HandoverModal";
-
-const db = getFirestore(app);
-const storage = getStorage(app);
 
 export default function ProfilesTab() {
   const [profiles, setProfiles] = useState([]);
@@ -75,50 +61,52 @@ export default function ProfilesTab() {
   const [sendToAll, setSendToAll] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "Profiles"), (snapshot) => {
-      const list = snapshot.docs.map(doc => {
-        const data = doc.data();
+    let active = true;
+    const fetchProfiles = async () => {
+      try {
+        const response = await fetch("/api/admin/profiles", { cache: "no-store" });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to fetch profiles");
+        if (!active) return;
+        const list = (result.profiles || []).map((data) => {
         let displayDate = 'N/A';
         
-        // Robust date parsing to avoid "toDate is not a function" error
         try {
-          if (data.timestamp) {
-            const ts = data.timestamp;
-            if (ts && typeof ts.toDate === 'function') {
-              displayDate = ts.toDate().toLocaleDateString('en-GB');
-            } else if (ts && typeof ts.seconds === 'number') {
-              displayDate = new Date(ts.seconds * 1000).toLocaleDateString('en-GB');
-            } else if (ts instanceof Date) {
-              displayDate = ts.toLocaleDateString('en-GB');
-            } else {
-              const parsedDate = new Date(ts);
-              if (!isNaN(parsedDate.getTime())) {
-                displayDate = parsedDate.toLocaleDateString('en-GB');
-              }
-            }
+          const dateValue = data.createdAt || data.timestamp;
+          if (dateValue) {
+            const parsedDate = new Date(dateValue);
+            if (!isNaN(parsedDate.getTime())) displayDate = parsedDate.toLocaleDateString('en-GB');
           }
         } catch (e) {
-          console.warn("Date parsing failed for doc:", doc.id, e);
           displayDate = 'Invalid Date';
         }
 
         return {
-          id: doc.id,
           ...data,
           displayDate
         };
       });
       
       list.sort((a, b) => {
-          const timeA = a.timestamp?.seconds || (a.timestamp ? new Date(a.timestamp).getTime() / 1000 : 0);
-          const timeB = b.timestamp?.seconds || (b.timestamp ? new Date(b.timestamp).getTime() / 1000 : 0);
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
           return timeB - timeA;
       });
 
       setProfiles(list);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+      } catch (error) {
+        console.error("Error fetching profiles:", error);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    fetchProfiles();
+    const interval = setInterval(fetchProfiles, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const filteredProfiles = useMemo(() => {
@@ -152,7 +140,14 @@ export default function ProfilesTab() {
   const handleTogglePublic = async (id, currentStatus) => {
     setActionLoading(prev => ({ ...prev, [id]: true }));
     try {
-      await updateDoc(doc(db, "Profiles", id), { isPublic: !currentStatus });
+      const response = await fetch("/api/admin/profiles", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, updates: { isPublic: !currentStatus } }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to update profile");
+      setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, isPublic: !currentStatus } : p)));
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
@@ -169,14 +164,7 @@ export default function ProfilesTab() {
       });
       const result = await res.json();
       if (res.ok) {
-        const paths = result.storagePaths;
-        const deleteSafe = async (url) => {
-            if (!url || typeof url !== 'string' || !url.includes('firebase')) return;
-            try { await deleteObject(ref(storage, url)); } catch(e) {}
-        };
-        await deleteSafe(paths.photo);
-        if (Array.isArray(paths.certificates)) for (const c of paths.certificates) await deleteSafe(c);
-        if (Array.isArray(paths.officePhotos)) for (const o of paths.officePhotos) await deleteSafe(o);
+        setProfiles((prev) => prev.filter((item) => item.id !== p.id));
         alert("Purge Successful.");
       } else alert(result.error);
     } finally {
@@ -199,23 +187,16 @@ export default function ProfilesTab() {
     setPromptLoading(true);
     setPromptError(null);
     try {
-      for (const profile of targets) {
-        await addDoc(collection(db, "Questions"), {
-          expertId: profile.id,
-          expertName: profile.fullName || "Unknown",
-          expertEmail: profile.email || "",
-          question: promptQuestion,
-          userName: "Admin",
-          userEmail: "admin@xmytravel.com",
-          userPhone: "",
-          status: "admin_prompt",
-          isAdminPrompt: true,
-          suggestedAnswer: promptAnswer,
-          isPublic: false,
-          createdAt: new Date().toISOString(),
-          reply: null,
-        });
+      await fetch("/api/admin/prompts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targets, question: promptQuestion, suggestedAnswer: promptAnswer }),
+      }).then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to save prompt");
+      });
 
+      for (const profile of targets) {
         if (profile.email && profile.email.trim()) {
           await fetch("/api/send-admin-prompt", {
             method: "POST",
@@ -346,7 +327,7 @@ export default function ProfilesTab() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-100 border-2 border-white shadow-sm shrink-0">
-                          <Image src={p.photo || "/default.jpg"} alt="" width={40} height={40} className="object-cover" />
+                          <img src={p.photo || "/default.jpg"} alt="" className="object-cover w-full h-full" onError={e => { e.target.src = "/default.jpg"; }} />
                         </div>
                         <div className="min-w-0">
                           <p className="font-bold text-gray-900 truncate text-sm">{p.fullName}</p>
@@ -484,7 +465,7 @@ export default function ProfilesTab() {
             <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <div className="flex items-center gap-6">
                 <div className="w-24 h-24 rounded-[32px] overflow-hidden shadow-2xl border-4 border-white shrink-0">
-                  <Image src={detailModal.photo || "/default.jpg"} alt="" width={96} height={96} className="object-cover" />
+                  <img src={detailModal.photo || "/default.jpg"} alt="" className="object-cover w-full h-full" onError={e => { e.target.src = "/default.jpg"; }} />
                 </div>
                 <div>
                   <h2 className="text-3xl font-black text-gray-900 leading-none mb-2">{detailModal.fullName}</h2>
@@ -634,7 +615,7 @@ export default function ProfilesTab() {
                            <div className="grid grid-cols-3 gap-4">
                               {safeMap(detailModal.officePhotos).map((url, idx) => (
                                 <div key={idx} className="aspect-square bg-gray-100 rounded-3xl overflow-hidden shadow-sm border border-gray-100">
-                                   <Image src={url} alt="" width={150} height={150} className="w-full h-full object-cover" />
+                                   <img src={url} alt="" className="w-full h-full object-cover" onError={e => { e.target.src = "/default.jpg"; }} />
                                 </div>
                               ))}
                            </div>

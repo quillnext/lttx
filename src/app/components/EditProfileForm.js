@@ -3,11 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import "react-phone-input-2/lib/style.css";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import _ from "lodash";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -33,8 +30,6 @@ import {
   Clock,
   Briefcase
 } from "lucide-react";
-
-const db = getFirestore(app);
 
 // Dynamically load components for consistency
 const loadComponent = (importFn, name) =>
@@ -143,7 +138,6 @@ export default function EditProfileForm({ initialData, onSave }) {
   const handlePhoneChange = (phone) => {
     setFormData((prev) => ({ ...prev, phone }));
     setErrors((prev) => ({ ...prev, phone: "" }));
-    fetchLeadByPhone(phone);
   };
 
   const handleFile = (e, field) => {
@@ -180,9 +174,10 @@ export default function EditProfileForm({ initialData, onSave }) {
         return;
     }
     try {
-      const profilesQuery = query(collection(db, 'Profiles'), where('username', '==', username));
-      const querySnapshot = await getDocs(profilesQuery);
-      if (!querySnapshot.empty) setUsernameStatus('Username is already taken');
+      const response = await fetch(`/api/send-profile-form?action=username&username=${encodeURIComponent(username)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Error checking username");
+      if (!result.available) setUsernameStatus('Username is already taken');
       else setUsernameStatus('Username is available');
     } catch (error) { setUsernameStatus('Error checking username'); }
   };
@@ -405,7 +400,7 @@ export default function EditProfileForm({ initialData, onSave }) {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Identity Image <span className="text-red-500">*</span></label>
               <div className="relative w-40 h-40">
                   <div className="w-full h-full rounded-[48px] overflow-hidden border-4 border-white shadow-2xl bg-gray-50 group">
-                    <Image src={imagePreview || "/default.jpg"} alt="" fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                    <img src={imagePreview || "/default.jpg"} alt="" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" onError={e => { e.target.src = "/default.jpg"; }} />
                   </div>
                   <label className="absolute -bottom-2 -right-2 bg-white p-3 rounded-2xl shadow-xl border border-gray-100 cursor-pointer text-[#36013F] hover:scale-110 transition-transform">
                     <Edit3 size={20} />
@@ -547,7 +542,7 @@ export default function EditProfileForm({ initialData, onSave }) {
                 <input 
                     type="text" 
                     name="referralCode" 
-                    value={formData.referralCode} 
+                    value={formData.referralCode ?? ""}
                     onChange={e => setFormData({...formData, referralCode: e.target.value})} 
                     className="bg-white border-2 border-purple-100 rounded-2xl px-6 py-4 text-sm font-black text-[#36013F] w-full sm:w-48 shadow-lg shadow-purple-900/5 focus:ring-2 focus:ring-[#36013F] outline-none transition-all placeholder:text-purple-200" 
                     placeholder="ENTER CODE" 
@@ -596,7 +591,7 @@ function MediaUploadSection({ title, items, field, handleFile, removeFile }) {
                      {url.includes('.pdf') ? (
                         <div className="w-full h-full flex items-center justify-center text-[10px] font-black text-gray-500">PDF DOC</div>
                      ) : (
-                        <Image src={url} alt="" fill className="object-cover" />
+                        <img src={url} alt="" className="object-cover w-full h-full" onError={e => { e.target.src = "/default.jpg"; }} />
                      )}
                      <button type="button" onClick={() => removeFile(idx, field)} className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <Trash2 className="text-white" size={20}/>

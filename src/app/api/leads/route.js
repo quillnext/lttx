@@ -6,21 +6,21 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const expertId = searchParams.get("expertId");
     const userEmail = searchParams.get("userEmail");
+    const status = searchParams.get("status");
+    const countOnly = searchParams.get("count") === "true";
 
-    let query = createSupabaseAdminClient()
+    const supabase = createSupabaseAdminClient();
+
+    let query = supabase
       .from("leads")
-      .select("*")
+      .select(countOnly ? "*" : "*", countOnly ? { count: "exact", head: true } : undefined)
       .order("created_at", { ascending: false });
 
-    if (expertId) {
-      query = query.eq("expert_id", expertId);
-    }
+    if (expertId) query = query.eq("expert_id", expertId);
+    if (userEmail) query = query.eq("user_email", userEmail);
+    if (status) query = query.eq("status", status);
 
-    if (userEmail) {
-      query = query.eq("user_email", userEmail);
-    }
-
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
       console.error("Supabase leads fetch failed:", error);
@@ -28,6 +28,10 @@ export async function GET(request) {
         { error: error.message || "Failed to fetch leads" },
         { status: 500 }
       );
+    }
+
+    if (countOnly) {
+      return NextResponse.json({ count: count ?? 0 }, { status: 200 });
     }
 
     return NextResponse.json({ leads: data || [] }, { status: 200 });

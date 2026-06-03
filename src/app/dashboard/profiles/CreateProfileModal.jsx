@@ -25,10 +25,6 @@ import {
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { app } from "@/lib/firebase";
-
-const storage = getStorage(app);
 
 // Helper for dynamic imports
 const loadComponent = (importFn, name) =>
@@ -194,13 +190,19 @@ export default function CreateProfileModal({ onClose }) {
     try {
       let photoURL = "";
       
-      // Upload identity photo if provided
       if (formData.photo && formData.photo instanceof File) {
-        const timestamp = Date.now();
-        const fileName = `admin_created_${formData.fullName.replace(/\s+/g, '_')}_${timestamp}.jpg`;
-        const storageRef = ref(storage, `Profiles/${fileName}`);
-        await uploadBytes(storageRef, formData.photo);
-        photoURL = await getDownloadURL(storageRef);
+        const uploadData = new FormData();
+        uploadData.append("file", formData.photo);
+        uploadData.append("folder", "profiles");
+        uploadData.append("namePrefix", `admin_created_${formData.fullName.replace(/\s+/g, "_")}`);
+
+        const uploadRes = await fetch("/api/profile-assets/upload", {
+          method: "POST",
+          body: uploadData,
+        });
+        const uploadResult = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadResult.error || "Profile photo upload failed");
+        photoURL = uploadResult.publicUrl;
       }
 
       const formatDateForPayload = (date) => {
@@ -219,7 +221,7 @@ export default function CreateProfileModal({ onClose }) {
         })) : []
       };
 
-      const res = await fetch("/api/admin/create-placeholder-profile", {
+      const res = await fetch("/api/admin/profiles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)

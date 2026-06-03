@@ -2,23 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  doc,
-  deleteDoc,
-  setDoc,
-  getDoc,
-  query,
-  where,
-} from "firebase/firestore";
-import { getStorage, ref, listAll, deleteObject } from "firebase/storage";
-import { app } from "@/lib/firebase";
 import Image from "next/image";
-
-const db = getFirestore(app);
-const storage = getStorage(app);
 
 function ProfilePreview({ profile, onClose }) {
   return (
@@ -116,20 +100,13 @@ export default function ManageRequestsPage() {
 
   const fetchRequests = async () => {
     try {
-      const querySnapshot = await getDocs(collection(db, "ProfileRequests"));
-      const profiles = querySnapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        let rawDate;
-        if (data.timestamp && typeof data.timestamp.toDate === "function") {
-          rawDate = data.timestamp.toDate();
-        } else if (data.timestamp && data.timestamp.seconds) {
-          rawDate = new Date(data.timestamp.seconds * 1000);
-        } else {
-          rawDate = new Date();
-        }
+      const response = await fetch("/api/admin/profile-requests", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to fetch requests");
 
+      const profiles = (result.requests || []).map((data) => {
+        const rawDate = data.createdAt ? new Date(data.createdAt) : new Date();
         return {
-          id: docSnap.id,
           ...data,
           rawTimestamp: rawDate,
           timestamp: rawDate.toLocaleDateString("en-GB"),
@@ -150,22 +127,6 @@ export default function ManageRequestsPage() {
   useEffect(() => {
     fetchRequests();
   }, []);
-
-  const deleteImageFolder = async (photoURL) => {
-    try {
-      const pathStart = photoURL.indexOf("/o/") + 3;
-      const pathEnd = photoURL.indexOf("?alt=");
-      const decodedPath = decodeURIComponent(photoURL.substring(pathStart, pathEnd));
-      const folderPath = decodedPath.substring(0, decodedPath.lastIndexOf("/"));
-
-      const folderRef = ref(storage, folderPath);
-      const result = await listAll(folderRef);
-      const deletionTasks = result.items.map((item) => deleteObject(item));
-      await Promise.all(deletionTasks);
-    } catch (err) {
-      console.warn("Error deleting image folder:", err.message);
-    }
-  };
 
   const handleApprove = async (profile) => {
     setLoadingStates((prev) => ({ ...prev, [`approve-${profile.id}`]: true }));
@@ -202,21 +163,15 @@ export default function ManageRequestsPage() {
 
     setLoadingStates((prev) => ({ ...prev, [`delete-${profile.id}`]: true }));
     try {
-      const docRef = doc(db, "ProfileRequests", profile.id);
-      const snapshot = await getDoc(docRef);
-
-      if (snapshot.exists()) {
-        const data = snapshot.data();
-        if (data.photo) {
-          await deleteImageFolder(data.photo);
-        }
-      }
-
-      await deleteDoc(docRef);
+      const response = await fetch(`/api/admin/profile-requests?id=${encodeURIComponent(profile.id)}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Error deleting profile.");
       setRequests((prev) => prev.filter((r) => r.id !== profile.id));
     } catch (error) {
       console.error("Failed to delete:", error);
-      alert("Error deleting profile.");
+      alert(error.message || "Error deleting profile.");
     } finally {
       setLoadingStates((prev) => ({ ...prev, [`delete-${profile.id}`]: false }));
     }
@@ -227,14 +182,9 @@ export default function ManageRequestsPage() {
     try {
       let referrerUsername = "";
       if (profile.referred === "Yes" && profile.referralCode) {
-        const codeQuery = query(
-          collection(db, "Profiles"),
-          where("generatedReferralCode", "==", profile.referralCode)
-        );
-        const querySnapshot = await getDocs(codeQuery);
-        referrerUsername = querySnapshot.empty
-          ? "Not Found"
-          : querySnapshot.docs[0].data().username || "Unknown";
+        const response = await fetch(`/api/send-profile-form?action=referral&code=${encodeURIComponent(profile.referralCode)}`);
+        const result = await response.json();
+        referrerUsername = result.referrer?.username || "Not Found";
       }
 
       setPreviewProfile({

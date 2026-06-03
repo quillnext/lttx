@@ -2,19 +2,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { doc, getFirestore, getDoc, updateDoc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { app } from "@/lib/firebase";
 import EditProfileForm from "./EditProfileForm";
-
-const db = getFirestore(app);
-const storage = getStorage(app);
 
 export default function EditProfile({ id }) { 
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   const parseDate = (dateString, format = "YYYY-MM-DD") => {
     if (!dateString) return null;
@@ -31,10 +23,11 @@ export default function EditProfile({ id }) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const docRef = doc(db, "Profiles", id);
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists()) {
-          const data = snapshot.data();
+        const response = await fetch(`/api/admin/profiles?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to fetch profile");
+        if (result.profile) {
+          const data = result.profile;
           
           const safeArray = (val) => {
               if (Array.isArray(val)) return val;
@@ -70,43 +63,41 @@ export default function EditProfile({ id }) {
   const handleSave = async (updatedData) => {
     try {
       const sanitizedName = updatedData.fullName?.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") || "Unknown";
+      const uploadProfileAsset = async (file, folder, namePrefix) => {
+        const uploadData = new FormData();
+        uploadData.append("file", file);
+        uploadData.append("folder", folder);
+        uploadData.append("namePrefix", namePrefix);
+
+        const response = await fetch("/api/profile-assets/upload", {
+          method: "POST",
+          body: uploadData,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to upload file");
+        return result.publicUrl;
+      };
       
-      // 1. Handle Profile Photo
       let photoURL = updatedData.photo;
       if (updatedData.photo instanceof File) {
-        const timestamp = Date.now();
-        const ext = updatedData.photo.name.split(".").pop();
-        const fileName = `profile_${timestamp}.${ext}`;
-        const storageRef = ref(storage, `Profiles/${sanitizedName}/${fileName}`);
-        await uploadBytes(storageRef, updatedData.photo);
-        photoURL = await getDownloadURL(storageRef);
+        photoURL = await uploadProfileAsset(updatedData.photo, "profiles", `profile_${sanitizedName}`);
       }
 
-      // 2. Handle Multi-File Certificates
       const finalCertificates = [];
       const certificatesList = Array.isArray(updatedData.certificates) ? updatedData.certificates : [];
       for (const cert of certificatesList) {
         if (cert instanceof File) {
-          const certName = `cert_${Date.now()}_${cert.name}`;
-          const certRef = ref(storage, `Certificates/${sanitizedName}/${certName}`);
-          await uploadBytes(certRef, cert);
-          const url = await getDownloadURL(certRef);
-          finalCertificates.push(url);
+          finalCertificates.push(await uploadProfileAsset(cert, "certificates", `cert_${sanitizedName}`));
         } else if (typeof cert === 'string') {
           finalCertificates.push(cert);
         }
       }
 
-      // 3. Handle Multi-File Office Photos
       const finalOfficePhotos = [];
       const officePhotosList = Array.isArray(updatedData.officePhotos) ? updatedData.officePhotos : [];
       for (const oPhoto of officePhotosList) {
         if (oPhoto instanceof File) {
-          const oName = `office_${Date.now()}_${oPhoto.name}`;
-          const oRef = ref(storage, `OfficePhotos/${sanitizedName}/${oName}`);
-          await uploadBytes(oRef, oPhoto);
-          const url = await getDownloadURL(oRef);
-          finalOfficePhotos.push(url);
+          finalOfficePhotos.push(await uploadProfileAsset(oPhoto, "office-photos", `office_${sanitizedName}`));
         } else if (typeof oPhoto === 'string') {
           finalOfficePhotos.push(oPhoto);
         }
@@ -122,7 +113,7 @@ export default function EditProfile({ id }) {
         return `${year}-${month}-${day}`;
       };
 
-      const dataForFirestore = {
+      const dataForSupabase = {
         ...updatedData,
         photo: photoURL,
         certificates: finalCertificates,
@@ -136,7 +127,13 @@ export default function EditProfile({ id }) {
         })) : [],
       };
 
-      await updateDoc(doc(db, "Profiles", id), dataForFirestore);
+      const response = await fetch("/api/admin/profiles", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, updates: dataForSupabase }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to save profile");
     } catch (error) {
       console.error("Error saving profile:", error);
       throw new Error("Failed to save profile");

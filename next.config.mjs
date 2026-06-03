@@ -28,6 +28,11 @@ const nextConfig = {
         hostname: 'firebasestorage.googleapis.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdgcmusnrcehkubtskyt.supabase.co',
+        pathname: '/storage/v1/object/public/profile-assets/**',
+      },
     ],
   },
   async headers() {

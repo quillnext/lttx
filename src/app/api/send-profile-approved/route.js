@@ -1,215 +1,172 @@
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { sendApprovalNotificationEmail } from "@/app/utils/sendApprovalNotificationEmail";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { defaultExpertSchedule, mapSupabaseProfile } from "@/lib/supabaseProfile";
 import { NextResponse } from "next/server";
-import admin from "firebase-admin";
 
-const defaultSchedule = {
-  Mon: ["09:00", "13:30", "14:00"],
-  Tue: ["09:00", "13:30", "14:00"],
-  Wed: ["09:00", "13:30", "14:00"],
-  Thu: ["09:00", "13:30", "14:00"],
-  Fri: ["09:00", "13:30", "14:00"],
-  Sat: ["09:00", "13:30", "14:00"],
-  Sun: ["14:00", "17:30"],
-};
-
-// Generate a secure random password
 function generatePassword(length = 12) {
   const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+";
   let password = "";
   for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    password += charset[randomIndex];
+    password += charset[Math.floor(Math.random() * charset.length)];
   }
   return password;
 }
 
+async function findAuthUserByEmail(supabase, email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  let page = 1;
+  const perPage = 1000;
+
+  while (page < 50) {
+    const { data, error } = await supabase.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+
+    if (error) throw error;
+
+    const user = data?.users?.find((item) => item.email?.toLowerCase() === normalizedEmail);
+    if (user) return user;
+
+    if (!data?.users?.length || data.users.length < perPage) return null;
+    page += 1;
+  }
+
+  return null;
+}
+
+const isAlreadyRegisteredError = (error) => {
+  const message = error?.message?.toLowerCase() || "";
+  return message.includes("already registered") || message.includes("already been registered");
+};
+
+const getMissingColumn = (error) => {
+  const message = error?.message || "";
+  return message.match(/Could not find the '([^']+)' column/)?.[1] || null;
+};
+
+async function upsertProfileWithSchemaFallback(supabase, payload) {
+  const workingPayload = { ...payload };
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(workingPayload)
+      .select("*")
+      .single();
+
+    if (!error) return data;
+
+    const missingColumn = getMissingColumn(error);
+    if (!missingColumn || !Object.prototype.hasOwnProperty.call(workingPayload, missingColumn)) {
+      throw error;
+    }
+
+    console.warn(`profiles.${missingColumn} is missing in Supabase schema cache; approving without that optional field.`);
+    delete workingPayload[missingColumn];
+  }
+
+  throw new Error("Could not approve profile because too many profile columns are missing.");
+}
+
 export async function POST(req) {
-  console.log("Received request to approve profile");
-
-  let body;
   try {
-    body = await req.json();
-  } catch (error) {
-    console.error("Invalid request body:", error.message);
-    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
-  }
+    const { profileId } = await req.json();
+    if (!profileId) {
+      return NextResponse.json({ error: "Missing required profileId" }, { status: 400 });
+    }
 
-  const { profileId } = body;
+    const supabase = createSupabaseAdminClient();
+    const { data: requestProfile, error: requestError } = await supabase
+      .from("profile_requests")
+      .select("*")
+      .eq("id", profileId)
+      .single();
 
-  if (!profileId) {
-    console.error("Missing profileId in request body");
-    return NextResponse.json({ error: "Missing required profileId" }, { status: 400 });
-  }
-
-  try {
-    // 1. Read the request from `ProfileRequests` collection
-    const requestProfileRef = adminDb.collection("ProfileRequests").doc(profileId);
-    const requestProfileDoc = await requestProfileRef.get();
-
-    if (!requestProfileDoc.exists) {
-      console.error(`Profile request not found with ID: ${profileId}`);
+    if (requestError) throw requestError;
+    if (!requestProfile) {
       return NextResponse.json({ error: "Profile request not found" }, { status: 404 });
     }
 
-    const requestProfileData = requestProfileDoc.data();
-    console.log("Found profile request data:", requestProfileData);
-
-    // 2. Destructure and validate ALL required fields including agency-specific fields
-    const {
-      email,
-      fullName,
-      username,
-      phone,
-      profileType,
-      tagline,
-      location,
-      languages,
-      responseTime,
-      pricing,
-      about,
-      services,
-      regions,
-      expertise,
-      photo,
-      referred,
-      referralCode,
-      generatedReferralCode,
-      dateOfBirth,
-      yearsActive,
-      experience,
-      certifications,
-      licenseNumber,
-      certificates,
-      officePhotos,
-      registeredAddress,
-      website,
-      employeeCount,
-      leadId,
-    } = requestProfileData;
-
-    const requiredFields = { email, fullName, username, phone };
-    const missingFields = Object.entries(requiredFields)
-      .filter(([_, value]) => !value)
-      .map(([key]) => key);
-
-    if (missingFields.length > 0) {
-      console.error(`Missing required fields: ${missingFields.join(", ")}`);
+    const profile = mapSupabaseProfile(requestProfile);
+    const missingFields = ["email", "fullName", "username", "phone"].filter((field) => !profile[field]);
+    if (missingFields.length) {
       return NextResponse.json(
         { error: `Profile request is missing required fields: ${missingFields.join(", ")}` },
         { status: 400 }
       );
     }
 
-    // 3. Create/Get Firebase Auth user
-    let userRecord;
-    let password = null;
+    let password = generatePassword();
+    let authUser = null;
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email: profile.email,
+      password,
+      email_confirm: false,
+      user_metadata: {
+        name: profile.fullName,
+        phone: profile.phone,
+        role: "expert",
+      },
+    });
 
-    try {
-      userRecord = await adminAuth.getUserByEmail(email);
-      console.log(`Found existing user with email ${email}, UID: ${userRecord.uid}`);
-    } catch (error) {
-      if (error.code === "auth/user-not-found") {
-        console.log(`User not found with email ${email}, creating new user...`);
-        password = generatePassword();
-        userRecord = await adminAuth.createUser({
-          email,
-          password,
-          emailVerified: false,
-          disabled: false,
-          displayName: fullName,
-        });
-        console.log(`Created new user with email ${email}, UID: ${userRecord.uid}`);
-      } else {
-        console.error("Error checking user existence:", error);
-        throw new Error(`Failed to check user existence: ${error.message}`);
-      }
+    if (authError && !isAlreadyRegisteredError(authError)) {
+      throw authError;
     }
 
-    // 4. Construct and save the final profile with ALL fields
+    if (authError && isAlreadyRegisteredError(authError)) {
+      authUser = await findAuthUserByEmail(supabase, profile.email);
+      password = null;
+    } else {
+      authUser = authData?.user || null;
+    }
+
+    const authUserId = authUser?.id || requestProfile.user_id || null;
     const finalProfileData = {
-      profileType: profileType || "expert",
-      username,
-      fullName,
-      email,
-      phone,
-      dateOfBirth: dateOfBirth || '',
-      yearsActive: yearsActive || '',
-      tagline: tagline || '',
-      location: location || '',
-      languages: Array.isArray(languages) ? languages : [],
-      responseTime: responseTime || '',
-      pricing: pricing || '',
-      about: about || '',
-      photo: photo || '',
-      services: Array.isArray(services) ? services : [],
-      regions: Array.isArray(regions) ? regions : [],
-      expertise: Array.isArray(expertise) ? expertise : [],
-      experience: Array.isArray(experience) ? experience : [],
-      certifications: certifications || '',
-      licenseNumber: licenseNumber || '',
-      referred: referred || 'No',
-      referralCode: referred === 'Yes' ? referralCode : null,
-      generatedReferralCode,
-      leadId: leadId || null,
-      certificates: Array.isArray(certificates) ? certificates : [],
-      officePhotos: Array.isArray(officePhotos) ? officePhotos : [],
-      registeredAddress: registeredAddress || '',
-      website: website || '',
-      employeeCount: employeeCount || '',
+      ...requestProfile,
+      id: authUserId || requestProfile.id,
       status: "approved",
-      isPublic: true,
-      userId: userRecord.uid,
-      forcePasswordChange: !!password,
-      approvalTimestamp: new Date().toISOString(),
+      is_public: true,
+      is_handed_over: true,
+      user_id: authUserId,
+      force_password_change: true,
+      approval_timestamp: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
-    // Remove undefined fields
-    Object.keys(finalProfileData).forEach(
-      (key) => finalProfileData[key] === undefined && delete finalProfileData[key]
-    );
+    delete finalProfileData.created_at;
 
-    console.log("Saving final profile data to Profiles collection:", finalProfileData);
-    const newProfileRef = adminDb.collection("Profiles").doc(userRecord.uid);
-    await newProfileRef.set(finalProfileData);
+    const approvedProfile = await upsertProfileWithSchemaFallback(supabase, finalProfileData);
 
-    // 5. Initialize default recurring availability
-    const recurringRef = adminDb.collection("ExpertRecurringAvailability").doc(userRecord.uid);
-    await recurringRef.set({
-      schedule: defaultSchedule,
-      expertId: userRecord.uid,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    const { error: availabilityError } = await supabase.from("expert_recurring_availability").upsert({
+      expert_id: approvedProfile.id,
+      schedule: defaultExpertSchedule,
+      updated_at: new Date().toISOString(),
     });
-
-    console.log(`Successfully created profile and schedule for ID: ${userRecord.uid}`);
-
-    // 6. Delete the request from `ProfileRequests`
-    await requestProfileRef.delete();
-    console.log(`Successfully deleted profile request with ID: ${profileId}`);
-
-    // 7. Validate email parameters and send notification
-    if (!username || !generatedReferralCode) {
-      console.warn(
-        `Missing username or generatedReferralCode for email: ${email}`,
-        { username, generatedReferralCode }
-      );
-      throw new Error("Missing username or generatedReferralCode for notification email");
+    if (availabilityError) {
+      console.warn("Default availability was not saved:", availabilityError.message);
     }
 
-    const slug = username.toLowerCase().replace(/\s+/g, "-");
-    await sendApprovalNotificationEmail({
-      fullName,
-      email,
-      slug,
-      generatedReferralCode,
-      username,
-      password, // Pass password (null for existing users)
-    });
-    console.log(`Approval email process initiated for ${email}`);
+    const { error: deleteError } = await supabase
+      .from("profile_requests")
+      .delete()
+      .eq("id", profileId);
 
-    return NextResponse.json({ success: true, newProfileId: userRecord.uid }, { status: 200 });
+    if (deleteError) throw deleteError;
+
+    const slug = profile.username.toLowerCase().replace(/\s+/g, "-");
+    await sendApprovalNotificationEmail({
+      fullName: profile.fullName,
+      email: profile.email,
+      slug,
+      generatedReferralCode: profile.generatedReferralCode || requestProfile.generated_referral_code || "N/A",
+      username: profile.username,
+      password,
+    });
+
+    return NextResponse.json({ success: true, newProfileId: approvedProfile.id }, { status: 200 });
   } catch (error) {
     console.error("Error in profile approval:", error.message, error.stack);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to approve profile" }, { status: 500 });
   }
 }

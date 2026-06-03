@@ -19,6 +19,7 @@ export default function AdminLayout({ children }) {
   const [navLoading, setNavLoading] = useState(false); // Track navigation loading
   const [isLoggingOut, setIsLoggingOut] = useState(false); // Track logout loading
   const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); // Track pending questions count
+  const [pendingServiceRequestsCount, setPendingServiceRequestsCount] = useState(0);
 
   const handleNavClick = (href) => {
     if (href !== pathname) {
@@ -39,6 +40,23 @@ export default function AdminLayout({ children }) {
     };
 
     fetchPendingQuestions();
+  }, []);
+
+  // Fetch pending service requests count from Supabase
+  useEffect(() => {
+    const fetchPendingServiceRequests = async () => {
+      try {
+        const response = await fetch("/api/leads?count=true&status=pending");
+        const result = await response.json();
+        setPendingServiceRequestsCount(result.count ?? 0);
+      } catch (error) {
+        console.error("Error fetching pending service requests count:", error.message);
+      }
+    };
+
+    fetchPendingServiceRequests();
+    const interval = setInterval(fetchPendingServiceRequests, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -132,13 +150,19 @@ export default function AdminLayout({ children }) {
             <Link
               href="/dashboard/service-requests"
               onClick={() => handleNavClick("/dashboard/service-requests")}
-              className={`flex items-center gap-2 p-2 ${
+              className={`flex items-center gap-2 p-2 relative ${
                 pathname === "/dashboard/service-requests"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
             >
               <ClipboardList /> Service Requests
+              {pendingServiceRequestsCount > 0 && (
+                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+                  <Bell size={14} />
+                  {pendingServiceRequestsCount}
+                </span>
+              )}
             </Link>
 
             <Link

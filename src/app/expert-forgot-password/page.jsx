@@ -1,10 +1,9 @@
 
-// src/app/user-forgot-password/page.js
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, sendPasswordResetEmail } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import Link from "next/link";
 import Image from "next/image";
@@ -19,7 +18,6 @@ export default function ForgotPassword() {
   const router = useRouter();
 
   useEffect(() => {
-    // Pre-fill email if user is logged in
     const user = auth.currentUser;
     if (user && user.email) {
       setEmail(user.email);
@@ -33,10 +31,21 @@ export default function ForgotPassword() {
     setLoading(true);
 
     try {
-      await sendPasswordResetEmail(auth, email);
+      const res = await fetch("/api/expert/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to send password reset email. Please try again.");
+        return;
+      }
+
       setSuccess("Password reset email sent! Please check your inbox (and spam/junk folder).");
       setTimeout(() => {
-        // Redirect to dashboard if logged in, otherwise to login
         if (auth.currentUser) {
           router.push("/expert-dashboard");
         } else {
@@ -45,13 +54,8 @@ export default function ForgotPassword() {
       }, 3000);
     } catch (err) {
       console.error("Error sending password reset email:", err.message);
-      if (err.code === "auth/user-not-found") {
-        setError("No user found with this email address.");
-      } else if (err.code === "auth/invalid-email") {
-        setError("Please enter a valid email address.");
-      } else {
-        setError("Failed to send password reset email. Please try again later.");
-      }
+      setError("Failed to send password reset email. Please try again later.");
+    } finally {
       setLoading(false);
     }
   };
@@ -60,17 +64,17 @@ export default function ForgotPassword() {
     <div className="flex justify-center items-center h-screen bg-[#F4D35E] px-4">
       <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-[#36013F]">
         <div className="flex justify-center mb-6">
-                    <Image
-                            src="/dashboardlogo.svg"
-                            alt="Xmytravel Logo"
-                            width={160}
-                            height={40}
-                            priority
-                          />
-                  </div>
+          <Image
+            src="/dashboardlogo.svg"
+            alt="Xmytravel Logo"
+            width={160}
+            height={40}
+            priority
+          />
+        </div>
 
-    <h1 className="text-2xl font-bold text-center text-[#36013F] mb-4">Forgot Password</h1>
-       
+        <h1 className="text-2xl font-bold text-center text-[#36013F] mb-4">Forgot Password</h1>
+
         <form onSubmit={handleForgotPassword} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">

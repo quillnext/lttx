@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/email";
+import { sendWhatsAppReply } from "@/lib/aisensy";
 
 const escapeHtml = (value = "") =>
   String(value)
@@ -12,8 +13,31 @@ const escapeHtml = (value = "") =>
 
 const plainText = (value = "") => String(value || "").trim();
 
+const optionalLabels = {
+  nextSteps: "Next Steps You Should Take",
+  dayWiseStructure: "Day-wise Structure Suggestion",
+  stayStrategy: "Stay Strategy",
+  routeLogic: "Route Logic",
+  reworkedVersion: "Reworked Version Suggestion",
+  bestOption: "Best Option",
+  whyThisWorks: "Why this works",
+  areaVerdict: "Area Verdict",
+};
+
 const isUnderstandingChunk = (value = "") =>
   /^((what i understand from your plan)|understanding|diagnosis)\s*:/i.test(value.trim());
+
+const parsePrescriptionReply = (reply) => {
+  if (!reply) return null;
+  if (typeof reply === "object") return reply;
+
+  try {
+    const parsed = JSON.parse(reply);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
 
 const getUnderstandingText = (reply, caseTitle) => {
   const understanding = plainText(reply)
@@ -52,12 +76,129 @@ const getReplyItems = (reply) => {
     .join("");
 };
 
+const sectionBlock = ({ eyebrow, title, body, background = "#ffffff", border = "#eee3f0", color = "#65566a" }) => {
+  if (!plainText(body)) return "";
+
+  return `<div style="margin-top:18px;background:${background};border:1px solid ${border};border-radius:18px;padding:20px;">
+    <div style="font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1.4px;color:${color};font-weight:800;">${escapeHtml(eyebrow)}</div>
+    <div style="font-size:18px;line-height:24px;color:#36013F;font-weight:800;margin-top:6px;">${escapeHtml(title)}</div>
+    <div style="font-size:14px;line-height:25px;color:${color};margin-top:10px;">${escapeHtml(body)}</div>
+  </div>`;
+};
+
+const renderPrescriptionEmail = (prescription) => {
+  const {
+    diagnosis,
+    coreAdvice,
+    risks,
+    optimizedApproach,
+    confidence,
+    optionalSections = {},
+    nextStepCta,
+  } = prescription;
+  const visibleOptionalSections = Object.entries(optionalSections).filter(([, value]) =>
+    plainText(value)
+  );
+
+  const riskItems = Array.isArray(risks)
+    ? risks
+        .filter((risk) => plainText(risk))
+        .map((risk) => `<li style="font-size:14px;line-height:24px;color:#8a2d2d;margin-bottom:8px;">${escapeHtml(risk)}</li>`)
+        .join("")
+    : "";
+
+  const optionalHtml = visibleOptionalSections
+    .map(([key, value]) => `<div style="margin-top:14px;">
+      <div style="font-size:10px;line-height:14px;text-transform:uppercase;letter-spacing:1.2px;color:#9a6b00;font-weight:800;">${escapeHtml(optionalLabels[key] || key)}</div>
+      <div style="font-size:14px;line-height:24px;color:#4f3600;font-weight:600;margin-top:4px;">${escapeHtml(value)}</div>
+    </div>`)
+    .join("");
+
+  return `<div style="padding:24px;">
+    ${sectionBlock({
+      eyebrow: "What I understand from your plan",
+      title: "Trip Diagnosis",
+      body: diagnosis,
+      background: "#ffffff",
+      border: "#eee3f0",
+      color: "#66516c",
+    })}
+
+    ${sectionBlock({
+      eyebrow: "Expert Recommendation",
+      title: "Recommended Direction",
+      body: coreAdvice,
+      background: "#ffffff",
+      border: "#e7f5ec",
+      color: "#476654",
+    })}
+
+    ${riskItems ? `<div style="margin-top:18px;background:#fff8f8;border:1px solid #ffe0e0;border-radius:18px;padding:20px;">
+      <div style="font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1.4px;color:#c24141;font-weight:800;">What to Avoid</div>
+      <div style="font-size:18px;line-height:24px;color:#36013F;font-weight:800;margin-top:6px;">Watch-outs</div>
+      <ul style="padding-left:20px;margin:12px 0 0;">${riskItems}</ul>
+    </div>` : ""}
+
+    ${sectionBlock({
+      eyebrow: "Better Way to Plan",
+      title: "Optimized Approach",
+      body: optimizedApproach,
+      background: "#f4f6ff",
+      border: "#dfe5ff",
+      color: "#33407a",
+    })}
+
+    ${optionalHtml ? `<div style="margin-top:18px;background:#fffaf0;border:1px solid #f4d35e;border-radius:18px;padding:20px;">
+      <div style="font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1.4px;color:#9a6b00;font-weight:800;">Service-specific Direction</div>
+      ${optionalHtml}
+    </div>` : ""}
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:22px;border-top:1px solid #f1e9f3;padding-top:20px;">
+      <tr>
+        <td valign="middle">
+          <div style="display:inline-block;background:#faf6fb;border:1px solid #eee3f0;border-radius:999px;padding:10px 16px;font-size:11px;line-height:16px;text-transform:uppercase;letter-spacing:1px;color:#7b6a80;font-weight:800;">
+            Confidence: <span style="color:#36013F;">${escapeHtml(confidence || "Situational")}</span>
+          </div>
+        </td>
+        <td class="stack" align="right" valign="middle">
+          <div style="display:inline-block;background:#36013F;color:#ffffff;border-radius:999px;padding:12px 18px;font-size:13px;line-height:18px;font-weight:800;">
+            ${escapeHtml(nextStepCta || "Want this turned into a full plan? Upgrade to Master Plan.")}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>`;
+};
+
+const renderReplyEmail = (reply) => {
+  const prescription = parsePrescriptionReply(reply);
+  if (prescription) {
+    return renderPrescriptionEmail(prescription);
+  }
+
+  const understandingText = getUnderstandingText(reply);
+  const replyItems = getReplyItems(reply);
+
+  return `<div style="padding:24px;">
+    <div>
+      <div style="font-size:17px;line-height:24px;font-weight:700;color:#36013F;margin-bottom:12px;">Understanding</div>
+      <div style="background:#faf6fb;border:1px solid #eee3f0;border-radius:16px;padding:20px;font-size:14px;line-height:26px;color:#64556a;">
+        ${escapeHtml(understandingText)}
+      </div>
+    </div>
+
+    <div style="margin-top:28px;">
+      <div style="font-size:17px;line-height:24px;font-weight:700;color:#36013F;margin-bottom:4px;">Prescribed Strategy</div>
+      ${replyItems}
+    </div>
+  </div>`;
+};
+
 const emailTemplate = ({ userName, expertName, caseTitle, serviceType, reply, year, type }) => {
   const isAdmin = type === "admin";
   const subjectLabel = serviceType || "Travel Request";
   const displayName = userName || "Traveller";
-  const understandingText = getUnderstandingText(reply, caseTitle);
-  const replyItems = getReplyItems(reply);
+  const replyHtml = renderReplyEmail(reply);
 
   return `
 <!DOCTYPE html>
@@ -147,19 +288,8 @@ const emailTemplate = ({ userName, expertName, caseTitle, serviceType, reply, ye
                   </table>
                 </div>
 
-                <div style="padding:24px;">
-                  <div>
-                    <div style="font-size:17px;line-height:24px;font-weight:700;color:#36013F;margin-bottom:12px;">Understanding</div>
-                    <div style="background:#faf6fb;border:1px solid #eee3f0;border-radius:16px;padding:20px;font-size:14px;line-height:26px;color:#64556a;">
-                      ${escapeHtml(understandingText)}
-                    </div>
-                  </div>
-
-                  <div style="margin-top:28px;">
-                    <div style="font-size:17px;line-height:24px;font-weight:700;color:#36013F;margin-bottom:4px;">Prescribed Strategy</div>
-                    ${replyItems}
-                  </div>
-
+                ${replyHtml}
+                <div style="padding:0 24px 24px;">
                   <div style="margin-top:28px;">
                     <div style="font-size:17px;line-height:24px;font-weight:700;color:#36013F;margin-bottom:12px;">Important Notes</div>
                     <div style="background:#fff8f8;border:1px solid #ffe0e0;border-radius:14px;padding:16px;font-size:14px;line-height:26px;color:#7b5050;">
@@ -207,6 +337,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const userEmail = body.userEmail || body.user_email || "";
+    const userPhone = body.userPhone || body.user_phone || "";
     const userName = body.userName || body.user_name || "Traveller";
     const expertName = body.expertName || body.expert_name || "XMyTravel Expert";
     const serviceType = body.serviceType || body.service_type || "";
@@ -227,56 +358,61 @@ export async function POST(request) {
       );
     }
 
+    // Extract CTA text from prescription JSON if available
+    let nextStepCta = "";
+    try {
+      const parsed = typeof reply === "string" ? JSON.parse(reply) : reply;
+      if (parsed?.nextStepCta) nextStepCta = parsed.nextStepCta;
+    } catch { /* plain text reply, no CTA */ }
+
     const year = new Date().getFullYear();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const emailPromises = [
+
+    // Fire all sends in parallel — email + optional WhatsApp
+    const sends = [
+      // Admin notification email
       sendEmail({
         to: process.env.ADMIN_EMAIL,
         subject: `Expert Reply Submitted by ${expertName}`,
-        html: emailTemplate({
-          userName,
-          expertName,
-          caseTitle,
-          serviceType,
-          reply,
-          year,
-          type: "admin",
-        }),
+        html: emailTemplate({ userName, expertName, caseTitle, serviceType, reply, year, type: "admin" }),
       }),
     ];
 
-    if (userEmail) {
-      if (!emailRegex.test(userEmail)) {
-        return NextResponse.json(
-          { error: "Invalid user email address" },
-          { status: 400 }
-        );
-      }
-
-      emailPromises.push(
+    // User email
+    if (userEmail && emailRegex.test(userEmail)) {
+      sends.push(
         sendEmail({
           to: userEmail,
           subject: `Reply from ${expertName} on XMyTravel`,
-          html: emailTemplate({
-            userName,
-            expertName,
-            caseTitle,
-            serviceType,
-            reply,
-            year,
-            type: "user",
-          }),
+          html: emailTemplate({ userName, expertName, caseTitle, serviceType, reply, year, type: "user" }),
         })
       );
     }
 
-    await Promise.all(emailPromises);
+    // WhatsApp via AiSensy (non-blocking — failure doesn't fail the whole response)
+    let whatsappResult = { success: false, error: "No phone provided" };
+    if (userPhone && process.env.AISENSY_API_KEY && process.env.AISENSY_CAMPAIGN_REPLY) {
+      whatsappResult = await sendWhatsAppReply({
+        phone: userPhone,
+        userName,
+        expertName,
+        serviceType,
+        nextStepCta,
+      });
+      if (!whatsappResult.success) {
+        console.warn("WhatsApp send skipped/failed:", whatsappResult.error);
+      }
+    }
+
+    await Promise.all(sends);
 
     return NextResponse.json(
       {
         success: true,
-        userEmailSent: Boolean(userEmail),
+        userEmailSent: Boolean(userEmail && emailRegex.test(userEmail)),
         adminEmailSent: true,
+        whatsappSent: whatsappResult.success,
+        whatsappError: whatsappResult.success ? undefined : whatsappResult.error,
       },
       { status: 200 }
     );

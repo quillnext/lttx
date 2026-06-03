@@ -84,15 +84,61 @@ const calculateQualityScores = (formData, serviceConfig) => {
   };
 };
 
-const getDefaultCta = (serviceType = "") => {
-  const normalized = serviceType.toLowerCase();
-  if (normalized.includes("consult")) return "Need deeper help? Book a consultation.";
-  if (normalized.includes("master")) return "Want this turned into a full plan? Upgrade to Master Plan.";
-  return "Want this turned into a full plan? Upgrade to Master Plan.";
+const getDefaultCtaOptions = (serviceType = "") => {
+  const n = serviceType.toLowerCase();
+  if (n.includes("consult") || n.includes("strategic")) {
+    return [
+      "Book a Master Plan session to turn this advice into a full day-by-day structure",
+      "Schedule a follow-up call to finalise your decisions before booking",
+      "You're all set — go ahead and book with confidence",
+    ];
+  }
+  if (n.includes("master")) {
+    return [
+      "Book a 1:1 consultation to clarify any part of this plan before you commit",
+      "Your plan is ready — confirm hotels and flights based on this structure",
+      "Let the expert know your final bookings and they'll do a quick review",
+    ];
+  }
+  if (n.includes("itinerary") || n.includes("review")) {
+    return [
+      "Confirm the reworked version and the expert can review your final bookings",
+      "Book a short call to walk through this restructured itinerary together",
+      "Your itinerary is now optimised — go ahead and execute it",
+    ];
+  }
+  if (n.includes("flight")) {
+    return [
+      "Go ahead and book this flight option — it's the right call for your dates",
+      "Need help with the rest of the trip? Start a Master Plan session",
+      "Book a 1:1 consultation if you need help beyond the flight choice",
+    ];
+  }
+  if (n.includes("hotel")) {
+    return [
+      "This area works — go ahead and confirm your stay",
+      "Book a consultation to finalise your full stay strategy for the trip",
+      "Need a broader itinerary for this destination? Start a Master Plan",
+    ];
+  }
+  if (n.includes("question") || n.includes("ask")) {
+    return [
+      "Have more questions? Book a 1:1 consultation for deeper guidance",
+      "Ready to plan the full trip? Start your Master Plan",
+      "You're all set — happy travels!",
+    ];
+  }
+  return [
+    "Book a follow-up session for deeper guidance on this trip",
+    "Ready to plan fully? Start your Master Plan",
+    "You're all set — have a great trip!",
+  ];
 };
 
-export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, onSave, isLoading }) {
+export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, onSave, isLoading, canGenerateDraft = true }) {
   const serviceConfig = getServiceConfig(question?.serviceType);
+  const defaultCtaOptions = getDefaultCtaOptions(question?.serviceType);
+
   const [formData, setFormData] = useState({
     diagnosis: "",
     coreAdvice: "",
@@ -100,9 +146,11 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
     optimizedApproach: "",
     confidence: "High",
     optionalSections: {},
-    nextStepCta: getDefaultCta(question?.serviceType),
+    nextStepCta: defaultCtaOptions[0],
     serviceSpecifics: {},
   });
+  const [ctaOptions, setCtaOptions] = useState(defaultCtaOptions);
+  const [customCta, setCustomCta] = useState(false);
 
   const [currentRisk, setCurrentRisk] = useState("");
   const qualityScores = calculateQualityScores(formData, serviceConfig);
@@ -110,21 +158,30 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
   // Sync with AI draft if provided
   useEffect(() => {
     if (question?.aiDraft) {
+      const draft = question.aiDraft;
       setFormData(prev => ({
         ...prev,
-        ...question.aiDraft,
+        ...draft,
         optionalSections: {
           ...prev.optionalSections,
-          ...(question.aiDraft.optionalSections || {}),
+          ...(draft.optionalSections || {}),
         },
+        // If AI returned a CTA option, pre-select it; otherwise keep first default
+        nextStepCta: (draft.ctaOptions?.[0]) || prev.nextStepCta,
       }));
+      if (draft.ctaOptions?.length === 3) {
+        setCtaOptions(draft.ctaOptions);
+        setCustomCta(false);
+      }
     }
   }, [question?.aiDraft]);
 
   useEffect(() => {
+    const opts = getDefaultCtaOptions(question?.serviceType);
+    setCtaOptions(opts);
     setFormData(prev => ({
       ...prev,
-      nextStepCta: prev.nextStepCta || getDefaultCta(question?.serviceType),
+      nextStepCta: prev.nextStepCta || opts[0],
     }));
   }, [question?.serviceType]);
 
@@ -158,7 +215,7 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
   const requiredOptionalComplete = serviceConfig.fields.every((field) =>
     String(formData.optionalSections?.[field.key] || "").trim()
   );
-  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && formData.optimizedApproach.trim() && requiredOptionalComplete;
+  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && formData.optimizedApproach.trim() && requiredOptionalComplete && formData.nextStepCta?.trim();
 
   return (
     <div className="space-y-8 bg-white/50 backdrop-blur-md rounded-2xl p-6 border border-gray-100 shadow-xl">
@@ -170,8 +227,9 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
         <button
           type="button"
           onClick={onDraftGenerate}
-          disabled={isLoading}
-          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50"
+          disabled={isLoading || !canGenerateDraft}
+          title={canGenerateDraft ? "Generate AI draft" : "Accept the case to enable AI draft"}
+          className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? <Loader className="animate-spin" size={16} /> : <Sparkles size={16} />}
           AI Assist Draft
@@ -331,9 +389,9 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
           </section>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+        <div className="flex flex-col gap-6 pt-4 border-t">
           {/* CONFIDENCE SCORE */}
-          <section className="space-y-2">
+          <section className="space-y-2 max-w-xs">
             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Confidence in Recommendation</label>
             <div className="relative">
               <select
@@ -349,20 +407,66 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
             </div>
           </section>
 
-          <section className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Follow-up CTA</label>
-            <input
-              type="text"
-              value={formData.nextStepCta}
-              onChange={(e) => setFormData({ ...formData, nextStepCta: e.target.value })}
-              className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold text-[#36013F]"
-              placeholder="Next step for the traveller"
-              required
-            />
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Next Step for Traveller</label>
+              {!customCta && (
+                <button
+                  type="button"
+                  onClick={() => { setCustomCta(true); setFormData({ ...formData, nextStepCta: "" }); }}
+                  className="text-[10px] text-purple-600 underline font-bold"
+                >
+                  Write custom
+                </button>
+              )}
+              {customCta && (
+                <button
+                  type="button"
+                  onClick={() => { setCustomCta(false); setFormData({ ...formData, nextStepCta: ctaOptions[0] }); }}
+                  className="text-[10px] text-purple-600 underline font-bold"
+                >
+                  Use suggestions
+                </button>
+              )}
+            </div>
+            {customCta ? (
+              <input
+                type="text"
+                value={formData.nextStepCta}
+                onChange={(e) => setFormData({ ...formData, nextStepCta: e.target.value })}
+                className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold text-[#36013F]"
+                placeholder="Write a custom next step for the traveller..."
+                required
+                autoFocus
+              />
+            ) : (
+              <div className="space-y-2">
+                {ctaOptions.map((option, i) => (
+                  <label
+                    key={i}
+                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                      formData.nextStepCta === option
+                        ? "border-[#36013F] bg-[#36013F]/5"
+                        : "border-gray-200 bg-white hover:border-[#36013F]/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="nextStepCta"
+                      value={option}
+                      checked={formData.nextStepCta === option}
+                      onChange={() => setFormData({ ...formData, nextStepCta: option })}
+                      className="mt-0.5 accent-[#36013F] shrink-0"
+                    />
+                    <span className="text-sm text-gray-700 leading-snug">{option}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </section>
 
           {/* SUBMIT */}
-          <div className="flex items-end md:col-span-2">
+          <div className="flex items-end">
             <button
               type="submit"
               disabled={!isFormValid || isLoading}

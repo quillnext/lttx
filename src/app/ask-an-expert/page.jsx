@@ -5,15 +5,13 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getFirestore, collection, getDocs, query, limit, startAfter, where, documentId } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import { FaSearch, FaPlane, FaTimes, FaMapMarkerAlt, FaStar, FaFilter, FaRupeeSign, FaSuitcase, FaPassport, FaCheckCircle, FaUserTie, FaBuilding, FaArrowRight, FaCommentDots, FaRegidCard } from "react-icons/fa";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import "react-image-lightbox/style.css";
 import { toast } from "react-toastify";
+import { fetchExpertsByIds, fetchPublicExperts } from "@/lib/ask-an-expert/client";
 
-const db = getFirestore(app);
 const PAGE_SIZE = 30;
 
 const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), {
@@ -93,7 +91,7 @@ export default function ExpertsDirectory() {
   const [modalExpert, setModalExpert] = useState(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState("");
-  const [lastDoc, setLastDoc] = useState(null);
+  const [nextOffset, setNextOffset] = useState(0);
   const [loading, setLoading] = useState(false);
   const [isAiSearching, setIsAiSearching] = useState(false);
   const [aiContext, setAiContext] = useState(null);
@@ -165,10 +163,9 @@ export default function ExpertsDirectory() {
     setIsLightboxOpen(true);
   };
 
-  const formatDocData = (doc) => {
-    const data = doc.data();
+  const formatProfileData = (data) => {
     return {
-      id: doc.id,
+      id: data.id,
       fullName: toSentenceCase(data.fullName),
       tagline: toSentenceCase(data.tagline),
       languages: Array.isArray(data.languages) ? data.languages : [],
@@ -230,19 +227,7 @@ export default function ExpertsDirectory() {
 
       if (matches && matches.length > 0) {
         const expertIds = matches.map(m => m.id);
-        const chunks = [];
-        for (let i = 0; i < expertIds.length; i += 10) {
-          chunks.push(expertIds.slice(i, i + 10));
-        }
-
-        let allAiExperts = [];
-        for (const chunk of chunks) {
-          if (chunk.length === 0) continue;
-          const q = query(collection(db, "Profiles"), where(documentId(), "in", chunk));
-          const querySnapshot = await getDocs(q);
-          const chunkData = querySnapshot.docs.map(doc => formatDocData(doc));
-          allAiExperts = [...allAiExperts, ...chunkData];
-        }
+        const allAiExperts = (await fetchExpertsByIds(expertIds)).map(formatProfileData);
 
         const sortedAiExperts = matches
           .map(match => {
@@ -281,7 +266,7 @@ export default function ExpertsDirectory() {
       const response = await fetch('/api/ai-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery, action: 'section', sectionType })
+        body: JSON.stringify({ query: searchQuery, action: 'section', sectionType, searchId })
       });
 
       if (!response.ok) return null;
@@ -299,18 +284,17 @@ export default function ExpertsDirectory() {
 
     setLoading(true);
     try {
-      let q;
       if (isReset) {
-        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(PAGE_SIZE));
         setExperts([]);
-        setLastDoc(null);
+        setNextOffset(0);
       } else {
-        if (!lastDoc) return;
-        q = query(collection(db, "Profiles"), where("isPublic", "==", true), limit(PAGE_SIZE), startAfter(lastDoc));
+        if (!hasMore) return;
       }
 
-      const querySnapshot = await getDocs(q);
-      const expertsData = querySnapshot.docs.map(formatDocData);
+      const from = isReset ? 0 : nextOffset;
+      const to = from + PAGE_SIZE - 1;
+      const result = await fetchPublicExperts({ from, to });
+      const expertsData = (result.experts || []).map(formatProfileData);
 
       if (isReset) {
         setExperts(expertsData);
@@ -336,8 +320,8 @@ export default function ExpertsDirectory() {
         });
       }
 
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1] || null);
-      setHasMore(querySnapshot.docs.length === PAGE_SIZE);
+      setNextOffset(from + expertsData.length);
+      setHasMore(Boolean(result.hasMore));
     } catch (error) {
       console.error("Error fetching experts:", error);
     } finally {

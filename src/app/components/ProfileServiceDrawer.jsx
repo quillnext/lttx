@@ -131,17 +131,21 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   const [formData, setFormData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   useEffect(() => {
     if (isOpen) {
       if (!user) {
-        const queryString = searchParams.toString();
-        const currentUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+        // Include the clicked service in the returnTo URL so we can re-open
+        // the drawer automatically after the user logs in
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("openService", serviceType);
+        const currentUrl = `${pathname}?${params.toString()}`;
         router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
-        onClose(); // Close the drawer as we're redirecting
+        onClose();
       }
     }
-  }, [isOpen, user, router, onClose, pathname, searchParams]);
+  }, [isOpen, user, router, onClose, pathname, searchParams, serviceType]);
 
   if (!isOpen || !serviceType) return null;
 
@@ -153,6 +157,16 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   };
 
   const renderContactInfo = () => null; // Contact info is taken from user state, no longer shown in UI
+
+  const renderPhoneField = () => (
+    <CustomInput
+      label="WhatsApp / Phone number"
+      required
+      placeholder="e.g. +91 98765 43210"
+      value={formData.phone || ""}
+      onChange={(e) => updateForm("phone", e.target.value)}
+    />
+  );
 
   const renderFormContent = () => {
     switch (serviceType) {
@@ -190,6 +204,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
                 <button type="button" className="flex items-center justify-center gap-2 w-full py-2 border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-lg text-sm font-bold hover:border-[#36013F] transition-all"><Upload size={16} /> Upload screenshots or PDFs</button>
               </div>
             )}
+            {renderPhoneField()}
           </>
         );
 
@@ -204,6 +219,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
               <label className="block text-sm font-bold text-[#36013F] mb-1">Upload supporting screenshot or file <span className="text-gray-400 font-normal text-[10px] uppercase">(Optional)</span></label>
               <button type="button" className="flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 rounded-xl text-sm font-bold hover:border-[#36013F] transition-all"><Upload size={16} /> Upload PDF, JPG, PNG</button>
             </div>
+            {renderPhoneField()}
           </>
         );
 
@@ -247,6 +263,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
             )}
 
             <CustomInput label="Share any must-haves or constraints" type="textarea" placeholder="travelling with parents, need easy movement, want one luxury stay, vegetarian food preference" value={formData.mustHaves || ""} onChange={e => updateForm("mustHaves", e.target.value)} />
+            {renderPhoneField()}
           </>
         );
 
@@ -364,16 +381,39 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    
-    // Basic validation
-    if (serviceType === "ASK A QUESTION" && !formData.question) return;
-    if (serviceType === "1:1 STRATEGIC CONSULTATION" && !formData.destination) return;
-    if (serviceType === "THE MASTER PLAN" && !formData.dest) return;
-    if (serviceType === "CUSTOM LUXE PACKAGE" && !formData.dest) return;
+    setValidationError("");
+
+    // Basic validation with user-visible error
+    if (serviceType === "ASK A QUESTION" && !formData.question?.trim()) {
+      setValidationError("Please enter your question before submitting.");
+      return;
+    }
+    if (serviceType === "1:1 STRATEGIC CONSULTATION" && !formData.destination?.trim()) {
+      setValidationError("Please enter your travel destination.");
+      return;
+    }
+    if (serviceType === "THE MASTER PLAN" && !formData.dest?.trim()) {
+      setValidationError("Please enter your destination(s).");
+      return;
+    }
+    if (serviceType === "CUSTOM LUXE PACKAGE" && !formData.dest?.trim()) {
+      setValidationError("Please enter your destination or trip idea.");
+      return;
+    }
+    if (!formData.phone?.trim() && serviceType !== "CUSTOM LUXE PACKAGE") {
+      setValidationError("Please enter your WhatsApp / phone number so the expert can reach you.");
+      return;
+    }
+    if (serviceType === "CUSTOM LUXE PACKAGE" && !formData.whatsapp?.trim()) {
+      setValidationError("Please enter your WhatsApp number.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       const payment = await collectPayment();
+
+      const userPhone = formData.phone || formData.whatsapp || user?.phone || "";
 
       const { error } = await supabase
         .from('leads')
@@ -381,6 +421,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           service_type: serviceType,
           form_data: {
             ...formData,
+            phone: userPhone,
             payment: payment
               ? {
                   status: "paid",
@@ -395,7 +436,6 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           status: "pending",
           user_name: user?.name || "Traveller",
           user_email: user?.email || "",
-          // Flatten some common fields for easier querying/display if needed
           destination: formData.destination || formData.dest || "",
           trip_dates: (formData.startDate && formData.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData.dates || ""),
           source: 'profile_v2'
@@ -413,7 +453,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
       const finalEmail = user?.email;
       const finalName = user?.name || "Traveller";
-      const finalPhone = user?.phone || formData.whatsapp || "";
+      const finalPhone = userPhone;
 
       if (finalEmail && expertData?.email) {
         const emailRequest = fetch("/api/send-question-emails", {
@@ -437,8 +477,8 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
       setIsSuccess(true);
     } catch (error) {
-      console.error("Error submitting lead to Supabase:", error);
-      alert("Submission failed. Please try again.");
+      console.error("Error submitting lead to Supabase:", error?.message || error?.details || JSON.stringify(error));
+      setValidationError(error?.message || "Submission failed. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -499,6 +539,11 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
               {/* Footer CTA */}
               {!isSuccess && (
                 <div className="p-4 md:p-6 rounded-bl-3xl border-t border-gray-100 bg-white shadow-[0_-10px_20px_rgba(0,0,0,0.05)] sticky bottom-0">
+                  {validationError && (
+                    <p className="text-xs font-semibold text-red-600 mb-3 text-center bg-red-50 border border-red-200 rounded-xl p-2">
+                      {validationError}
+                    </p>
+                  )}
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting}

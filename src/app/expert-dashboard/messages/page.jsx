@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
-import { getFirestore, collection, query, where, getDocs, doc, updateDoc, documentId } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import { AlertTriangle, Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, Send, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, Sparkles, X } from "lucide-react";
 import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 import CaseSheetView from "@/app/components/CaseSheetView";
 import ExpertPrescriptionBuilder from "@/app/components/ExpertPrescriptionBuilder";
@@ -30,25 +30,6 @@ const getReplyPreview = (reply) => {
     return parsed.coreAdvice || parsed.diagnosis || "Structured prescription saved.";
   }
   return reply || "";
-};
-
-const formatPrescriptionForEmail = (reply) => {
-  if (!reply || typeof reply !== "object") return reply;
-
-  const sections = [
-    ["What I understand from your plan", reply.diagnosis],
-    ["Expert Recommendation", reply.coreAdvice],
-    ["What to Avoid / Watch Out For", Array.isArray(reply.risks) ? reply.risks.map((risk) => `- ${risk}`).join("\n") : ""],
-    ["Better Way to Plan This", reply.optimizedApproach],
-    ...Object.entries(reply.optionalSections || {}).map(([key, value]) => [key.replace(/([A-Z])/g, " $1"), value]),
-    ["Confidence in Recommendation", reply.confidence],
-    ["Next Step", reply.nextStepCta],
-  ];
-
-  return sections
-    .filter(([, value]) => String(value || "").trim())
-    .map(([label, value]) => `${label}:\n${value}`)
-    .join("\n\n");
 };
 
 const fetchExpertLeads = async (expertId) => {
@@ -200,9 +181,10 @@ export default function Messages() {
 
   const fetchExpertProfile = async (expertId) => {
     try {
-      const profileSnap = await getDocs(query(collection(db, "Profiles"), where(documentId(), "==", expertId)));
-      if (!profileSnap.empty) {
-        setExpertProfile({ id: expertId, ...profileSnap.docs[0].data() });
+      const response = await fetch(`/api/admin/profiles?userId=${encodeURIComponent(expertId)}`);
+      const result = await response.json();
+      if (result.profile) {
+        setExpertProfile(result.profile);
       }
     } catch (error) {
       console.error("Error fetching expert profile:", error.message);
@@ -288,6 +270,11 @@ export default function Messages() {
   };
 
   const handleReply = async (question, structuredReply) => {
+    if (question?.status !== "accepted") {
+      setReplyError("Accept the case before sending the response.");
+      return;
+    }
+
     const finalReply = structuredReply || replyText.trim();
     if (!finalReply) {
       setReplyError("Reply cannot be empty.");
@@ -332,11 +319,12 @@ export default function Messages() {
         },
         body: JSON.stringify({
           userEmail: question.userEmail || question.user_email || "",
+          userPhone: question.formData?.phone || question.formData?.whatsapp || question.user_phone || "",
           userName: question.userName,
           expertName: question.expertName || question.expert_name || expertProfile?.fullName || "XMyTravel Expert",
           question: question.question,
           serviceType: question.serviceType || question.service_type,
-          reply: formatPrescriptionForEmail(finalReply),
+          reply: finalReplyToSave,
         }),
       });
 
@@ -376,6 +364,12 @@ export default function Messages() {
   };
 
   const handleGenerateDraft = async (question) => {
+    if (question?.status !== "accepted") {
+      setReplyError("Accept the case before generating an AI draft.");
+      return;
+    }
+
+    setReplyError(null);
     setReplyLoading(true);
     try {
       const response = await fetch("/api/generate-expert-prescription", {
@@ -421,6 +415,7 @@ export default function Messages() {
         },
         body: JSON.stringify({
           userEmail: question.userEmail,
+          userPhone: question.formData?.phone || question.formData?.whatsapp || question.user_phone || "",
           userName: question.userName,
           expertName: question.expertName,
           question: question.question,
@@ -783,7 +778,7 @@ export default function Messages() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
-                {replyModal.status === "pending" && (
+                {replyModal.status !== "accepted" && replyModal.status !== "answered" && (
                   <button
                     onClick={() => handleStatusChange(replyModal, "accepted")}
                     disabled={replyLoading}
@@ -791,24 +786,6 @@ export default function Messages() {
                   >
                     <Check size={14} /> Accept Case
                   </button>
-                )}
-                {replyModal.status !== "answered" && (
-                  <>
-                    <button
-                      onClick={() => handleStatusChange(replyModal, "clarification_requested")}
-                      disabled={replyLoading}
-                      className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                    >
-                      <Send size={14} /> Request Clarification
-                    </button>
-                    <button
-                      onClick={() => handleStatusChange(replyModal, "escalated")}
-                      disabled={replyLoading}
-                      className="inline-flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-800 hover:bg-red-100 disabled:opacity-50"
-                    >
-                      <AlertTriangle size={14} /> Escalate
-                    </button>
-                  </>
                 )}
                 <button
                   onClick={() => {
@@ -863,6 +840,7 @@ export default function Messages() {
                   onDraftGenerate={() => handleGenerateDraft(replyModal)}
                   onSave={(data) => handleReply(replyModal, data)}
                   isLoading={replyLoading}
+                  canGenerateDraft={replyModal.status === "accepted"}
                 />
               </div>
             </div>

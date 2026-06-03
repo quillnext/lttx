@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import Image from "next/image";
 import {
   ShieldCheck, MapPin, Globe, Clock, MessageCircle, BadgeCheck,
@@ -60,6 +62,11 @@ const CustomStyles = () => (
 );
 
 export default function Profile2u0({ profile, sortedExperience, onBookService }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { isAuthenticated } = useUserAuthStore();
+
   const [activeFaq, setActiveFaq] = useState(null);
   const [activeAaq, setActiveAaq] = useState(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -69,6 +76,19 @@ export default function Profile2u0({ profile, sortedExperience, onBookService })
   const [showAllFAQs, setShowAllFAQs] = useState(false);
   const [activeService, setActiveService] = useState(null);
   const [activeAddOn, setActiveAddOn] = useState(null);
+
+  // After login redirect back here, auto-open the service the user clicked
+  useEffect(() => {
+    const serviceToOpen = searchParams.get("openService");
+    if (serviceToOpen && isAuthenticated) {
+      setActiveService(decodeURIComponent(serviceToOpen));
+      // Remove the openService param from the URL without reloading the page
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("openService");
+      const cleanUrl = params.toString() ? `${pathname}?${params.toString()}` : pathname;
+      router.replace(cleanUrl, { scroll: false });
+    }
+  }, [searchParams, isAuthenticated, router, pathname]);
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);

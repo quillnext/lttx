@@ -1,6 +1,4 @@
 
-import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import ClientProfilePage from "./ClientProfilePage";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
@@ -8,19 +6,23 @@ import Link from "next/link";
 import { redirect } from "next/navigation"; 
 import JsonLd from "@/app/components/JsonLd";
 import { cache } from "react";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { mapSupabaseProfile } from "@/lib/supabaseProfile";
 
 const getProfileBySlug = cache(async (slug) => {
-  const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", slug));
-  const querySnapshot = await getDocs(q);
+  const supabase = createSupabaseAdminClient();
+  const normalizedSlug = decodeURIComponent(slug || "").trim();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .ilike("username", normalizedSlug)
+    .limit(1)
+    .maybeSingle();
 
-  if (querySnapshot.empty) return null;
+  if (error) throw error;
+  if (!data) return null;
 
-  const docSnap = querySnapshot.docs[0];
-  return {
-    id: docSnap.id,
-    ...docSnap.data(),
-  };
+  return mapSupabaseProfile(data);
 });
 
 // ✅ DYNAMIC METADATA FUNCTION
@@ -73,7 +75,6 @@ export async function generateMetadata({ params }) {
 // ✅ MAIN PAGE FUNCTION
 export default async function ExpertProfilePage({ params }) {
   const { slug } = await params;
-  const db = getFirestore(app);
   let profile = null;
   let weeklySchedule = {};
 
@@ -84,7 +85,7 @@ export default async function ExpertProfilePage({ params }) {
     profile = {
       ...profileData,
       profileType: profileData.profileType || 'expert',
-      timestamp: profileData.timestamp ? profileData.timestamp.toDate().toISOString() : null,
+      timestamp: profileData.timestamp || profileData.createdAt || null,
       isOnline: profileData.isOnline !== false,
     };
 
@@ -93,10 +94,16 @@ export default async function ExpertProfilePage({ params }) {
     }
 
     if (profile) {
-      const recurringRef = doc(db, "ExpertRecurringAvailability", profile.id);
-      const recurringSnap = await getDoc(recurringRef);
-      if (recurringSnap.exists()) {
-        weeklySchedule = recurringSnap.data().schedule || {};
+      const { data: availability, error: availabilityError } = await createSupabaseAdminClient()
+        .from("expert_recurring_availability")
+        .select("schedule")
+        .eq("expert_id", profile.id)
+        .maybeSingle();
+
+      if (availabilityError) {
+        console.warn("Error fetching expert availability:", availabilityError.message);
+      } else if (availability?.schedule) {
+        weeklySchedule = availability.schedule;
       }
     }
 

@@ -3,9 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getFirestore, collection, doc, getDoc, query, where, getDocs } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
 import '@/app/globals.css';
 import Link from 'next/link';
 import Footer from '../pages/Footer';
@@ -33,9 +30,6 @@ const loadComponent = (importFn, name) =>
   );
 
 const Cropper = loadComponent(() => import('react-easy-crop'), 'Cropper');
-
-const storage = getStorage(app);
-const db = getFirestore(app);
 
 export default function CompleteProfile() {
   const router = useRouter();
@@ -133,6 +127,21 @@ export default function CompleteProfile() {
     if (format === 'YYYY-MM') return `${year}-${month}`;
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  const uploadProfileAsset = async (file, folder, namePrefix) => {
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+    uploadData.append('folder', folder);
+    uploadData.append('namePrefix', namePrefix);
+
+    const response = await fetch('/api/profile-assets/upload', {
+      method: 'POST',
+      body: uploadData,
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'Failed to upload file');
+    return result.publicUrl;
   };
 
   const parseDate = (dateString, format = 'YYYY-MM-DD') => {
@@ -270,11 +279,12 @@ export default function CompleteProfile() {
     if (profileId) {
       const fetchProfile = async () => {
         try {
-          const profileRef = doc(db, 'Profiles', profileId);
-          const profileSnap = await getDoc(profileRef);
-          if (profileSnap.exists()) {
-            const data = profileSnap.data();
-            setOriginalProfile({ id: profileSnap.id, ...data });
+          const response = await fetch(`/api/send-profile-form?action=profile&profileId=${encodeURIComponent(profileId)}`);
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Failed to load profile data.');
+          if (result.profile) {
+            const data = result.profile;
+            setOriginalProfile(data);
             setFormData({
               profileType: data.profileType || 'expert',
               username: data.username || '',
@@ -388,15 +398,11 @@ export default function CompleteProfile() {
   const fetchLeadByPhone = async phone => {
     if (!phone || phone.length < 7) return;
     try {
-      const leadsQuery = query(collection(db, 'JoinQueries'), where('phone', '==', phone));
-      const querySnapshot = await getDocs(leadsQuery);
-      if (!querySnapshot.empty) {
-        const leads = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          timestamp: doc.data().timestamp?.toDate() || new Date(),
-        }));
-        const mostRecentLead = leads.sort((a, b) => b.timestamp - a.timestamp)[0];
+      const response = await fetch(`/api/send-profile-form?action=lead&phone=${encodeURIComponent(phone)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to fetch lead data.');
+      if (result.lead) {
+        const mostRecentLead = result.lead;
         setFormData(prev => ({
           ...prev,
           fullName: mostRecentLead.name || prev.fullName,
@@ -413,10 +419,10 @@ export default function CompleteProfile() {
   const checkUsernameAvailability = async username => {
     if (!username || profileId) return;
     try {
-      const profilesQuery = query(collection(db, 'Profiles'), where('username', '==', username));
-      const profileRequestsQuery = query(collection(db, 'ProfileRequests'), where('username', '==', username));
-      const [profilesSnap, profileRequestsSnap] = await Promise.all([getDocs(profilesQuery), getDocs(profileRequestsQuery)]);
-      if (!profilesSnap.empty || !profileRequestsSnap.empty) {
+      const response = await fetch(`/api/send-profile-form?action=username&username=${encodeURIComponent(username)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Error checking username');
+      if (!result.available) {
         setUsernameStatus('Username is already taken');
         setErrors(prev => ({ ...prev, username: 'Username is already taken' }));
       } else {
@@ -436,15 +442,15 @@ export default function CompleteProfile() {
       return;
     }
     try {
-      const codeQuery = query(collection(db, 'Profiles'), where('generatedReferralCode', '==', code));
-      const querySnapshot = await getDocs(codeQuery);
-      if (querySnapshot.empty) {
+      const response = await fetch(`/api/send-profile-form?action=referral&code=${encodeURIComponent(code)}`);
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Error checking referral code');
+      if (!result.referrer) {
         setReferralCodeStatus('Invalid referral code');
         setReferrerUsername('');
         setErrors(prev => ({ ...prev, referralCode: 'Invalid referral code' }));
       } else {
-        const referrerData = querySnapshot.docs[0].data();
-        const fullName = referrerData.fullName || 'Unknown';
+        const fullName = result.referrer.fullName || 'Unknown';
         setReferralCodeStatus(`Referred by ${fullName}`);
         setReferrerUsername(fullName);
         setErrors(prev => ({ ...prev, referralCode: '' }));
@@ -645,12 +651,7 @@ export default function CompleteProfile() {
       let officePhotoURLs = profileId && originalProfile ? [...originalProfile.officePhotos] : [];
 
       if (formData.photo && typeof formData.photo !== 'string') {
-        const timestamp = Date.now();
-        const fileExtension = formData.photo.name.split('.').pop();
-        const fileName = `profile_${sanitizedFullName}_${timestamp}.${fileExtension}`;
-        const storageRef = ref(storage, `Profiles/${fileName}`);
-        await uploadBytes(storageRef, formData.photo);
-        photoURL = await getDownloadURL(storageRef);
+        photoURL = await uploadProfileAsset(formData.photo, 'profiles', `profile_${sanitizedFullName}`);
       }
 
       if (formData.certificates.length > 0) {
@@ -659,10 +660,7 @@ export default function CompleteProfile() {
             if (!certificateURLs.includes(cert)) certificateURLs.push(cert);
             continue;
           }
-          const certName = `certificate_${sanitizedFullName}_${Date.now()}_${cert.name}`;
-          const certRef = ref(storage, `Certificates/${certName}`);
-          await uploadBytes(certRef, cert);
-          const url = await getDownloadURL(certRef);
+          const url = await uploadProfileAsset(cert, 'certificates', `certificate_${sanitizedFullName}`);
           if (!certificateURLs.includes(url)) certificateURLs.push(url);
         }
       }
@@ -673,10 +671,7 @@ export default function CompleteProfile() {
             if (!officePhotoURLs.includes(photo)) officePhotoURLs.push(photo);
             continue;
           }
-          const photoName = `office_${sanitizedFullName}_${Date.now()}_${photo.name}`;
-          const photoRef = ref(storage, `OfficePhotos/${photoName}`);
-          await uploadBytes(photoRef, photo);
-          const url = await getDownloadURL(photoRef);
+          const url = await uploadProfileAsset(photo, 'office-photos', `office_${sanitizedFullName}`);
           if (!officePhotoURLs.includes(url)) officePhotoURLs.push(url);
         }
       }

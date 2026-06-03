@@ -1,6 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { User, MapPin, Calendar, Compass, MessageSquare, Paperclip, Clock, ShieldAlert } from "lucide-react";
+import { User, MapPin, Calendar, Compass, MessageSquare, Paperclip, Clock, ShieldAlert, IndianRupee } from "lucide-react";
+
+const SERVICE_PRICES = {
+  "1:1 STRATEGIC CONSULTATION": 799,
+  "ASK A QUESTION": 299,
+  "THE MASTER PLAN": 1099,
+  "CUSTOM LUXE PACKAGE": null,
+};
+
+const getExpertPayout = (serviceType) => {
+  const price = SERVICE_PRICES[serviceType?.toUpperCase()];
+  if (!price) return null;
+  return Math.round(price * 0.7);
+};
 
 export default function CaseSheetView({ question, sessionData }) {
   const {
@@ -21,13 +34,14 @@ export default function CaseSheetView({ question, sessionData }) {
 
   // Derive display values from Lead formData or fallback to summary/legacy
   const displayDest = formData.destination || formData.dest || summary?.destination || "N/A";
-  const displayDates = (formData.startDate && formData.endDate) 
-    ? `${formData.startDate} to ${formData.endDate}` 
+  const displayDates = (formData.startDate && formData.endDate)
+    ? `${formData.startDate} to ${formData.endDate}`
     : (formData.dates || summary?.dates || "N/A");
   const displayWho = formData.who || legacyUserType;
   const displayStyle = formData.budget || summary?.style || "Standard";
   const displayType = Array.isArray(formData.type) ? formData.type.join(", ") : (formData.exp || summary?.type || "N/A");
   const displayProblem = formData.confusion || formData.question || formData.context || formData.mustHaves || legacyQuestion;
+  const expertPayout = getExpertPayout(serviceType);
 
   const [dynamicSummary, setDynamicSummary] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,11 +114,22 @@ export default function CaseSheetView({ question, sessionData }) {
               {serviceType} for {userName || "Traveller"}
             </h1>
           </div>
-          <div className="flex items-center gap-3 bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
-            <User className="text-purple-600" size={20} />
-            <div>
-              <p className="text-[10px] font-bold text-purple-400 uppercase">User Type</p>
-              <p className="text-sm font-bold text-[#36013F]">{displayWho}</p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {expertPayout && (
+              <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-xl border border-green-200">
+                <IndianRupee className="text-green-600" size={16} />
+                <div>
+                  <p className="text-[10px] font-bold text-green-500 uppercase">Your Payout (70%)</p>
+                  <p className="text-sm font-black text-green-700">₹{expertPayout}</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-center gap-3 bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
+              <User className="text-purple-600" size={20} />
+              <div>
+                <p className="text-[10px] font-bold text-purple-400 uppercase">User Type</p>
+                <p className="text-sm font-bold text-[#36013F]">{displayWho}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -210,12 +235,6 @@ export default function CaseSheetView({ question, sessionData }) {
               <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 md:col-span-2">
                 <p className="text-[10px] font-bold text-gray-400 uppercase">Existing Details</p>
                 <p className="text-[12px] text-gray-600 mt-1 whitespace-pre-wrap">{formData.bookingDetails}</p>
-              </div>
-            )}
-            {formData.whatsapp && (
-              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                <p className="text-[10px] font-bold text-green-600 uppercase">WhatsApp</p>
-                <p className="text-sm font-bold text-gray-800">{formData.whatsapp}</p>
               </div>
             )}
           </div>

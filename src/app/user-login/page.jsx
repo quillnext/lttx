@@ -108,7 +108,7 @@ export default function UserLoginPage() {
           <div>
             <h1 className="text-2xl font-bold text-[#36013F]">User Login</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Verify your email with OTP to access your travel dashboard.
+             Verify your identity with OTP.
             </p>
           </div>
 

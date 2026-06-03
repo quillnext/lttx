@@ -1,12 +1,10 @@
-
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
 import { NextResponse } from "next/server";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 export async function POST(request) {
   try {
     const { uid, secret } = await request.json();
 
-    // Security check
     if (secret !== process.env.NEXT_PUBLIC_ADMIN_PASS) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -15,32 +13,36 @@ export async function POST(request) {
       return NextResponse.json({ error: "UID is required" }, { status: 400 });
     }
 
-    // 1. Delete from Firebase Auth (if exists)
-    try {
-      await adminAuth.deleteUser(uid);
-    } catch (e) {
-      console.log("Auth user already gone or never existed.");
+    const supabase = createSupabaseAdminClient();
+    const { data: profile, error: fetchError } = await supabase
+      .from("profiles")
+      .select("photo_url, certificates, office_photos, user_id")
+      .eq("id", uid)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    if (profile?.user_id) {
+      const { error: authError } = await supabase.auth.admin.deleteUser(profile.user_id);
+      if (authError) console.warn("Supabase auth user delete skipped:", authError.message);
     }
 
-    // 2. Fetch profile to get storage paths before deleting
-    const profileRef = adminDb.collection("Profiles").doc(uid);
-    const doc = await profileRef.get();
-    const data = doc.data();
+    await supabase.from("expert_recurring_availability").delete().eq("expert_id", uid);
 
-    // 3. Delete from Firestore
-    await profileRef.delete();
+    const { error: deleteError } = await supabase.from("profiles").delete().eq("id", uid);
+    if (deleteError) throw deleteError;
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Expert purged from Auth and Firestore.",
+    return NextResponse.json({
+      success: true,
+      message: "Expert purged from Supabase.",
       storagePaths: {
-        photo: data?.photo || null,
-        certificates: data?.certificates || [],
-        officePhotos: data?.officePhotos || []
-      }
+        photo: profile?.photo_url || null,
+        certificates: profile?.certificates || [],
+        officePhotos: profile?.office_photos || [],
+      },
     });
   } catch (error) {
     console.error("Purge Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || "Failed to purge expert" }, { status: 500 });
   }
 }

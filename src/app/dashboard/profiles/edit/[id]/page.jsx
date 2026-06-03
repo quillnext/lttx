@@ -20,7 +20,7 @@ export default function AdminEditProfilePage({ params }) {
         </Link>
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tight">Master Record Editor</h1>
-          <p className="text-gray-500 text-sm font-medium mt-1">Directly modifying Firestore record: {id}</p>
+          <p className="text-gray-500 text-sm font-medium mt-1">Directly modifying Supabase profile record: {id}</p>
         </div>
       </div>
 
