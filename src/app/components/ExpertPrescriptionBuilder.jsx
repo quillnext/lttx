@@ -66,7 +66,6 @@ const calculateQualityScores = (formData, serviceConfig) => {
   const requiredValues = [
     formData.diagnosis,
     formData.coreAdvice,
-    formData.confidence,
     ...serviceConfig.fields.map((field) => formData.optionalSections?.[field.key] || ""),
   ];
 
@@ -82,6 +81,7 @@ const calculateQualityScores = (formData, serviceConfig) => {
     responseScore: Math.round((completeness * 0.65) + (clarity * 0.35)),
   };
 };
+
 
 const getDefaultCtaOptions = (serviceType = "") => {
   const n = serviceType.toLowerCase();
@@ -258,7 +258,9 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
   const requiredOptionalComplete = serviceConfig.fields.every((field) =>
     String(formData.optionalSections?.[field.key] || "").trim()
   );
-  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && requiredOptionalComplete && formData.nextStepCta?.trim();
+  const isAccepted = question?.status === "accepted";
+  const isFormDisabled = !isAccepted || isLoading;
+  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && requiredOptionalComplete;
 
   return (
     <div className="space-y-8 bg-white/50 backdrop-blur-md rounded-2xl p-6 border border-gray-100 shadow-xl">
@@ -270,7 +272,7 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
         <button
           type="button"
           onClick={onDraftGenerate}
-          disabled={isLoading || !canGenerateDraft}
+          disabled={isFormDisabled || !canGenerateDraft}
           title={canGenerateDraft ? "Generate AI draft" : "Accept the case to enable AI draft"}
           className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-full text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -294,6 +296,12 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
         ))}
       </div>
 
+      {!isAccepted && (
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs font-semibold text-amber-800 flex items-center gap-2">
+          <span>⚠️ Please click <strong>"Accept Case"</strong> at the top of the window to enable prescription builder.</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* 1. DIAGNOSIS */}
         <section className="space-y-2">
@@ -305,10 +313,11 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
             value={formData.diagnosis}
             onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
             maxLength={300}
-            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
+            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm disabled:bg-gray-100 disabled:text-gray-500"
             placeholder="Summarize the user's situation and core confusion..."
             rows={3}
             required
+            disabled={isFormDisabled}
           />
           <div className="flex justify-end">
             <span className={`text-[10px] ${formData.diagnosis.length > 280 ? 'text-red-500' : 'text-gray-400'}`}>
@@ -317,26 +326,11 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
           </div>
         </section>
 
-        {/* 2. CORE ADVICE */}
-        <section className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
-            <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-[10px]">2</span>
-            Expert Recommendation
-          </label>
-          <textarea
-            value={formData.coreAdvice}
-            onChange={(e) => setFormData({ ...formData, coreAdvice: e.target.value })}
-            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
-            placeholder="Provide your main answer here. Be authoritative and clear."
-            rows={6}
-            required
-          />
-        </section>
-
+       
         {/* 3. KEY CORRECTIONS / RISKS */}
         <section className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
-            <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-[10px]">3</span>
+            <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-[10px]">2</span>
             What to Avoid / Watch Out For
           </label>
           <div className="flex gap-2">
@@ -346,13 +340,15 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
               onChange={(e) => setCurrentRisk(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddRisk())}
               maxLength={120}
-              className="flex-1 p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+              className="flex-1 p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm disabled:bg-gray-100 disabled:text-gray-500"
               placeholder="Add a risk or correction (max 120 chars)..."
+              disabled={isFormDisabled}
             />
             <button
               type="button"
               onClick={handleAddRisk}
-              className="bg-gray-100 hover:bg-gray-200 p-3 rounded-xl transition-colors"
+              disabled={isFormDisabled}
+              className="bg-gray-100 hover:bg-gray-200 p-3 rounded-xl transition-colors disabled:opacity-50"
             >
               <Plus size={20} />
             </button>
@@ -363,13 +359,31 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
                 <span className="text-xs text-red-800 font-medium flex items-center gap-2">
                   <span className="w-1.5 h-1.5 bg-red-400 rounded-full" /> {risk}
                 </span>
-                <button type="button" onClick={() => removeRisk(index)} className="text-red-400 hover:text-red-600">
+                <button type="button" onClick={() => removeRisk(index)} disabled={isFormDisabled} className="text-red-400 hover:text-red-600 disabled:opacity-50">
                   <Trash2 size={14} />
                 </button>
               </div>
             ))}
           </div>
         </section>
+
+         {/* 2. CORE ADVICE */}
+        <section className="space-y-2">
+          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
+            <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-[10px]">3</span>
+            Expert Recommendation
+          </label>
+          <textarea
+            value={formData.coreAdvice}
+            onChange={(e) => setFormData({ ...formData, coreAdvice: e.target.value })}
+            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm disabled:bg-gray-100 disabled:text-gray-500"
+            placeholder="Provide your main answer here. Be authoritative and clear."
+            rows={6}
+            required
+            disabled={isFormDisabled}
+          />
+        </section>
+
 
         {serviceConfig.fields.length > 0 && (
           <section className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-4">
@@ -389,8 +403,9 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
                         optionalSections: { ...formData.optionalSections, [field.key]: e.target.value },
                       })
                     }
-                    className="w-full p-3 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none text-sm font-bold text-[#36013F]"
+                    className="w-full p-3 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none text-sm font-bold text-[#36013F] disabled:bg-gray-100 disabled:text-gray-500"
                     required
+                    disabled={isFormDisabled}
                   >
                     <option value="">Select verdict</option>
                     {field.options.map((option) => (
@@ -406,9 +421,10 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
                         optionalSections: { ...formData.optionalSections, [field.key]: e.target.value },
                       })
                     }
-                    className="w-full p-4 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none transition-all text-sm"
+                    className="w-full p-4 bg-white border border-amber-200 rounded-xl focus:ring-2 focus:ring-amber-400 outline-none transition-all text-sm disabled:bg-gray-100 disabled:text-gray-500"
                     rows={field.rows}
                     required
+                    disabled={isFormDisabled}
                   />
                 )}
               </div>
@@ -417,86 +433,11 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
         )}
 
         <div className="flex flex-col gap-6 pt-4 border-t">
-          {/* CONFIDENCE SCORE */}
-          <section className="space-y-2 max-w-xs">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Confidence in Recommendation</label>
-            <div className="relative">
-              <select
-                value={formData.confidence}
-                onChange={(e) => setFormData({ ...formData, confidence: e.target.value })}
-                className="w-full p-3 bg-white border border-gray-200 rounded-xl appearance-none focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold text-[#36013F]"
-              >
-                <option value="High">High Confidence</option>
-                <option value="Medium">Medium Confidence</option>
-                <option value="Situational">Situational</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" size={16} />
-            </div>
-          </section>
-
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Next Step for Traveller</label>
-              {!customCta && (
-                <button
-                  type="button"
-                  onClick={() => { setCustomCta(true); setFormData({ ...formData, nextStepCta: "" }); }}
-                  className="text-[10px] text-purple-600 underline font-bold"
-                >
-                  Write custom
-                </button>
-              )}
-              {customCta && (
-                <button
-                  type="button"
-                  onClick={() => { setCustomCta(false); setFormData({ ...formData, nextStepCta: ctaOptions[0] }); }}
-                  className="text-[10px] text-purple-600 underline font-bold"
-                >
-                  Use suggestions
-                </button>
-              )}
-            </div>
-            {customCta ? (
-              <input
-                type="text"
-                value={formData.nextStepCta}
-                onChange={(e) => setFormData({ ...formData, nextStepCta: e.target.value })}
-                className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-sm font-bold text-[#36013F]"
-                placeholder="Write a custom next step for the traveller..."
-                required
-                autoFocus
-              />
-            ) : (
-              <div className="space-y-2">
-                {ctaOptions.map((option, i) => (
-                  <label
-                    key={i}
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                      formData.nextStepCta === option
-                        ? "border-[#36013F] bg-[#36013F]/5"
-                        : "border-gray-200 bg-white hover:border-[#36013F]/40"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="nextStepCta"
-                      value={option}
-                      checked={formData.nextStepCta === option}
-                      onChange={() => setFormData({ ...formData, nextStepCta: option })}
-                      className="mt-0.5 accent-[#36013F] shrink-0"
-                    />
-                    <span className="text-sm text-gray-700 leading-snug">{option}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-          </section>
-
           {/* SUBMIT */}
           <div className="flex items-end">
             <button
               type="submit"
-              disabled={!isFormValid || isLoading}
+              disabled={!isFormValid || isFormDisabled}
               className="w-full bg-[#36013F] text-white py-4 rounded-xl font-bold text-sm hover:bg-[#4a0150] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-200 disabled:opacity-50 disabled:grayscale"
             >
               <CheckCircle size={18} />
@@ -508,3 +449,4 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
     </div>
   );
 }
+

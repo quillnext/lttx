@@ -964,7 +964,7 @@ export default function Messages() {
             <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
               {/* Left: Case Sheet (Scrollable) */}
               <div className="w-full md:w-1/2 p-6 overflow-y-auto border-r custom-scrollbar bg-white">
-                <CaseSheetView question={replyModal} sessionData={sessionData} />
+                <CaseSheetView question={replyModal} sessionData={sessionData} isAdmin={false} />
               </div>
 
               {/* Right: Prescription Builder (Scrollable) */}

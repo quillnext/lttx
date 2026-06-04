@@ -170,7 +170,9 @@ ${config.persona}
 
 TONE RULES (follow strictly):
 - ${config.tone}
-- Never start a sentence with "I'd recommend", "I would suggest", "Great question", "Absolutely", "Certainly", "I hope this helps"
+- Never start a sentence with "I'd recommend", "I would suggest", "I recommend", "I suggest", "My recommendation is", "Great question", "Absolutely", "Certainly", "I hope this helps", "As an expert"
+- Do not repeat the words "recommend", "recommendation", "suggest", or "suggestion" multiple times. Use direct, authoritative action verbs instead (e.g., "Choose", "Book", "Stay", "Avoid").
+- Do not include any calls to action (CTA), booking links, next step instructions, or invitations to book/consult in the response text. Focus purely on strategic travel advice.
 - No generic travel advice that could apply to any destination
 - If you don't have enough data to be specific, say so — don't fake specificity
 - No markdown. No headers. No bullet lists in string fields.

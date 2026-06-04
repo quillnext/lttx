@@ -15,7 +15,7 @@ const getExpertPayout = (serviceType) => {
   return Math.round(price * 0.7);
 };
 
-export default function CaseSheetView({ question, sessionData }) {
+export default function CaseSheetView({ question, sessionData, isAdmin = false }) {
   const {
     id,
     userName,
@@ -42,6 +42,9 @@ export default function CaseSheetView({ question, sessionData }) {
   const displayType = Array.isArray(formData.type) ? formData.type.join(", ") : (formData.exp || summary?.type || "N/A");
   const displayProblem = formData.confusion || formData.question || formData.context || formData.mustHaves || legacyQuestion;
   const expertPayout = getExpertPayout(serviceType);
+
+  const displayPhone = formData.phone || formData.whatsapp || question.userPhone || "";
+  const displayEmail = question.userEmail || formData.email || "";
 
   const [dynamicSummary, setDynamicSummary] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -96,6 +99,54 @@ export default function CaseSheetView({ question, sessionData }) {
     }
   };
 
+  const FIELD_LABELS = {
+    dest: "Destination",
+    destination: "Destination",
+    startDate: "Start Date",
+    endDate: "End Date",
+    flexibleDates: "Dates are Flexible",
+    who: "Who is Travelling",
+    pax: "Number of Travellers",
+    helpWith: "Need Help With",
+    confusion: "Confusion / Details",
+    booked: "Booking Status",
+    bookingDetails: "Booking Details",
+    phone: "Phone / WhatsApp",
+    whatsapp: "WhatsApp Number",
+    question: "Question",
+    context: "Context",
+    dates: "Dates",
+    budget: "Budget / Style",
+    type: "Trip Type / Vibe",
+    structure: "What to Structure",
+    hotelStyle: "Hotel Style",
+    flightPreference: "Flight Preference",
+    pacePreference: "Pace Preference",
+    specialOccasion: "Special Occasion",
+    mustHaves: "Must-haves / Constraints",
+    exp: "Experience Details",
+    itinerary: "Itinerary",
+    focus: "Focus Areas",
+    preferences: "Preferences / Constraints",
+    hotelArea: "Hotel / Area",
+    mattersMost: "What Matters Most",
+    tripType: "Trip Type",
+    route: "Route",
+    travelDate: "Travel Date",
+    flightOptions: "Flight Options",
+    travelMonth: "Travel Month / Dates",
+    duration: "Duration"
+  };
+
+  const formEntries = Object.entries(formData).filter(([key]) => {
+    const excludedKeys = ["payment", "reminderCount", "isRedirected", "uploadedFileUrl", "uploadedFileName"];
+    if (!isAdmin) {
+      excludedKeys.push("phone");
+      excludedKeys.push("whatsapp");
+    }
+    return !excludedKeys.includes(key);
+  });
+
   return (
     <div className="space-y-6">
       {/* CASE HEADER */}
@@ -113,6 +164,12 @@ export default function CaseSheetView({ question, sessionData }) {
             <h1 className="text-2xl font-black text-[#36013F] leading-tight">
               {serviceType} for {userName || "Traveller"}
             </h1>
+            {(displayEmail || (isAdmin && displayPhone)) && (
+              <div className="mt-2 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
+                {displayEmail && <span><strong>Email:</strong> {displayEmail}</span>}
+                {isAdmin && displayPhone && <span><strong>Phone:</strong> {displayPhone}</span>}
+              </div>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             {expertPayout && (
@@ -207,37 +264,34 @@ export default function CaseSheetView({ question, sessionData }) {
             </p>
           </div>
 
-          {/* Service Specific Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {formData.pax && (
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Travellers (Pax)</p>
-                <p className="text-sm font-bold text-gray-800">{formData.pax} People</p>
-              </div>
-            )}
-            {formData.booked && (
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Current Booking Status</p>
-                <p className="text-sm font-bold text-gray-800">{formData.booked}</p>
-              </div>
-            )}
-            {formData.helpWith && Array.isArray(formData.helpWith) && (
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 md:col-span-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Help Needed With</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {formData.helpWith.map(item => (
-                    <span key={item} className="bg-white px-2 py-1 rounded border text-[11px] font-bold text-[#36013F]">{item}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {formData.bookingDetails && (
-              <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 md:col-span-2">
-                <p className="text-[10px] font-bold text-gray-400 uppercase">Existing Details</p>
-                <p className="text-[12px] text-gray-600 mt-1 whitespace-pre-wrap">{formData.bookingDetails}</p>
-              </div>
-            )}
-          </div>
+          {/* Service Specific Fields (Dynamic) */}
+          {formEntries.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {formEntries.map(([key, val]) => {
+                if (val === undefined || val === null || val === "") return null;
+                
+                const label = FIELD_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1"));
+                
+                let displayVal = "";
+                if (Array.isArray(val)) {
+                  displayVal = val.join(", ");
+                } else if (typeof val === "boolean") {
+                  displayVal = val ? "Yes" : "No";
+                } else {
+                  displayVal = String(val);
+                }
+
+                const isLongText = displayVal.length > 80 || key === "confusion" || key === "question" || key === "context" || key === "mustHaves" || key === "exp" || key === "itinerary" || key === "preferences" || key === "flightOptions" || key === "bookingDetails";
+
+                return (
+                  <div key={key} className={`p-3 bg-gray-50 rounded-lg border border-gray-100 ${isLongText ? "md:col-span-2" : ""}`}>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</p>
+                    <p className="text-sm font-bold text-gray-800 whitespace-pre-wrap">{displayVal}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

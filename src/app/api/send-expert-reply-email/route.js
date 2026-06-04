@@ -120,7 +120,7 @@ const renderPrescriptionEmail = (prescription) => {
 
   return `<div style="padding:20px 16px;">
     ${sectionBlock({ eyebrow: "What the expert understood", title: "Situation Read", body: diagnosis, background: "#faf6fb", border: "#eee3f0", color: "#66516c" })}
-    ${sectionBlock({ eyebrow: "Expert Recommendation", title: "Recommended Direction", body: coreAdvice, background: "#f3fbf6", border: "#c8e6d4", color: "#2d6048" })}
+    ${sectionBlock({ title: "Recommended Direction", body: coreAdvice, background: "#f3fbf6", border: "#c8e6d4", color: "#2d6048" })}
     ${riskItems ? `<div style="margin-top:16px;background:#fff8f8;border:1px solid #ffe0e0;border-radius:16px;padding:18px;">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#c24141;font-weight:800;">Watch-outs</div>
       <ul style="padding-left:18px;margin:10px 0 0;">${riskItems}</ul>

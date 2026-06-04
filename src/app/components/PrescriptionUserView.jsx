@@ -90,21 +90,6 @@ export default function PrescriptionUserView({ prescription }) {
           </div>
         </section>
       )}
-
-      {/* FOOTER: CONFIDENCE & CTA */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-6 pt-8 border-t">
-        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
-          <Star size={14} className="text-yellow-500 fill-yellow-500" />
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-            Confidence: <span className="text-[#36013F]">{confidence}</span>
-          </span>
-        </div>
-        
-        <button className="group flex items-center gap-3 bg-[#36013F] text-white px-6 py-3 rounded-full text-sm font-bold hover:shadow-xl hover:shadow-purple-100 transition-all">
-          {nextStepCta || "Upgrade to Master Plan"}
-          <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-        </button>
-      </div>
     </div>
   );
 }
