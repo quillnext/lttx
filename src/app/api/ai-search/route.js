@@ -76,15 +76,24 @@ export async function POST(request) {
       // Normalize query
       const normalizedQuery = query.trim().toLowerCase();
 
-      // Check cache first
-      const { data: existingSearches, error: existingSearchError } = await supabase
-        .from("recent_searches")
-        .select("*")
-        .eq("query", normalizedQuery)
-        .order("timestamp", { ascending: false })
-        .limit(1);
+      // Check cache first — skip gracefully if table doesn't exist yet
+      let existingSearches = null;
+      try {
+        const { data, error: existingSearchError } = await supabase
+          .from("recent_searches")
+          .select("*")
+          .eq("query", normalizedQuery)
+          .order("timestamp", { ascending: false })
+          .limit(1);
 
-      if (existingSearchError) throw existingSearchError;
+        if (existingSearchError && !existingSearchError.message?.includes("schema cache") && existingSearchError.code !== "42P01") {
+          throw existingSearchError;
+        }
+        existingSearches = data;
+      } catch (cacheErr) {
+        if (!cacheErr.message?.includes("schema cache") && cacheErr.code !== "42P01") throw cacheErr;
+        // Table missing — skip cache entirely, continue to AI search
+      }
 
       if (existingSearches?.length) {
         const data = existingSearches[0];

@@ -13,7 +13,13 @@ export async function GET(request) {
       .order("timestamp", { ascending: false })
       .limit(limit * 3);
 
-    if (error) throw error;
+    // Table doesn't exist yet — return empty list instead of 500
+    if (error) {
+      if (error.message?.includes("schema cache") || error.code === "42P01") {
+        return NextResponse.json({ searches: [] }, { status: 200 });
+      }
+      throw error;
+    }
 
     const seen = new Set();
     const searches = (data || [])

@@ -66,7 +66,6 @@ const calculateQualityScores = (formData, serviceConfig) => {
   const requiredValues = [
     formData.diagnosis,
     formData.coreAdvice,
-    formData.optimizedApproach,
     formData.confidence,
     ...serviceConfig.fields.map((field) => formData.optionalSections?.[field.key] || ""),
   ];
@@ -74,7 +73,7 @@ const calculateQualityScores = (formData, serviceConfig) => {
   const completed = requiredValues.filter((value) => String(value || "").trim()).length;
   const completeness = Math.round((completed / requiredValues.length) * 100);
   const clarity = Math.round(
-    (scoreText(formData.diagnosis, 18) + scoreText(formData.coreAdvice, 45) + scoreText(formData.optimizedApproach, 20)) / 3
+    (scoreText(formData.diagnosis, 18) + scoreText(formData.coreAdvice, 45)) / 2
   );
 
   return {
@@ -143,7 +142,6 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
     diagnosis: "",
     coreAdvice: "",
     risks: [],
-    optimizedApproach: "",
     confidence: "High",
     optionalSections: {},
     nextStepCta: defaultCtaOptions[0],
@@ -164,7 +162,6 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
     let mapped = {
       diagnosis: draft.diagnosis || "",
       coreAdvice: draft.coreAdvice || "",
-      optimizedApproach: draft.optimizedApproach || "",
       risks: Array.isArray(draft.risks) ? draft.risks : [],
       confidence: draft.confidence || "High",
       optionalSections: { ...(draft.optionalSections || {}) },
@@ -172,54 +169,46 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
     };
 
     if (sType.includes("consult") || sType.includes("strategic")) {
-      mapped.diagnosis       = draft.situationRead || draft.diagnosis || "";
-      mapped.coreAdvice      = draft.coreRecommendation || draft.coreAdvice || "";
-      mapped.optimizedApproach = draft.structureSuggestion || draft.optimizedApproach || "";
-      mapped.risks           = Array.isArray(draft.bookNow) ? draft.bookNow : mapped.risks;
+      mapped.diagnosis  = draft.situationRead || draft.diagnosis || "";
+      mapped.coreAdvice = draft.coreRecommendation || draft.coreAdvice || "";
+      mapped.risks      = Array.isArray(draft.bookNow) ? draft.bookNow : mapped.risks;
       mapped.optionalSections.nextSteps =
         [draft.holdOff, draft.callAgenda].filter(Boolean).join("\n\n") ||
         mapped.optionalSections.nextSteps || "";
     } else if (sType.includes("ask") || sType.includes("question")) {
-      mapped.diagnosis       = draft.keyPoint || draft.diagnosis || "";
-      mapped.coreAdvice      = draft.answer || draft.coreAdvice || "";
-      mapped.optimizedApproach = draft.watchOut ? `Watch out: ${draft.watchOut}` : (draft.optimizedApproach || "");
+      mapped.diagnosis  = draft.keyPoint || draft.diagnosis || "";
+      mapped.coreAdvice = draft.answer || draft.coreAdvice || "";
     } else if (sType.includes("master")) {
-      mapped.diagnosis       = draft.planVerdict || draft.diagnosis || "";
-      mapped.coreAdvice      = draft.dayStructure || draft.coreAdvice || "";
-      mapped.optimizedApproach = [draft.howToMove, draft.verdict].filter(Boolean).join("\n\n") || draft.optimizedApproach || "";
-      mapped.risks           = Array.isArray(draft.mustDos) ? draft.mustDos : mapped.risks;
+      mapped.diagnosis  = draft.planVerdict || draft.diagnosis || "";
+      mapped.coreAdvice = draft.dayStructure || draft.coreAdvice || "";
+      mapped.risks      = Array.isArray(draft.mustDos) ? draft.mustDos : mapped.risks;
       mapped.optionalSections.dayWiseStructure = draft.dayStructure || "";
       mapped.optionalSections.stayStrategy     = draft.stayStrategy || "";
       mapped.optionalSections.routeLogic       = draft.howToMove || "";
     } else if (sType.includes("luxe") || sType.includes("custom")) {
-      mapped.diagnosis       = draft.packageConcept || draft.diagnosis || "";
-      mapped.coreAdvice      = [draft.packageConcept, draft.stayIdeas].filter(Boolean).join("\n\n") || draft.coreAdvice || "";
-      mapped.optimizedApproach = draft.whatINeedFromYou || draft.optimizedApproach || "";
-      mapped.risks           = Array.isArray(draft.signatureExperiences) ? draft.signatureExperiences : mapped.risks;
+      mapped.diagnosis  = draft.packageConcept || draft.diagnosis || "";
+      mapped.coreAdvice = [draft.packageConcept, draft.stayIdeas].filter(Boolean).join("\n\n") || draft.coreAdvice || "";
+      mapped.risks      = Array.isArray(draft.signatureExperiences) ? draft.signatureExperiences : mapped.risks;
     } else if (sType.includes("itinerary") || sType.includes("review")) {
-      mapped.diagnosis       = draft.verdict || draft.diagnosis || "";
-      mapped.coreAdvice      = draft.fixes || draft.coreAdvice || "";
-      mapped.optimizedApproach = draft.reworkedVersion || draft.verdict1Line || draft.optimizedApproach || "";
-      mapped.risks           = Array.isArray(draft.issues) ? draft.issues : mapped.risks;
+      mapped.diagnosis  = draft.verdict || draft.diagnosis || "";
+      mapped.coreAdvice = draft.fixes || draft.coreAdvice || "";
+      mapped.risks      = Array.isArray(draft.issues) ? draft.issues : mapped.risks;
       mapped.optionalSections.reworkedVersion = draft.reworkedVersion || "";
     } else if (sType.includes("hotel")) {
-      mapped.diagnosis       = `Verdict: ${draft.areaVerdict || ""}`.trim();
-      mapped.coreAdvice      = draft.reasoning || draft.coreAdvice || "";
-      mapped.optimizedApproach = [draft.alternative, draft.finalNote].filter(Boolean).join("\n\n") || draft.optimizedApproach || "";
-      mapped.risks           = draft.bestFor ? [draft.bestFor] : mapped.risks;
+      mapped.diagnosis  = `Verdict: ${draft.areaVerdict || ""}`.trim();
+      mapped.coreAdvice = draft.reasoning || draft.coreAdvice || "";
+      mapped.risks      = draft.bestFor ? [draft.bestFor] : mapped.risks;
       mapped.optionalSections.areaVerdict = draft.areaVerdict || "";
     } else if (sType.includes("flight")) {
-      mapped.diagnosis       = draft.reasoning || draft.diagnosis || "";
-      mapped.coreAdvice      = draft.recommendation || draft.coreAdvice || "";
-      mapped.optimizedApproach = draft.verdict || draft.optimizedApproach || "";
-      mapped.risks           = draft.watchOut ? [draft.watchOut] : mapped.risks;
+      mapped.diagnosis  = draft.reasoning || draft.diagnosis || "";
+      mapped.coreAdvice = draft.recommendation || draft.coreAdvice || "";
+      mapped.risks      = draft.watchOut ? [draft.watchOut] : mapped.risks;
       mapped.optionalSections.bestOption   = draft.recommendation || "";
       mapped.optionalSections.whyThisWorks = draft.reasoning || "";
     } else if (sType.includes("packing")) {
-      mapped.diagnosis       = draft.packingVerdict || draft.diagnosis || "";
-      mapped.coreAdvice      = [...(Array.isArray(draft.clothing) ? draft.clothing : []), ...(Array.isArray(draft.documents) ? draft.documents : [])].join("\n") || draft.coreAdvice || "";
-      mapped.optimizedApproach = draft.proTip || draft.optimizedApproach || "";
-      mapped.risks           = Array.isArray(draft.essentials) ? draft.essentials : mapped.risks;
+      mapped.diagnosis  = draft.packingVerdict || draft.diagnosis || "";
+      mapped.coreAdvice = [...(Array.isArray(draft.clothing) ? draft.clothing : []), ...(Array.isArray(draft.documents) ? draft.documents : [])].join("\n") || draft.coreAdvice || "";
+      mapped.risks      = Array.isArray(draft.essentials) ? draft.essentials : mapped.risks;
     }
 
     setFormData(prev => ({ ...prev, ...mapped }));
@@ -269,7 +258,7 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
   const requiredOptionalComplete = serviceConfig.fields.every((field) =>
     String(formData.optionalSections?.[field.key] || "").trim()
   );
-  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && formData.optimizedApproach.trim() && requiredOptionalComplete && formData.nextStepCta?.trim();
+  const isFormValid = formData.diagnosis.trim() && formData.coreAdvice.trim() && requiredOptionalComplete && formData.nextStepCta?.trim();
 
   return (
     <div className="space-y-8 bg-white/50 backdrop-blur-md rounded-2xl p-6 border border-gray-100 shadow-xl">
@@ -380,22 +369,6 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
               </div>
             ))}
           </div>
-        </section>
-
-        {/* 4. OPTIMIZED APPROACH */}
-        <section className="space-y-2">
-          <label className="flex items-center gap-2 text-sm font-bold text-gray-700 uppercase tracking-wider">
-            <span className="w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-[10px]">4</span>
-            Better Way to Plan This
-          </label>
-          <textarea
-            value={formData.optimizedApproach}
-            onChange={(e) => setFormData({ ...formData, optimizedApproach: e.target.value })}
-            className="w-full p-4 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all text-sm"
-            placeholder="Short actionable restructuring of their plan..."
-            rows={3}
-            required
-          />
         </section>
 
         {serviceConfig.fields.length > 0 && (

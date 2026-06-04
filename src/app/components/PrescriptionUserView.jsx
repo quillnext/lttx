@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { CheckCircle2, AlertTriangle, Lightbulb, Compass, Star, ChevronRight, Route } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Compass, Star, ChevronRight, Route } from "lucide-react";
 
 const optionalLabels = {
   nextSteps: "Next Steps You Should Take",
@@ -22,7 +22,6 @@ export default function PrescriptionUserView({ prescription }) {
     diagnosis,
     coreAdvice,
     risks,
-    optimizedApproach,
     confidence,
     optionalSections = {},
     nextStepCta,
@@ -71,16 +70,6 @@ export default function PrescriptionUserView({ prescription }) {
           </ul>
         </section>
       )}
-
-      {/* 4. OPTIMIZED APPROACH */}
-      <section className="space-y-3 bg-indigo-50/50 p-6 rounded-2xl border border-indigo-100">
-        <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
-          <Lightbulb size={14} /> Better Way to Plan
-        </h3>
-        <p className="text-sm text-indigo-900 leading-relaxed font-medium">
-          {optimizedApproach}
-        </p>
-      </section>
 
       {visibleOptionalSections.length > 0 && (
         <section className="space-y-4 rounded-2xl border border-amber-100 bg-amber-50/60 p-6">

@@ -100,7 +100,6 @@ const renderPrescriptionEmail = (prescription) => {
     diagnosis,
     coreAdvice,
     risks,
-    optimizedApproach,
     optionalSections = {},
     nextStepCta,
   } = prescription;
@@ -126,7 +125,6 @@ const renderPrescriptionEmail = (prescription) => {
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#c24141;font-weight:800;">Watch-outs</div>
       <ul style="padding-left:18px;margin:10px 0 0;">${riskItems}</ul>
     </div>` : ""}
-    ${sectionBlock({ eyebrow: "Better Approach", title: "Optimized Plan", body: optimizedApproach, background: "#f4f6ff", border: "#dfe5ff", color: "#33407a" })}
     ${optionalHtml ? `<div style="margin-top:16px;background:#fffaf0;border:1px solid #f4d35e;border-radius:16px;padding:18px;">
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#9a6b00;font-weight:800;">Additional Direction</div>
       ${optionalHtml}

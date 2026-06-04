@@ -2,6 +2,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useUserAuthStore } from '@/stores/useUserAuthStore';
 import {
     FaRupeeSign, FaCalendarAlt, FaPassport, FaArrowRight,
     FaExclamationTriangle, FaSuitcaseRolling, FaUnlock,
@@ -369,6 +371,10 @@ const UnlockModal = ({ isOpen, onClose, onSuccess, sessionId }) => {
 
 const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookClick, openLightbox }) => {
     const loadSectionData = useLoadSectionData(currentQuery, searchId);
+    const { isAuthenticated } = useUserAuthStore();
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [isUnlocked, setIsUnlocked] = useState(false);
     const [showUnlockModal, setShowUnlockModal] = useState(false);
     const [recentSearches, setRecentSearches] = useState([]);
@@ -557,8 +563,8 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
                             const config = POINTER_CONFIG[pointerId];
                             if (!config) return null; // Skip unknown pointers
 
-                            // First block is always unlocked (teaser), others require form
-                            const isSectionUnlocked = isUnlocked || index === 0;
+                            // First block is always unlocked (teaser), others require form or authentication
+                            const isSectionUnlocked = isAuthenticated || isUnlocked || index === 0;
 
                             return (
                                 <LazySection
@@ -571,7 +577,15 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
                                     query={currentQuery}
                                     colorClass={config.color}
                                     isUnlocked={isSectionUnlocked}
-                                    onUnlockRequest={() => setShowUnlockModal(true)}
+                                    onUnlockRequest={() => {
+                                        if (!isAuthenticated) {
+                                            const currentParams = searchParams?.toString();
+                                            const currentUrl = currentParams ? `${pathname}?${currentParams}` : pathname;
+                                            router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+                                        } else {
+                                            setShowUnlockModal(true);
+                                        }
+                                    }}
                                 />
                             );
                         })}

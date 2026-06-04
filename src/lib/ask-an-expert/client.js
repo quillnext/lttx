@@ -33,19 +33,15 @@ export async function fetchExpertsByIds(ids = []) {
 }
 
 export async function fetchRecentSearchQueries({ exclude = "", limit = 5 } = {}) {
-  const params = new URLSearchParams({
-    exclude,
-    limit: String(limit),
-  });
-
-  const response = await fetch(`/api/ask-an-expert/recent-searches?${params.toString()}`, {
-    cache: "no-store",
-  });
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || "Failed to fetch recent searches");
+  try {
+    const params = new URLSearchParams({ exclude, limit: String(limit) });
+    const response = await fetch(`/api/ask-an-expert/recent-searches?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const result = await response.json();
+    if (!response.ok) return [];
+    return result.searches || [];
+  } catch {
+    return [];
   }
-
-  return result.searches || [];
 }

@@ -58,7 +58,6 @@ const SERVICE_LABELS = {
     risks: "Book Now",
     risksIcon: "→",
     risksColor: "green",
-    optimizedApproach: "Trip Structure",
     optNextSteps: "Call Agenda",
   },
   "ASK A QUESTION": {
@@ -67,7 +66,6 @@ const SERVICE_LABELS = {
     risks: "Watch Out",
     risksIcon: "⚠",
     risksColor: "red",
-    optimizedApproach: "Follow-up Advice",
     optNextSteps: null,
   },
   "THE MASTER PLAN": {
@@ -76,7 +74,6 @@ const SERVICE_LABELS = {
     risks: "Must Dos",
     risksIcon: "✓",
     risksColor: "green",
-    optimizedApproach: "Getting Around",
     optNextSteps: null,
   },
   "CUSTOM LUXE PACKAGE": {
@@ -85,7 +82,6 @@ const SERVICE_LABELS = {
     risks: "Signature Experiences",
     risksIcon: "★",
     risksColor: "purple",
-    optimizedApproach: "What's Needed Next",
     optNextSteps: null,
   },
   "Itinerary Review": {
@@ -94,7 +90,6 @@ const SERVICE_LABELS = {
     risks: "Issues Found",
     risksIcon: "⚠",
     risksColor: "red",
-    optimizedApproach: "Reworked Version",
     optNextSteps: null,
   },
   "Hotel/Area Check": {
@@ -103,7 +98,6 @@ const SERVICE_LABELS = {
     risks: "Best Suited For",
     risksIcon: "→",
     risksColor: "blue",
-    optimizedApproach: "Better Alternative",
     optNextSteps: null,
   },
   "Flight Choice": {
@@ -112,7 +106,6 @@ const SERVICE_LABELS = {
     risks: "Watch Out",
     risksIcon: "⚠",
     risksColor: "amber",
-    optimizedApproach: "Final Verdict",
     optNextSteps: null,
   },
   "Packing Checklist": {
@@ -121,7 +114,6 @@ const SERVICE_LABELS = {
     risks: "Must Not Forget",
     risksIcon: "✓",
     risksColor: "green",
-    optimizedApproach: "Pro Tip",
     optNextSteps: null,
   },
 };
@@ -144,7 +136,6 @@ const ServiceResponseDisplay = ({ reply, serviceType }) => {
     risks: "Watch Out",
     risksIcon: "→",
     risksColor: "red",
-    optimizedApproach: "Better Approach",
     optNextSteps: "Next Steps",
   };
 
@@ -169,11 +160,6 @@ const ServiceResponseDisplay = ({ reply, serviceType }) => {
               <li key={i} className="text-sm flex gap-2"><span>{lbl.risksIcon}</span>{r}</li>
             ))}
           </ul>
-        </Block>
-      )}
-      {data.optimizedApproach && (
-        <Block label={lbl.optimizedApproach} color="amber">
-          <p className="text-sm">{data.optimizedApproach}</p>
         </Block>
       )}
       {lbl.optNextSteps && opt.nextSteps && (

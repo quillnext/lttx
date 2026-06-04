@@ -253,7 +253,8 @@ export default function ExpertsDirectory() {
 
     } catch (error) {
       console.error("Search Error:", error.message);
-      toast.error(error.message);
+      const isDbError = error.message?.includes("schema cache") || error.message?.includes("does not exist") || error.code === "42P01";
+      if (!isDbError) toast.error("Search is temporarily unavailable. Showing all experts.");
       fetchExperts(true); // Fallback to standard directory view
     } finally {
       setIsAiSearching(false);
