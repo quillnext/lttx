@@ -20,6 +20,8 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
     <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <style>
           body {
             font-family: 'Inter', sans-serif;
@@ -35,6 +37,12 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
             overflow: hidden;
             border: 1px solid #ddd;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          }
+          @media only screen and (max-width:600px){
+            body { padding: 0 !important; }
+            .container { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
+            .content { padding: 20px !important; }
+            img { max-width: 100% !important; height: auto !important; }
           }
           .banner {
             display: block;

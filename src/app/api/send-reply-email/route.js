@@ -8,6 +8,7 @@ const emailTemplate = ({ userName, expertName, question, reply, year, type }) =>
 <html>
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body { font-family: 'Inter', sans-serif; background: #f3f3f3; color: #333; padding: 40px 0; }
     .container {
@@ -22,7 +23,7 @@ const emailTemplate = ({ userName, expertName, question, reply, year, type }) =>
     .content { padding: 32px; }
     @media only screen and (max-width:600px){
       body{padding:0!important;}
-      .container{border-radius:0!important;}
+      .container{border-radius:0!important;width:100%!important;max-width:100%!important;}
       .content{padding:20px!important;}
       img{max-width:100%!important;height:auto!important;}
       h2{font-size:20px!important;}

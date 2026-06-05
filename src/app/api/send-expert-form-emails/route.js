@@ -9,6 +9,7 @@ const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isE
 <html>
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body { font-family: 'Inter', sans-serif; background: #f3f3f3; color: #333; margin: 0; padding: 40px 0; }
     .container {
@@ -23,6 +24,12 @@ const baseTemplate = ({ name, email, phone, purpose, message, year, isAdmin, isE
     }
     .content {
       padding: 32px;
+    }
+    @media only screen and (max-width:600px){
+      body { padding: 0 !important; }
+      .container { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
+      .content { padding: 20px !important; }
+      img { max-width: 100% !important; height: auto !important; }
     }
     .cta-button {
       background: #36013F;
