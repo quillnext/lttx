@@ -40,6 +40,9 @@ const toCamelProfile = (row = {}) => ({
   timestamp: row.created_at || row.timestamp || null,
   createdAt: row.created_at || row.createdAt || null,
   updatedAt: row.updated_at || row.updatedAt || null,
+  bio: row.bio || "",
+  whyConsult: row.why_consult || [],
+  experienceDNA: row.experience_dna || null,
 });
 
 export function mapSupabaseProfile(row) {
@@ -84,6 +87,9 @@ export function mapProfileFormToSupabase(formData = {}) {
     user_id: formData.userId || undefined,
     force_password_change: formData.forcePasswordChange ?? undefined,
     approval_timestamp: formData.approvalTimestamp || undefined,
+    bio: formData.bio || "",
+    why_consult: Array.isArray(formData.whyConsult) ? formData.whyConsult : [],
+    experience_dna: formData.experienceDNA || null,
   };
 }
 
@@ -96,3 +102,53 @@ export const defaultExpertSchedule = {
   Sat: ["09:00", "13:30", "14:00"],
   Sun: ["14:00", "17:30"],
 };
+
+export async function getProfileByUidOrEmail(supabase, uid, email) {
+  // Use server-side API on browser to bypass RLS and handle columns gracefully
+  if (typeof window !== "undefined") {
+    try {
+      const emailParam = email ? `&email=${encodeURIComponent(email)}` : "";
+      const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(uid)}${emailParam}`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.profile || null;
+      }
+    } catch (err) {
+      console.error("Failed to fetch profile via API helper:", err);
+    }
+  }
+
+  // Fallback / Server-side check
+  // 1. Try by id = uid
+  let { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", uid)
+    .single();
+  if (data && !error) return data;
+
+  // 2. Try by user_id = uid (catch column not existing)
+  try {
+    const resUserId = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (resUserId.data) return resUserId.data;
+  } catch (e) {
+    // Column user_id doesn't exist
+  }
+
+  // 3. Try by email
+  if (email) {
+    const resEmail = await supabase
+      .from("profiles")
+      .select("*")
+      .ilike("email", email.trim())
+      .maybeSingle();
+    if (resEmail.data) return resEmail.data;
+  }
+
+  return null;
+}
+

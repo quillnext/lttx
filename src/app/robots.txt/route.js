@@ -9,6 +9,7 @@ Disallow: /admin-login
 Disallow: /dashboard/
 Disallow: /expert-login
 Disallow: /expert-dashboard/
+Disallow: /agency-dashboard/
 
 # Enhanced rules for AI Answer Engines
 User-agent: GPTBot

@@ -1,4 +1,3 @@
-
 import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 import ClientProfilePage from "../../experts/[slug]/ClientProfilePage"; // Adjust path as needed
@@ -6,24 +5,57 @@ import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 import Link from "next/link";
 import JsonLd from "@/app/components/JsonLd";
+import { cache } from "react";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { mapSupabaseProfile } from "@/lib/supabaseProfile";
+
+const getProfileBySlug = cache(async (slug) => {
+  const normalizedSlug = decodeURIComponent(slug || "").trim();
+
+  // 1. Try Supabase
+  try {
+    const supabase = createSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .ilike("username", normalizedSlug)
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (data) {
+      return mapSupabaseProfile(data);
+    }
+  } catch (err) {
+    console.error("Supabase slug fetch error:", err);
+  }
+
+  // 2. Try Firestore as fallback
+  try {
+    const db = getFirestore(app);
+    const q = query(collection(db, "Profiles"), where("username", "==", normalizedSlug));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      let profile = null;
+      querySnapshot.forEach((doc) => {
+        profile = { ...doc.data(), id: doc.id };
+      });
+      return profile;
+    }
+  } catch (err) {
+    console.error("Firestore slug fetch error:", err);
+  }
+
+  return null;
+});
 
 // ✅ DYNAMIC METADATA FUNCTION
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", slug));
-  let profile = null;
-
-  try {
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      querySnapshot.forEach((doc) => {
-        profile = { ...doc.data(), id: doc.id };
-      });
-    }
-  } catch (error) {
+  const profile = await getProfileBySlug(slug).catch((error) => {
     console.error("Meta error:", error);
-  }
+    return null;
+  });
 
   if (!profile || profile.isPublic === false || profile.profileType !== "agency") {
     return {
@@ -68,24 +100,19 @@ export async function generateMetadata({ params }) {
 export default async function AgencyProfilePage({ params }) {
   const { slug } = await params;
   const db = getFirestore(app);
-  const q = query(collection(db, "Profiles"), where("username", "==", slug));
   let profile = null;
   let weeklySchedule = {};
 
   try {
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) return <div>Agency not found</div>;
+    const profileData = await getProfileBySlug(slug);
+    if (!profileData) return <div>Agency not found</div>;
 
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      profile = {
-        id: doc.id,
-        ...data,
-        profileType: data.profileType || 'expert', // Get profileType, default to 'expert'
-        timestamp: data.timestamp ? data.timestamp.toDate().toISOString() : null,
-        isOnline: data.isOnline !== false,
-      };
-    });
+    profile = {
+      ...profileData,
+      profileType: profileData.profileType || 'expert',
+      timestamp: profileData.timestamp || profileData.createdAt || null,
+      isOnline: profileData.isOnline !== false,
+    };
 
     // Ensure this is an agency profile
     if (profile?.profileType !== 'agency') {
@@ -93,10 +120,34 @@ export default async function AgencyProfilePage({ params }) {
     }
 
     if (profile) {
-      const recurringRef = doc(db, "ExpertRecurringAvailability", profile.id);
-      const recurringSnap = await getDoc(recurringRef);
-      if (recurringSnap.exists()) {
-        weeklySchedule = recurringSnap.data().schedule || {};
+      // 1. Try Supabase for availability schedule
+      try {
+        const { data: availability, error: availabilityError } = await createSupabaseAdminClient()
+          .from("expert_recurring_availability")
+          .select("schedule")
+          .eq("expert_id", profile.id)
+          .maybeSingle();
+
+        if (availabilityError) {
+          console.warn("Error fetching expert availability from Supabase:", availabilityError.message);
+        } else if (availability?.schedule) {
+          weeklySchedule = availability.schedule;
+        }
+      } catch (err) {
+        console.error("Supabase availability fetch error:", err);
+      }
+
+      // 2. Fallback to Firestore for availability schedule
+      if (Object.keys(weeklySchedule).length === 0) {
+        try {
+          const recurringRef = doc(db, "ExpertRecurringAvailability", profile.id);
+          const recurringSnap = await getDoc(recurringRef);
+          if (recurringSnap.exists()) {
+            weeklySchedule = recurringSnap.data().schedule || {};
+          }
+        } catch (err) {
+          console.error("Firestore availability fetch error:", err);
+        }
       }
     }
 

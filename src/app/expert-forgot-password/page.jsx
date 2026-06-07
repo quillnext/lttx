@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { app, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -45,8 +45,31 @@ export default function ForgotPassword() {
       }
 
       setSuccess("Password reset email sent! Please check your inbox (and spam/junk folder).");
-      setTimeout(() => {
+      setTimeout(async () => {
         if (auth.currentUser) {
+          try {
+            const profileRef = doc(db, "Profiles", auth.currentUser.uid);
+            const profileSnap = await getDoc(profileRef);
+            if (profileSnap.exists()) {
+              if (profileSnap.data().profileType === "agency") {
+                router.push("/agency-dashboard");
+                return;
+              }
+            } else {
+              const { supabase } = await import("@/lib/supabase");
+              const { data, error } = await supabase
+                .from("profiles")
+                .select("profile_type")
+                .eq("id", auth.currentUser.uid)
+                .single();
+              if (data && !error && data.profile_type === "agency") {
+                router.push("/agency-dashboard");
+                return;
+              }
+            }
+          } catch (err) {
+            console.error("Error checking profile:", err);
+          }
           router.push("/expert-dashboard");
         } else {
           router.push("/expert-login");
@@ -106,9 +129,37 @@ export default function ForgotPassword() {
           {auth.currentUser ? (
             <>
               Back to{" "}
-              <Link href="/expert-dashboard" className="text-[#36013F] hover:underline">
+              <button
+                onClick={async () => {
+                  try {
+                    const profileRef = doc(db, "Profiles", auth.currentUser.uid);
+                    const profileSnap = await getDoc(profileRef);
+                    if (profileSnap.exists()) {
+                      if (profileSnap.data().profileType === "agency") {
+                        router.push("/agency-dashboard");
+                        return;
+                      }
+                    } else {
+                      const { supabase } = await import("@/lib/supabase");
+                      const { data, error } = await supabase
+                        .from("profiles")
+                        .select("profile_type")
+                        .eq("id", auth.currentUser.uid)
+                        .single();
+                      if (data && !error && data.profile_type === "agency") {
+                        router.push("/agency-dashboard");
+                        return;
+                      }
+                    }
+                  } catch (err) {
+                    console.error("Error checking profile:", err);
+                  }
+                  router.push("/expert-dashboard");
+                }}
+                className="text-[#36013F] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
+              >
                 Dashboard
-              </Link>
+              </button>
             </>
           ) : (
             <>

@@ -14,7 +14,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 const auth = getAuth(app);
 
-export default function UserLayout({ children }) {
+export default function AgencyLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -99,24 +99,24 @@ export default function UserLayout({ children }) {
           console.error("Error fetching pending leads count:", e.message);
         }
 
-        // Redirect /expert-dashboard to /expert-dashboard/messages
+        // Redirect /agency-dashboard to /agency-dashboard/messages
         
-        if (pathname === "/expert-dashboard") {
-          router.push("/expert-dashboard/messages");
+        if (pathname === "/agency-dashboard") {
+          router.push("/agency-dashboard/messages");
           return;
         }
 
         if (forcePasswordChange) {
           const allowedPaths = [
-            "/expert-dashboard/edit-profile",
-            "/expert-dashboard/messages",
-            "/expert-dashboard/change-password",
-            "/expert-dashboard/contact-us",
-            "/expert-dashboard/availability",
-            "/expert-dashboard/bookings"
+            "/agency-dashboard/edit-profile",
+            "/agency-dashboard/messages",
+            "/agency-dashboard/change-password",
+            "/agency-dashboard/contact-us",
+            "/agency-dashboard/availability",
+            "/agency-dashboard/bookings"
           ];
           if (!allowedPaths.includes(pathname)) {
-            router.push("/expert-dashboard/change-password");
+            router.push("/agency-dashboard/change-password");
             return;
           }
         }
@@ -212,10 +212,10 @@ export default function UserLayout({ children }) {
 
           <nav className="flex flex-col space-y-4">
             <Link
-              href="/expert-dashboard/messages"
-              onClick={() => handleNavClick("/expert-dashboard/messages")}
+              href="/agency-dashboard/messages"
+              onClick={() => handleNavClick("/agency-dashboard/messages")}
               className={`flex items-center gap-2 p-2 relative ${
-                pathname === "/expert-dashboard/messages"
+                pathname === "/agency-dashboard/messages"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
@@ -232,10 +232,10 @@ export default function UserLayout({ children }) {
               )}
             </Link>
             <Link
-              href="/expert-dashboard/edit-profile"
-              onClick={() => handleNavClick("/expert-dashboard/edit-profile")}
+              href="/agency-dashboard/edit-profile"
+              onClick={() => handleNavClick("/agency-dashboard/edit-profile")}
               className={`flex items-center gap-2 p-2 ${
-                pathname === "/expert-dashboard/edit-profile"
+                pathname === "/agency-dashboard/edit-profile"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
@@ -246,10 +246,10 @@ export default function UserLayout({ children }) {
               <span className="hidden md:inline">Edit Profile</span>
             </Link>
             <Link
-              href="/expert-dashboard/change-password"
-              onClick={() => handleNavClick("/expert-dashboard/change-password")}
+              href="/agency-dashboard/change-password"
+              onClick={() => handleNavClick("/agency-dashboard/change-password")}
               className={`flex items-center gap-2 p-2 ${
-                pathname === "/expert-dashboard/change-password"
+                pathname === "/agency-dashboard/change-password"
                   ? "bg-[#F4D35E] rounded-3xl text-black"
                   : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
               }`}
@@ -274,10 +274,10 @@ export default function UserLayout({ children }) {
               <span className="hidden md:inline">Forgot Password</span>
             </Link>
             <Link
-    href="/expert-dashboard/contact-us"
-    onClick={() => handleNavClick("/expert-dashboard/contact-us")}
+    href="/agency-dashboard/contact-us"
+    onClick={() => handleNavClick("/agency-dashboard/contact-us")}
     className={`flex items-center gap-2 p-2 ${
-      pathname === "/expert-dashboard/contact-us"
+      pathname === "/agency-dashboard/contact-us"
         ? "bg-[#F4D35E] rounded-3xl text-black"
         : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
     }`}
@@ -290,10 +290,10 @@ export default function UserLayout({ children }) {
 
 
     <Link
-    href="/expert-dashboard/availability"
-    onClick={() => handleNavClick("/expert-dashboard/availability")}
+    href="/agency-dashboard/availability"
+    onClick={() => handleNavClick("/agency-dashboard/availability")}
     className={`flex items-center gap-2 p-2 ${
-      pathname === "/expert-dashboard/availability"
+      pathname === "/agency-dashboard/availability"
         ? "bg-[#F4D35E] rounded-3xl text-black"
         : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
     }`}
@@ -306,10 +306,10 @@ export default function UserLayout({ children }) {
 
   
     <Link
-    href="/expert-dashboard/bookings"
-    onClick={() => handleNavClick("/expert-dashboard/bookings")}
+    href="/agency-dashboard/bookings"
+    onClick={() => handleNavClick("/agency-dashboard/bookings")}
     className={`flex items-center gap-2 p-2 ${
-      pathname === "/expert-dashboard/bookings"
+      pathname === "/agency-dashboard/bookings"
         ? "bg-[#F4D35E] rounded-3xl text-black"
         : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
     }`}

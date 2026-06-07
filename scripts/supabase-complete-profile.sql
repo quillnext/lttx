@@ -21,7 +21,10 @@ add column if not exists status text,
 add column if not exists is_handed_over boolean not null default false,
 add column if not exists user_id text,
 add column if not exists force_password_change boolean not null default false,
-add column if not exists approval_timestamp timestamptz;
+add column if not exists approval_timestamp timestamptz,
+add column if not exists bio text,
+add column if not exists why_consult jsonb not null default '[]'::jsonb,
+add column if not exists experience_dna jsonb;
 
 create table if not exists public.expert_recurring_availability (
   expert_id text primary key,
@@ -60,6 +63,9 @@ create table if not exists public.profile_requests (
   website text,
   employee_count text,
   lead_id text,
+  bio text,
+  why_consult jsonb not null default '[]'::jsonb,
+  experience_dna jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -74,7 +80,10 @@ add column if not exists status text,
 add column if not exists is_handed_over boolean not null default false,
 add column if not exists user_id text,
 add column if not exists force_password_change boolean not null default false,
-add column if not exists approval_timestamp timestamptz;
+add column if not exists approval_timestamp timestamptz,
+add column if not exists bio text,
+add column if not exists why_consult jsonb not null default '[]'::jsonb,
+add column if not exists experience_dna jsonb;
 
 create table if not exists public.recent_searches (
   id uuid primary key default gen_random_uuid(),

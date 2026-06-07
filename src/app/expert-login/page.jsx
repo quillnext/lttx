@@ -1,10 +1,10 @@
-
 "use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { app } from "@/lib/firebase";
+import { app, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "../components/Navbar";
@@ -15,6 +15,7 @@ const auth = getAuth(app);
 export default function UserLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("expert");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -25,31 +26,54 @@ export default function UserLoginPage() {
     setLoading(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log("User logged in successfully");
-      router.push("/expert-dashboard/messages"); // Redirect to user dashboard after login
+      const user = userCredential.user;
+
+      let redirectUrl = role === "agency" ? "/agency-dashboard/messages" : "/expert-dashboard/messages";
+
+      try {
+        const profileRef = doc(db, "Profiles", user.uid);
+        const profileSnap = await getDoc(profileRef);
+        if (profileSnap.exists()) {
+          const dbProfileType = profileSnap.data().profileType;
+          if (dbProfileType === "agency") {
+            redirectUrl = "/agency-dashboard/messages";
+          } else if (dbProfileType === "expert") {
+            redirectUrl = "/expert-dashboard/messages";
+          }
+        } else {
+          // Fallback to Supabase
+          const { supabase } = await import("@/lib/supabase");
+          const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
+          const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
+          if (data) {
+            if (data.profile_type === "agency") {
+              redirectUrl = "/agency-dashboard/messages";
+            } else if (data.profile_type === "expert") {
+              redirectUrl = "/expert-dashboard/messages";
+            }
+          }
+        }
+      } catch (profileErr) {
+        console.error("Error checking profile type:", profileErr);
+      }
+
+      router.push(redirectUrl);
     }
-    //  catch (err) {
-    //   console.error("Login error:", err.message);
-    //   setError(err.message);
-    //   setLoading(false);
-
-    // }
     catch (err) {
-  // console.error("Login error:", err.code);
-  if (
-    err.code === "auth/user-not-found" ||
-    err.code === "auth/wrong-password"
-  ) {
-    setError("Invalid email or password");
-  } else if (err.code === "auth/invalid-credential") {
-    setError("Please enter a valid email address");
-  } else {
-    setError("Something went wrong. Please try again later.");
-  }
-  setLoading(false);
-}
-
+      if (
+        err.code === "auth/user-not-found" ||
+        err.code === "auth/wrong-password"
+      ) {
+        setError("Invalid email or password");
+      } else if (err.code === "auth/invalid-credential") {
+        setError("Please enter a valid email address");
+      } else {
+        setError("Something went wrong. Please try again later.");
+      }
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,7 +90,36 @@ export default function UserLoginPage() {
                     priority
                   />
           </div>
-        <h1 className="text-2xl font-bold text-center text-[#36013F] mb-4">Expert Login</h1>
+        <h1 className="text-2xl font-bold text-center text-[#36013F] mb-4">
+          {role === "expert" ? "Expert Login" : "Agency Login"}
+        </h1>
+        
+        {/* Role Toggle Selector */}
+        <div className="flex bg-gray-100 p-1 rounded-2xl mb-6">
+          <button
+            type="button"
+            onClick={() => setRole("expert")}
+            className={`flex-1 py-2 text-center text-sm font-semibold rounded-xl transition-all duration-200 ${
+              role === "expert"
+                ? "bg-[#36013F] text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Expert
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole("agency")}
+            className={`flex-1 py-2 text-center text-sm font-semibold rounded-xl transition-all duration-200 ${
+              role === "agency"
+                ? "bg-[#36013F] text-white shadow-sm"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Agency
+          </button>
+        </div>
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
