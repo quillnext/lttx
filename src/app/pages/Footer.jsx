@@ -37,7 +37,7 @@ const Footer = () => {
           </div>
 
           {/* Right Section: Navigation Grid */}
-          <nav className="flex flex-wrap gap-x-8 gap-y-4 justify-center md:justify-end flex-1 max-w-3xl">
+          <nav className="flex flex-wrap gap-x-8 gap-y-4 justify-center md:justify-end flex-1 max-w-2xl">
             {[
               { label: 'Home', href: '/' },
               { label: 'About', href: '/about/#about' },
@@ -46,6 +46,9 @@ const Footer = () => {
               { label: 'Joining Process', href: '/about/#joining-process' },
               { label: 'News and Media', href: '/news-and-media' },
               { label: 'Verification Process', href: '/verification-process' },
+              { label: 'Aaq', href: '/aaq' },
+              { label: 'Ask an Expert', href: '/ask-an-expert' },
+              { label: 'Privacy Policy', href: '/privacy-policy' },
             ].map((link) => (
               <Link
                 key={link.label}
