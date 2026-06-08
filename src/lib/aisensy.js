@@ -1,107 +1,148 @@
-/**
- * AiSensy WhatsApp API helper
- *
- * Required env vars:
- *   AISENSY_API_KEY          — your AiSensy project API key
- *   AISENSY_CAMPAIGN_REPLY   — approved template campaign name for expert reply notification
- *
- * Template variables expected by AISENSY_CAMPAIGN_REPLY (in order):
- *   {{1}} - user name
- *   {{2}} - expert name
- *   {{3}} - service type  (e.g. "1:1 Strategic Consultation")
- *   {{4}} - next step CTA (e.g. "Book a Master Plan session...")
- *
- * Example approved template body:
- *   "Hi {{1}}, your expert {{2}} has replied to your {{3}} request on XmyTravel.
- *    Check your email for the full recommendation.
- *    Next step: {{4}}"
- */
+const AISENSY_API_URL =
+  process.env.AISENSY_API_URL || "https://backend.aisensy.com/campaign/t1/api/v2";
 
-const AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
+const compactParams = (params = []) =>
+  params.map((value) => String(value ?? "").trim()).filter(Boolean);
 
-/**
- * Normalize a phone number to E.164 without the + prefix (AiSensy wants digits only).
- * Assumes Indian number if no country code is detected.
- */
 export const normalizePhone = (phone = "") => {
-  const digits = phone.replace(/\D/g, "");
+  const digits = String(phone).replace(/\D/g, "");
   if (!digits) return null;
-  // Already has country code (10+ digits, starts with country code)
   if (digits.length === 12 && digits.startsWith("91")) return digits;
-  if (digits.length === 11 && digits.startsWith("0")) return "91" + digits.slice(1);
-  if (digits.length === 10) return "91" + digits;
-  // International: trust as-is if 11+ digits
+  if (digits.length === 11 && digits.startsWith("0")) return `91${digits.slice(1)}`;
+  if (digits.length === 10) return `91${digits}`;
   if (digits.length >= 11) return digits;
   return null;
 };
 
-/**
- * Send a WhatsApp message via AiSensy campaign template.
- *
- * @param {Object} opts
- * @param {string} opts.phone        - raw phone number (will be normalized)
- * @param {string} opts.userName     - traveller name  (template param 1)
- * @param {string} opts.expertName   - expert name     (template param 2)
- * @param {string} opts.serviceType  - service type    (template param 3)
- * @param {string} opts.nextStepCta  - CTA text        (template param 4)
- * @param {string} [opts.campaign]   - override campaign name
- * @returns {Promise<{success: boolean, error?: string}>}
- */
-export const sendWhatsAppReply = async ({
+export const sendAiSensyCampaign = async ({
+  phone,
+  campaignName,
+  userName = "Traveller",
+  templateParams = [],
+  source = "xmytravel-app",
+  media = {},
+  buttons = [],
+}) => {
+  const apiKey = process.env.AISENSY_API_KEY;
+
+  if (!apiKey || !campaignName) {
+    return {
+      success: false,
+      skipped: true,
+      error: "AiSensy API key or campaign name not configured",
+    };
+  }
+
+  const destination = normalizePhone(phone);
+  if (!destination) {
+    return { success: false, skipped: true, error: `Invalid phone number: ${phone || "empty"}` };
+  }
+
+  try {
+    const response = await fetch(AISENSY_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        apiKey,
+        campaignName,
+        destination,
+        userName,
+        templateParams: compactParams(templateParams),
+        source,
+        media,
+        buttons,
+        carouselCards: [],
+        location: {},
+      }),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.error("AiSensy request failed:", data?.message || response.statusText);
+      return { success: false, error: data?.message || "AiSensy request failed", data };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error("AiSensy send error:", error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+export const sendWhatsAppReply = ({
   phone,
   userName,
   expertName,
   serviceType,
   nextStepCta,
   campaign,
-}) => {
-  const apiKey = process.env.AISENSY_API_KEY;
-  const campaignName = campaign || process.env.AISENSY_CAMPAIGN_REPLY;
-
-  if (!apiKey || !campaignName) {
-    return { success: false, error: "AiSensy API key or campaign name not configured" };
-  }
-
-  const destination = normalizePhone(phone);
-  if (!destination) {
-    return { success: false, error: `Invalid phone number: ${phone}` };
-  }
-
-  const payload = {
-    apiKey,
-    campaignName,
-    destination,
+}) =>
+  sendAiSensyCampaign({
+    phone,
+    campaignName: campaign || process.env.AISENSY_CAMPAIGN_REPLY,
     userName: userName || "Traveller",
     templateParams: [
       userName || "Traveller",
-      expertName || "XmyTravel Expert",
+      expertName || "XMyTravel Expert",
       serviceType || "Travel Request",
       nextStepCta || "Check your email for the full recommendation.",
     ],
     source: "expert-reply-api",
-    media: {},
-    buttons: [],
-    carouselCards: [],
-    location: {},
-  };
+  });
 
-  try {
-    const res = await fetch(AISENSY_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+export const sendWhatsAppQuestionSubmitted = ({
+  phone,
+  userName,
+  expertName,
+  question,
+  campaign,
+}) =>
+  sendAiSensyCampaign({
+    phone,
+    campaignName: campaign || process.env.AISENSY_CAMPAIGN_QUESTION_SUBMITTED,
+    userName: userName || "Traveller",
+    templateParams: [
+      userName || "Traveller",
+      expertName || "XMyTravel Expert",
+      String(question || "your travel question").slice(0, 120),
+    ],
+    source: "question-submission-api",
+  });
 
-    const data = await res.json();
+export const sendWhatsAppProfileSubmitted = ({
+  phone,
+  fullName,
+  profileType,
+  campaign,
+}) =>
+  sendAiSensyCampaign({
+    phone,
+    campaignName: campaign || process.env.AISENSY_CAMPAIGN_PROFILE_SUBMITTED,
+    userName: fullName || "Partner",
+    templateParams: [
+      fullName || "Partner",
+      profileType === "agency" ? "agency" : "expert",
+      "Our team will review your application and notify you after approval.",
+    ],
+    source: "profile-submission-api",
+  });
 
-    if (!res.ok) {
-      console.error("AiSensy error:", data);
-      return { success: false, error: data?.message || "AiSensy request failed" };
-    }
-
-    return { success: true, data };
-  } catch (err) {
-    console.error("AiSensy send error:", err.message);
-    return { success: false, error: err.message };
-  }
-};
+export const sendWhatsAppProfileApproved = ({
+  phone,
+  fullName,
+  profileType,
+  profileUrl,
+  campaign,
+}) =>
+  sendAiSensyCampaign({
+    phone,
+    campaignName: campaign || process.env.AISENSY_CAMPAIGN_PROFILE_APPROVED,
+    userName: fullName || "Partner",
+    templateParams: [
+      fullName || "Partner",
+      profileType === "agency" ? "agency" : "expert",
+      profileUrl || "https://www.xmytravel.com",
+    ],
+    source: "profile-approval-api",
+  });

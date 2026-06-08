@@ -1,10 +1,20 @@
 import { sendEmail } from "@/lib/email";
+import { sendWhatsAppProfileApproved } from "@/lib/aisensy";
 import { buildEmailFooter } from "@/app/utils/emailComponents";
 
-export async function sendApprovalNotificationEmail({ fullName, email, slug, generatedReferralCode, username, password }) {
+export async function sendApprovalNotificationEmail({
+  fullName,
+  email,
+  phone,
+  slug,
+  generatedReferralCode,
+  username,
+  profileType = "expert",
+}) {
   console.log("Preparing approval email for:", email);
 
-  const profileUrl = `https://www.xmytravel.com/experts/${slug}`;
+  const isAgency = profileType === "agency";
+  const profileUrl = `https://www.xmytravel.com/${isAgency ? "agency" : "experts"}/${slug}`;
   const year = new Date().getFullYear();
   const footer = buildEmailFooter({ expertUsername: slug, year });
 
@@ -81,7 +91,7 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
           <img src="https://www.xmytravel.com/emailbanner.jpeg" class="banner" alt="XmyTravel Banner" />
           <div class="content">
             <h2 style="color:#36013F">Hello ${fullName},</h2>
-            <p>🎉 Congratulations! Your expert profile has been reviewed and officially approved by our team.</p>
+            <p>🎉 Congratulations! Your ${isAgency ? "agency" : "expert"} profile has been reviewed and officially approved by our team.</p>
             <p>Your profile is now live on <strong>XmyTravel</strong> and ready to be discovered by travellers around the world.</p>
             ${loginCredentialsSection}
             <p>You can access your profile below:</p>
@@ -111,7 +121,17 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
 
   await sendEmail({
     to: email,
-    subject: "Your Expert Profile Is Live on XmyTravel",
+    subject: `Your ${isAgency ? "Agency" : "Expert"} Profile Is Live on XmyTravel`,
     html,
   });
+
+  const whatsappResult = await sendWhatsAppProfileApproved({
+    phone,
+    fullName,
+    profileType,
+    profileUrl,
+  });
+  if (!whatsappResult.success && !whatsappResult.skipped) {
+    console.warn("Profile approval WhatsApp failed:", whatsappResult.error);
+  }
 }

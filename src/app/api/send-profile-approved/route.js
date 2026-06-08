@@ -158,9 +158,11 @@ export async function POST(req) {
     await sendApprovalNotificationEmail({
       fullName: profile.fullName,
       email: profile.email,
+      phone: profile.phone,
       slug,
       generatedReferralCode: profile.generatedReferralCode || requestProfile.generated_referral_code || "N/A",
       username: profile.username,
+      profileType: profile.profileType || requestProfile.profile_type || "expert",
       password,
     });
 

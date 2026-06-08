@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, getFirestore, getDoc, doc } from "firebase/firestore";
+import { collection, addDoc, getFirestore, getDoc, doc, updateDoc } from "firebase/firestore";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
@@ -178,7 +178,7 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
         }
       }
 
-      await addDoc(collection(db, "Questions"), {
+      const questionPayload = {
         expertId: expert.id,
         expertName: expert.fullName || "Unknown Expert",
         expertEmail: expert.email || "placeholder@xmytravel.com",
@@ -192,7 +192,47 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
         sessionId: sessionId || null,
         sessionSnapshot: sessionSnapshot || null, // Snapshot of the search context
         reply: null,
-      });
+        aiDraft: null,
+        aiDraftStatus: "queued",
+      };
+
+      const questionRef = await addDoc(collection(db, "Questions"), questionPayload);
+
+      const draftRequest = fetch("/api/generate-expert-prescription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          question: {
+            ...questionPayload,
+            serviceType: "ASK A QUESTION",
+          },
+          sessionData: sessionSnapshot || null,
+        }),
+        keepalive: true,
+      })
+        .then(async (response) => {
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || "AI draft generation failed");
+          }
+          await updateDoc(questionRef, {
+            aiDraft: result.data,
+            aiDraftStatus: "ready",
+            aiDraftGeneratedAt: new Date().toISOString(),
+          });
+        })
+        .catch(async (error) => {
+          console.warn("Question AI draft generation failed:", error.message);
+          try {
+            await updateDoc(questionRef, {
+              aiDraftStatus: "failed",
+              aiDraftError: error.message,
+            });
+          } catch (updateError) {
+            console.warn("Failed to update AI draft status:", updateError.message);
+          }
+        });
+      void draftRequest;
 
       if (!hasSubmitted && !user) {
         localStorage.setItem("userFormData", JSON.stringify({ name, email, phone, purpose: "General Query" }));

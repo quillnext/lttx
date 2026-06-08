@@ -1,5 +1,6 @@
 
 import { sendEmail } from "@/lib/email";
+import { sendWhatsAppProfileSubmitted } from "@/lib/aisensy";
 import { buildSimpleFooter } from "./emailComponents";
 
 const emailTemplate = ({ data, year, isAdmin }) => {
@@ -99,11 +100,19 @@ export async function sendProfileSubmissionEmails(formData) {
       bcc: process.env.ADMIN_EMAIL_BCC,
       subject: `🔎 New Profile Request: ${formData.fullName}`,
       html: emailTemplate({ data: formData, year, isAdmin: true }),
-    })
+    }),
   ];
 
   try {
     await Promise.all(emailPromises);
+    const whatsappResult = await sendWhatsAppProfileSubmitted({
+      phone: formData.phone,
+      fullName: formData.fullName,
+      profileType: formData.profileType,
+    });
+    if (!whatsappResult.success && !whatsappResult.skipped) {
+      console.warn("Profile submission WhatsApp failed:", whatsappResult.error);
+    }
   } catch (error) {
     console.error("Error sending profile submission emails:", error);
     throw new Error("Failed to send notification emails");

@@ -74,6 +74,7 @@ alter table public.profile_requests enable row level security;
 
 create index if not exists profile_requests_email_idx on public.profile_requests (email);
 create index if not exists profile_requests_referral_code_idx on public.profile_requests (referral_code);
+create index if not exists profile_requests_profile_type_idx on public.profile_requests (profile_type);
 
 alter table public.profile_requests
 add column if not exists status text,
@@ -106,3 +107,55 @@ alter table public.recent_searches enable row level security;
 create index if not exists recent_searches_query_idx on public.recent_searches (query);
 create index if not exists recent_searches_timestamp_idx on public.recent_searches (timestamp desc);
 create index if not exists recent_searches_slug_idx on public.recent_searches (slug);
+
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  service_type text not null,
+  source text,
+  expert_id text not null,
+  expert_name text,
+  user_name text,
+  user_email text,
+  destination text,
+  trip_dates text,
+  status text not null default 'pending',
+  form_data jsonb not null default '{}'::jsonb,
+  reply text,
+  replied_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint leads_status_check check (
+    status in (
+      'pending',
+      'accepted',
+      'clarification_requested',
+      'answered',
+      'admin_prompt',
+      'escalated'
+    )
+  )
+);
+
+alter table public.leads enable row level security;
+
+alter table public.leads
+add column if not exists service_type text,
+add column if not exists source text,
+add column if not exists expert_id text,
+add column if not exists expert_name text,
+add column if not exists user_name text,
+add column if not exists user_email text,
+add column if not exists destination text,
+add column if not exists trip_dates text,
+add column if not exists status text not null default 'pending',
+add column if not exists form_data jsonb not null default '{}'::jsonb,
+add column if not exists reply text,
+add column if not exists replied_at timestamptz,
+add column if not exists created_at timestamptz not null default now(),
+add column if not exists updated_at timestamptz not null default now();
+
+create index if not exists leads_expert_id_idx on public.leads (expert_id);
+create index if not exists leads_user_email_idx on public.leads (user_email);
+create index if not exists leads_status_idx on public.leads (status);
+create index if not exists leads_created_at_idx on public.leads (created_at desc);
+create index if not exists leads_service_type_idx on public.leads (service_type);

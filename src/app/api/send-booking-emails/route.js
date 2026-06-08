@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { buildSimpleFooter } from "@/app/utils/emailComponents";
+import { sendAiSensyCampaign } from "@/lib/aisensy";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
@@ -229,6 +230,25 @@ export async function POST(request) {
     }
 
     await Promise.all(emailPromises);
+
+    // Send WhatsApp booking confirmation via AiSensy if configured
+    if (!isPlaceholder && userPhone && process.env.AISENSY_CAMPAIGN_BOOKING) {
+      const whatsappResult = await sendAiSensyCampaign({
+        phone: userPhone,
+        campaignName: process.env.AISENSY_CAMPAIGN_BOOKING,
+        userName,
+        templateParams: [
+          userName,
+          expertName,
+          bookingDate,
+          bookingTime,
+        ],
+        source: "booking-confirmation-api",
+      });
+      if (!whatsappResult.success && !whatsappResult.skipped) {
+        console.warn("Booking confirmation WhatsApp failed/skipped:", whatsappResult.error);
+      }
+    }
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {

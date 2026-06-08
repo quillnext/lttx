@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { buildEmailFooter } from "@/app/utils/emailComponents";
+import { sendWhatsAppQuestionSubmitted } from "@/lib/aisensy";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
@@ -249,7 +250,22 @@ export async function POST(request) {
 
     await Promise.all(emailPromises);
 
-    return NextResponse.json({ success: true, message: "Emails sent successfully" }, { status: 200 });
+    const whatsappResult = await sendWhatsAppQuestionSubmitted({
+      phone: userPhone,
+      userName,
+      expertName,
+      question,
+    });
+    if (!whatsappResult.success && !whatsappResult.skipped) {
+      console.warn("Question submission WhatsApp failed:", whatsappResult.error);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Notifications sent successfully",
+      whatsappSent: whatsappResult.success,
+      whatsappError: whatsappResult.success ? undefined : whatsappResult.error,
+    }, { status: 200 });
   } catch (error) {
     console.error("Error sending emails:", error.message);
     return NextResponse.json({ error: `Failed to send emails: ${error.message}` }, { status: 500 });
