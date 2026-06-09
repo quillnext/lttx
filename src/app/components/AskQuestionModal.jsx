@@ -13,6 +13,7 @@ import { FaPaperPlane, FaSpinner } from "react-icons/fa";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
+import { supabase } from "@/lib/supabase";
 
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -193,6 +194,29 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
         sessionSnapshot: sessionSnapshot || null, // Snapshot of the search context
         reply: null,
       });
+
+      // Also save to Supabase questions table if it exists
+      try {
+        const { error: supabaseError } = await supabase.from("questions").insert({
+          expert_id: expert.id,
+          expert_name: expert.fullName || "Unknown Expert",
+          expert_email: expert.email || "placeholder@xmytravel.com",
+          question,
+          user_name: name,
+          user_email: email,
+          user_phone: phone,
+          status: "pending",
+          is_public: false,
+          is_admin_prompt: false,
+          session_id: sessionId || null,
+          session_snapshot: sessionSnapshot || null,
+        });
+        if (supabaseError) {
+          console.warn("Could not save to Supabase questions table:", supabaseError.message);
+        }
+      } catch (err) {
+        console.warn("Failed to insert to Supabase questions:", err.message);
+      }
 
       if (!hasSubmitted && !user) {
         localStorage.setItem("userFormData", JSON.stringify({ name, email, phone, purpose: "General Query" }));

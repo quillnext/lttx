@@ -46,15 +46,7 @@ const mobileStyles = `
 export const buildSimpleFooter = ({ year = new Date().getFullYear() } = {}) => `
 ${mobileStyles}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:28px;">
-  <tr>
-    <td style="background:#36013F;border-radius:16px;padding:20px 16px;text-align:center;">
-      <div style="font-size:14px;color:#F4D35E;font-weight:700;margin-bottom:12px;line-height:1.5;">Have a travel question?<br/>Talk to a verified expert.</div>
-      <a href="https://www.xmytravel.com/aaq" class="xmt-footer-cta-btn"
-        style="display:inline-block;background:#F4D35E;color:#36013F;text-decoration:none;padding:12px 32px;border-radius:999px;font-size:13px;font-weight:900;letter-spacing:0.5px;">
-        Aaq &rarr;
-      </a>
-    </td>
-  </tr>
+
   <tr><td height="12" style="height:12px;line-height:12px;font-size:0;">&nbsp;</td></tr>
   <tr>
     <td style="text-align:center;padding:20px 16px;background:#1f0123;border-radius:16px;">

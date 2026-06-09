@@ -29,6 +29,7 @@ export default function AdminQuestions() {
 
           return {
             id: docSnap.id,
+            isFirebase: true,
             ...data,
             rawTimestamp: rawDate,
             timestamp:
@@ -38,13 +39,44 @@ export default function AdminQuestions() {
           };
         });
 
-        const ids = questionList.map((q) => q.id);
-        const duplicates = ids.filter((id, index) => ids.indexOf(id) !== index);
-        if (duplicates.length > 0) {
-          console.warn("Duplicate question IDs found:", duplicates);
+        let supabaseQuestions = [];
+        try {
+          const res = await fetch("/api/questions");
+          if (res.ok) {
+            const result = await res.json();
+            supabaseQuestions = (result.questions || []).map((item) => {
+              const rawDate = new Date(item.created_at);
+              return {
+                id: item.id,
+                isFirebase: false,
+                expertId: item.expert_id,
+                expertName: item.expert_name,
+                expertEmail: item.expert_email,
+                question: item.question,
+                userName: item.user_name,
+                userEmail: item.user_email,
+                userPhone: item.user_phone,
+                status: item.status,
+                reply: item.reply,
+                suggestedAnswer: item.suggested_answer,
+                isAdminPrompt: item.is_admin_prompt,
+                isPublic: item.is_public,
+                sessionId: item.session_id,
+                sessionSnapshot: item.session_snapshot,
+                rawTimestamp: rawDate,
+                timestamp:
+                  rawDate.toLocaleDateString("en-GB") +
+                  " " +
+                  rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+              };
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to fetch questions from Supabase:", err);
         }
 
-        const sorted = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+        const combined = [...questionList, ...supabaseQuestions];
+        const sorted = combined.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
         setQuestions(sorted);
       } catch (error) {
         console.error("Error fetching questions:", error.message);
@@ -79,19 +111,24 @@ export default function AdminQuestions() {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, isFirebase) => {
     const confirm = window.confirm("Are you sure you want to delete this question?");
     if (!confirm) return;
 
     try {
-      await deleteDoc(doc(db, "Questions", id));
+      if (isFirebase) {
+        await deleteDoc(doc(db, "Questions", id));
+      } else {
+        const res = await fetch(`/api/questions?id=${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete from Supabase");
+      }
       setQuestions((prev) => prev.filter((question) => question.id !== id));
     } catch (error) {
       console.error("Error deleting question:", error.message);
     }
   };
 
-  const handleTogglePublic = async (id, currentIsPublic) => {
+  const handleTogglePublic = async (id, currentIsPublic, isFirebase) => {
     setToggling((prev) => ({ ...prev, [id]: true }));
     try {
       setQuestions((prev) =>
@@ -99,8 +136,17 @@ export default function AdminQuestions() {
           question.id === id ? { ...question, isPublic: !currentIsPublic } : question
         )
       );
-      const questionRef = doc(db, "Questions", id);
-      await updateDoc(questionRef, { isPublic: !currentIsPublic });
+      if (isFirebase) {
+        const questionRef = doc(db, "Questions", id);
+        await updateDoc(questionRef, { isPublic: !currentIsPublic });
+      } else {
+        const res = await fetch("/api/questions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, updates: { is_public: !currentIsPublic } }),
+        });
+        if (!res.ok) throw new Error("Failed to update public status in Supabase");
+      }
       console.log(`Toggled isPublic for question ${id} to ${!currentIsPublic}`);
     } catch (error) {
       setQuestions((prev) =>
@@ -198,6 +244,7 @@ export default function AdminQuestions() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           questionId: redirectModal.id,
+          isFirebase: redirectModal.isFirebase,
           newExpertId: expertObj.id,
           newExpertName: expertObj.fullName,
           newExpertEmail: expertObj.email,
@@ -352,7 +399,7 @@ export default function AdminQuestions() {
                           <input
                             type="checkbox"
                             checked={q.isPublic || false}
-                            onChange={() => handleTogglePublic(q.id, q.isPublic || false)}
+                            onChange={() => handleTogglePublic(q.id, q.isPublic || false, q.isFirebase)}
                             className="sr-only peer"
                             disabled={toggling[q.id]}
                           />
@@ -363,7 +410,7 @@ export default function AdminQuestions() {
                       </td>
                       <td className="p-3 border space-y-2">
                         <button
-                          onClick={() => handleDelete(q.id)}
+                          onClick={() => handleDelete(q.id, q.isFirebase)}
                           className="px-3 py-1 w-full rounded-lg text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200"
                         >
                           Delete

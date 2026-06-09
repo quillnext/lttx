@@ -14,21 +14,19 @@ export async function POST(request) {
 
     const supabase = createSupabaseAdminClient();
     const rows = targets.map((profile) => ({
-      service_type: "admin_prompt",
-      source: "admin",
       expert_id: profile.id,
       expert_name: profile.fullName || profile.full_name || "Unknown",
+      expert_email: profile.email || "",
       user_name: "Admin",
       user_email: "admin@xmytravel.com",
       status: "admin_prompt",
-      form_data: {
-        question,
-        suggestedAnswer,
-        isAdminPrompt: true,
-      },
+      question,
+      suggested_answer: suggestedAnswer,
+      is_admin_prompt: true,
+      is_public: false,
     }));
 
-    const { error } = await supabase.from("leads").insert(rows);
+    const { error } = await supabase.from("questions").insert(rows);
     if (error) throw error;
 
     return NextResponse.json({ success: true, count: rows.length }, { status: 200 });

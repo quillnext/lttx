@@ -7,6 +7,7 @@ export async function POST(request) {
     try {
         const {
             questionId,
+            isFirebase,
             oldExpertID, // Expecting ID for logging/history if needed, primarily using Firestore doc data though
             newExpertId,
             newExpertName,
@@ -23,30 +24,79 @@ export async function POST(request) {
             );
         }
 
-        const questionRef = adminDb.collection("Questions").doc(questionId);
-        const questionDoc = await questionRef.get();
+        let currentData = {};
+        if (isFirebase !== false) {
+            const questionRef = adminDb.collection("Questions").doc(questionId);
+            const questionDoc = await questionRef.get();
 
-        if (!questionDoc.exists) {
-            return NextResponse.json({ error: "Question not found" }, { status: 404 });
+            if (!questionDoc.exists) {
+                if (isFirebase === true) {
+                    return NextResponse.json({ error: "Question not found in Firestore" }, { status: 404 });
+                }
+                // Fallback to Supabase check if isFirebase wasn't explicitly false but Firestore document didn't exist
+            } else {
+                currentData = questionDoc.data();
+            }
         }
 
-        const currentData = questionDoc.data();
+        // Check if we need to query Supabase (isFirebase is false, or not found in firestore)
+        if (!currentData.question) {
+            const { createSupabaseAdminClient } = await import("@/lib/supabaseAdmin");
+            const supabase = createSupabaseAdminClient();
+            const { data, error } = await supabase
+                .from("questions")
+                .select("*")
+                .eq("id", questionId)
+                .single();
+
+            if (error || !data) {
+                return NextResponse.json({ error: "Question not found" }, { status: 404 });
+            }
+            currentData = {
+                expertId: data.expert_id,
+                expertName: data.expert_name,
+                question: data.question,
+                userName: data.user_name,
+                userEmail: data.user_email,
+            };
+        }
+
         const finalQuestionText = questionText || currentData.question;
         const finalUserName = userName || currentData.userName;
         const finalUserEmail = userEmail || currentData.userEmail;
 
-        // 1. Update Firestore
-        await questionRef.update({
-            expertId: newExpertId,
-            expertName: newExpertName,
-            expertEmail: newExpertEmail,
-            isRedirected: true,
-            originalExpertId: currentData.expertId, // Save the old expert ID
-            originalExpertName: currentData.expertName, // Save old expert name
-            reminderCount: 0, // Reset reminders for the new expert
-            status: "pending", // Ensure status is pending
-            redirectedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
+        // Update target database
+        if (isFirebase !== false && (await adminDb.collection("Questions").doc(questionId).get()).exists) {
+            const questionRef = adminDb.collection("Questions").doc(questionId);
+            await questionRef.update({
+                expertId: newExpertId,
+                expertName: newExpertName,
+                expertEmail: newExpertEmail,
+                isRedirected: true,
+                originalExpertId: currentData.expertId || null,
+                originalExpertName: currentData.expertName || null,
+                reminderCount: 0,
+                status: "pending",
+                redirectedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+        } else {
+            const { createSupabaseAdminClient } = await import("@/lib/supabaseAdmin");
+            const supabase = createSupabaseAdminClient();
+            const { error: updateError } = await supabase
+                .from("questions")
+                .update({
+                    expert_id: newExpertId,
+                    expert_name: newExpertName,
+                    expert_email: newExpertEmail,
+                    is_redirected: true,
+                    original_expert_id: currentData.expertId || null,
+                    original_expert_name: currentData.expertName || null,
+                    status: "pending",
+                    redirected_at: new Date().toISOString(),
+                })
+                .eq("id", questionId);
+            if (updateError) throw updateError;
+        }
 
         const dashboardLink = "https://xmytravel.com/expert-dashboard";
 

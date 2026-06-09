@@ -11,6 +11,7 @@ import ExpertPrescriptionBuilder from "@/app/components/ExpertPrescriptionBuilde
 import PrescriptionUserView from "@/app/components/PrescriptionUserView";
 import { supabase } from "@/lib/supabase";
 import { mapSupabaseProfile } from "@/lib/supabaseProfile";
+import QuestionAnswerBuilder from "@/app/components/QuestionAnswerBuilder";
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -243,7 +244,6 @@ export default function Messages() {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
         fetchExpertProfile(user);
-        fetchQuestions(user.uid);
 
         // Subscribe to real-time changes on 'leads' table
         channel = supabase
@@ -314,7 +314,9 @@ export default function Messages() {
 
         // Robust silent background polling fallback every 5 seconds
         pollInterval = setInterval(() => {
-          fetchQuestions(user.uid);
+          if (user) {
+            fetchQuestions(user.uid, profileIdRef.current);
+          }
           if (profileIdRef.current) {
             fetchLeads(profileIdRef.current);
           }
@@ -353,13 +355,14 @@ export default function Messages() {
         setExpertProfile(mapped);
         profileIdRef.current = mapped.id;
         fetchLeads(mapped.id);
+        fetchQuestions(user.uid, mapped.id);
       }
     } catch (error) {
       console.error("Error fetching expert profile:", error.message);
     }
   };
 
-  const fetchQuestions = async (expertId) => {
+  const fetchQuestions = async (expertId, expertProfileId) => {
     try {
       const q = query(collection(db, "Questions"), where("expertId", "==", expertId));
       const querySnapshot = await getDocs(q);
@@ -369,6 +372,7 @@ export default function Messages() {
 
         return {
           id: docSnap.id,
+          isFirebase: true,
           ...data,
           rawTimestamp: rawDate,
           timestamp:
@@ -378,7 +382,46 @@ export default function Messages() {
         };
       });
 
-      const sorted = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+      let supabaseQuestions = [];
+      if (expertProfileId) {
+        try {
+          const res = await fetch(`/api/questions?expertId=${encodeURIComponent(expertProfileId)}`);
+          if (res.ok) {
+            const result = await res.json();
+            supabaseQuestions = (result.questions || []).map((item) => {
+              const rawDate = new Date(item.created_at);
+              return {
+                id: item.id,
+                isFirebase: false,
+                expertId: item.expert_id,
+                expertName: item.expert_name,
+                expertEmail: item.expert_email,
+                question: item.question,
+                userName: item.user_name,
+                userEmail: item.user_email,
+                userPhone: item.user_phone,
+                status: item.status,
+                reply: item.reply,
+                suggestedAnswer: item.suggested_answer,
+                isAdminPrompt: item.is_admin_prompt,
+                isPublic: item.is_public,
+                sessionId: item.session_id,
+                sessionSnapshot: item.session_snapshot,
+                rawTimestamp: rawDate,
+                timestamp:
+                  rawDate.toLocaleDateString("en-GB") +
+                  " " +
+                  rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+              };
+            });
+          }
+        } catch (err) {
+          console.warn("Failed to fetch questions from Supabase:", err);
+        }
+      }
+
+      const combined = [...questionList, ...supabaseQuestions];
+      const sorted = combined.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
       setQuestions(sorted);
     } catch (error) {
       console.error("Error fetching questions:", error.message);
@@ -454,14 +497,33 @@ export default function Messages() {
       const finalReplyToSave = typeof finalReply === 'object' ? JSON.stringify(finalReply) : finalReply;
 
       if (activeTab === "questions") {
-        const questionRef = doc(db, "Questions", question.id);
-        await updateDoc(questionRef, {
-          reply: finalReplyToSave,
-          status: "answered",
-          repliedAt: new Date().toISOString(),
-          responseQuality: structuredReply?.qualityScores || null,
-          prescriptionVersion: structuredReply ? 1 : null,
-        });
+        if (question.isFirebase) {
+          const questionRef = doc(db, "Questions", question.id);
+          await updateDoc(questionRef, {
+            reply: finalReplyToSave,
+            status: "answered",
+            repliedAt: new Date().toISOString(),
+            responseQuality: structuredReply?.qualityScores || null,
+            prescriptionVersion: structuredReply ? 1 : null,
+          });
+        } else {
+          const res = await fetch("/api/questions", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: question.id,
+              updates: {
+                reply: finalReplyToSave,
+                status: "answered",
+                replied_at: new Date().toISOString(),
+              },
+            }),
+          });
+          if (!res.ok) {
+            const errResult = await res.json();
+            throw new Error(errResult.error || "Failed to update reply in Supabase");
+          }
+        }
       } else {
         const saveResponse = await fetch("/api/leads/update-response", {
           method: "POST",
@@ -574,12 +636,31 @@ export default function Messages() {
 
     setReplyLoading(true);
     try {
-      const questionRef = doc(db, "Questions", question.id);
-      await updateDoc(questionRef, {
-        reply: question.suggestedAnswer,
-        status: "answered",
-        repliedAt: new Date().toISOString(),
-      });
+      if (question.isFirebase) {
+        const questionRef = doc(db, "Questions", question.id);
+        await updateDoc(questionRef, {
+          reply: question.suggestedAnswer,
+          status: "answered",
+          repliedAt: new Date().toISOString(),
+        });
+      } else {
+        const res = await fetch("/api/questions", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: question.id,
+            updates: {
+              reply: question.suggestedAnswer,
+              status: "answered",
+              replied_at: new Date().toISOString(),
+            },
+          }),
+        });
+        if (!res.ok) {
+          const errResult = await res.json();
+          throw new Error(errResult.error || "Failed to update reply in Supabase");
+        }
+      }
 
       const response = await fetch("/api/send-expert-reply-email", {
         method: "POST",
@@ -629,10 +710,27 @@ export default function Messages() {
       const updatedAt = new Date().toISOString();
 
       if (activeTab === "questions") {
-        await updateDoc(doc(db, "Questions", caseItem.id), {
-          status: nextStatus,
-          workflowUpdatedAt: updatedAt,
-        });
+        if (caseItem.isFirebase) {
+          await updateDoc(doc(db, "Questions", caseItem.id), {
+            status: nextStatus,
+            workflowUpdatedAt: updatedAt,
+          });
+        } else {
+          const res = await fetch("/api/questions", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: caseItem.id,
+              updates: {
+                status: nextStatus,
+              },
+            }),
+          });
+          if (!res.ok) {
+            const errResult = await res.json();
+            throw new Error(errResult.error || "Failed to update question status in Supabase");
+          }
+        }
         setQuestions((prev) =>
           prev.map((item) =>
             item.id === caseItem.id ? { ...item, status: nextStatus, workflowUpdatedAt: updatedAt } : item
@@ -972,7 +1070,29 @@ export default function Messages() {
             <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
               {/* Left: Case Sheet (Scrollable) */}
               <div className="w-full md:w-1/2 p-6 overflow-y-auto border-r custom-scrollbar bg-white">
-                <CaseSheetView question={replyModal} sessionData={sessionData} isAdmin={false} />
+                {activeTab === "questions" ? (
+                  <div className="space-y-6">
+                    <div className="bg-purple-50/40 p-6 rounded-3xl border border-purple-100/80">
+                      <p className="text-[10px] font-black text-[#36013F] uppercase tracking-widest mb-3 opacity-60">Submitted Question</p>
+                      <p className="text-xl font-bold text-gray-900 leading-relaxed">
+                        "{replyModal.question}"
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">User Name</p>
+                        <p className="text-sm font-bold text-[#36013F] mt-1">{replyModal.userName || "Anonymous"}</p>
+                      </div>
+                      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">User Email</p>
+                        <p className="text-sm font-bold text-[#36013F] mt-1 truncate" title={replyModal.userEmail}>{replyModal.userEmail || "N/A"}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <CaseSheetView question={replyModal} sessionData={sessionData} isAdmin={false} />
+                )}
               </div>
 
               {/* Right: Prescription Builder (Scrollable) */}
@@ -1003,13 +1123,21 @@ export default function Messages() {
                   </div>
                 )}
 
-                <ExpertPrescriptionBuilder
-                  question={replyModal}
-                  onDraftGenerate={() => handleGenerateDraft(replyModal)}
-                  onSave={(data) => handleReply(replyModal, data)}
-                  isLoading={replyLoading}
-                  canGenerateDraft={replyModal.status === "accepted"}
-                />
+                {activeTab === "questions" ? (
+                  <QuestionAnswerBuilder
+                    question={replyModal}
+                    onSave={(answer) => handleReply(replyModal, answer)}
+                    isLoading={replyLoading}
+                  />
+                ) : (
+                  <ExpertPrescriptionBuilder
+                    question={replyModal}
+                    onDraftGenerate={() => handleGenerateDraft(replyModal)}
+                    onSave={(data) => handleReply(replyModal, data)}
+                    isLoading={replyLoading}
+                    canGenerateDraft={replyModal.status === "accepted"}
+                  />
+                )}
               </div>
             </div>
           </div>
