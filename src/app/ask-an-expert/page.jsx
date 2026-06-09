@@ -12,9 +12,11 @@ import "react-image-lightbox/style.css";
 import { toast } from "react-toastify";
 import { fetchExpertsByIds, fetchPublicExperts } from "@/lib/ask-an-expert/client";
 
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
+
 const PAGE_SIZE = 30;
 
-const AskQuestionModal = dynamic(() => import("@/app/components/AskQuestionModal"), {
+const ProfileServiceDrawer = dynamic(() => import("@/app/components/ProfileServiceDrawer"), {
   ssr: false,
 });
 
@@ -82,6 +84,7 @@ const SearchSkeleton = () => (
 );
 
 export default function ExpertsDirectory() {
+  const { isAuthenticated } = useUserAuthStore();
   const [experts, setExperts] = useState([]);
   const [filteredExperts, setFilteredExperts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -102,6 +105,33 @@ export default function ExpertsDirectory() {
   const router = useRouter();
   const observerRef = useRef(null);
   const loadMoreRef = useRef(null);
+
+  const handleAskClick = (expert) => {
+    if (!isAuthenticated) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("openExpert", expert.id);
+      params.set("openService", expert.profileType === 'agency' ? 'CUSTOM LUXE PACKAGE' : 'ASK A QUESTION');
+      const currentUrl = `/ask-an-expert?${params.toString()}`;
+      router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+    } else {
+      setModalExpert(expert);
+    }
+  };
+
+  useEffect(() => {
+    const expertIdToOpen = searchParams.get("openExpert");
+    if (expertIdToOpen && isAuthenticated && experts.length > 0) {
+      const expert = experts.find(e => String(e.id) === String(expertIdToOpen));
+      if (expert) {
+        setModalExpert(expert);
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("openExpert");
+        params.delete("openService");
+        const cleanUrl = params.toString() ? `/ask-an-expert?${params.toString()}` : "/ask-an-expert";
+        router.replace(cleanUrl, { scroll: false });
+      }
+    }
+  }, [searchParams, isAuthenticated, experts, router]);
 
   // Capture search query from URL
   const searchQuery = useMemo(() => {
@@ -401,11 +431,11 @@ export default function ExpertsDirectory() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-4 lg:px-2 mt-16">
       {modalExpert && (
-        <AskQuestionModal
-          expert={modalExpert}
+        <ProfileServiceDrawer
+          isOpen={!!modalExpert}
           onClose={() => setModalExpert(null)}
-          initialQuestion={searchQuery}
-          sessionId={searchId}
+          serviceType={modalExpert.profileType === 'agency' ? 'CUSTOM LUXE PACKAGE' : 'ASK A QUESTION'}
+          expertData={{ id: modalExpert.id, fullName: modalExpert.fullName, email: modalExpert.email }}
         />
       )}
       {isLightboxOpen && (
@@ -500,7 +530,7 @@ export default function ExpertsDirectory() {
             context={aiContext}
             query={searchTerm}
             searchId={searchId}
-            onBookClick={setModalExpert}
+            onBookClick={handleAskClick}
             openLightbox={(src) => openLightbox(src && src !== "" ? src : "/default.jpg")}
             loadSectionData={loadSectionData}
           />
@@ -613,7 +643,7 @@ export default function ExpertsDirectory() {
                               </button>
                             </Link>
                             <button
-                              onClick={() => setModalExpert(expert)}
+                              onClick={() => handleAskClick(expert)}
                               className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#36013F] to-[#5a1066] rounded-lg shadow-sm hover:shadow-md hover:to-[#36013F] transition-all flex items-center gap-1.5"
                             >
                               {expert.profileType === 'agency' ? 'Quote' : 'Ask'}
