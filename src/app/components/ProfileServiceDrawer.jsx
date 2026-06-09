@@ -653,7 +653,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
               {/* Service Meta info */}
               <div className="bg-[#36013F]/5 p-4 border-b border-gray-100 flex flex-wrap gap-4 text-[12px]">
-                {/* <div className="flex items-center gap-1.5 font-bold text-[#36013F]"><IndianRupee size={14} /> {data.price}</div> */}
+                <div className="flex items-center gap-1.5 font-bold text-[#36013F]"><IndianRupee size={14} /> {data.price}</div>
                 <div className="flex items-start gap-1.5 text-gray-600 flex-1 whitespace-pre-line"> <span>{data.delivery}</span></div>
               </div>
 

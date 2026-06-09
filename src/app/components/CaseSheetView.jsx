@@ -41,10 +41,13 @@ export default function CaseSheetView({ question, sessionData, isAdmin = false }
   const displayStyle = formData.budget || summary?.style || "Standard";
   const displayType = Array.isArray(formData.type) ? formData.type.join(", ") : (formData.exp || summary?.type || "N/A");
   const displayProblem = formData.confusion || formData.question || formData.context || formData.mustHaves || legacyQuestion;
+  
+  const servicePrice = SERVICE_PRICES[serviceType?.toUpperCase()];
   const expertPayout = getExpertPayout(serviceType);
 
-  const displayPhone = formData.phone || formData.whatsapp || question.userPhone || "";
-  const displayEmail = question.userEmail || formData.email || "";
+  const displayPhone = isAdmin ? (formData.phone || formData.whatsapp || question.userPhone || "") : "";
+  const displayEmail = isAdmin ? (question.userEmail || formData.email || "") : "";
+  const displayUserName = userName || "Traveller";
 
   const [dynamicSummary, setDynamicSummary] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -64,7 +67,7 @@ export default function CaseSheetView({ question, sessionData, isAdmin = false }
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             caseData: {
-              userName,
+              userName: displayUserName,
               serviceType,
               destination: displayDest,
               dates: displayDates,
@@ -90,7 +93,7 @@ export default function CaseSheetView({ question, sessionData, isAdmin = false }
     };
 
     generateSummary();
-  }, [id, summary?.caseSummary, displayDest, displayDates, displayWho, displayStyle, displayType, displayProblem, userName, serviceType]);
+  }, [id, summary?.caseSummary, displayDest, displayDates, displayWho, displayStyle, displayType, displayProblem, displayUserName, serviceType]);
 
   const getUrgencyColor = (u) => {
     switch (u.toLowerCase()) {
@@ -141,8 +144,15 @@ export default function CaseSheetView({ question, sessionData, isAdmin = false }
   const formEntries = Object.entries(formData).filter(([key]) => {
     const excludedKeys = ["payment", "reminderCount", "isRedirected", "uploadedFileUrl", "uploadedFileName"];
     if (!isAdmin) {
-      excludedKeys.push("phone");
-      excludedKeys.push("whatsapp");
+      const lowerKey = key.toLowerCase();
+      if (
+        lowerKey.includes("phone") ||
+        lowerKey.includes("whatsapp") ||
+        lowerKey.includes("email") ||
+        lowerKey.includes("contact")
+      ) {
+        return false;
+      }
     }
     return !excludedKeys.includes(key);
   });
@@ -162,24 +172,36 @@ export default function CaseSheetView({ question, sessionData, isAdmin = false }
               </span>
             </div>
             <h1 className="text-2xl font-black text-[#36013F] leading-tight">
-              {serviceType} for {userName || "Traveller"}
+              {serviceType} for {displayUserName}
             </h1>
-            {(displayEmail || (isAdmin && displayPhone)) && (
+            {isAdmin && (displayEmail || displayPhone) && (
               <div className="mt-2 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
                 {displayEmail && <span><strong>Email:</strong> {displayEmail}</span>}
-                {isAdmin && displayPhone && <span><strong>Phone:</strong> {displayPhone}</span>}
+                {displayPhone && <span><strong>Phone:</strong> {displayPhone}</span>}
               </div>
             )}
           </div>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            {expertPayout && (
-              <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-xl border border-green-200">
-                <IndianRupee className="text-green-600" size={16} />
-                <div>
-                  <p className="text-[10px] font-bold text-green-500 uppercase">Your Payout </p>
-                  <p className="text-sm font-black text-green-700">₹{expertPayout}</p>
+            {isAdmin ? (
+              servicePrice && (
+                <div className="flex items-center gap-2 bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
+                  <IndianRupee className="text-purple-600" size={16} />
+                  <div>
+                    <p className="text-[10px] font-bold text-purple-500 uppercase">Price Paid</p>
+                    <p className="text-sm font-black text-purple-700">₹{servicePrice}</p>
+                  </div>
                 </div>
-              </div>
+              )
+            ) : (
+              expertPayout && (
+                <div className="flex items-center gap-2 bg-green-50 px-4 py-2 rounded-xl border border-green-200">
+                  <IndianRupee className="text-green-600" size={16} />
+                  <div>
+                    <p className="text-[10px] font-bold text-green-500 uppercase">Your Payout </p>
+                    <p className="text-sm font-black text-green-700">₹{expertPayout}</p>
+                  </div>
+                </div>
+              )
             )}
             <div className="flex items-center gap-3 bg-purple-50 px-4 py-2 rounded-xl border border-purple-100">
               <User className="text-purple-600" size={20} />
