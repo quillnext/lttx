@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import '@/app/globals.css';
+import 'react-phone-input-2/lib/style.css';
+import 'react-datepicker/dist/react-datepicker.css';
+import 'react-easy-crop/react-easy-crop.css';
 import Link from 'next/link';
 import Footer from '../pages/Footer';
 import Navbar from '../components/Navbar';
@@ -93,32 +96,7 @@ export default function CompleteProfile() {
     agency: "Position your agency as a trusted voice in the global travel community. By joining, you gain visibility as a credible, verified travel partner while connecting with travellers actively seeking professional consultation."
   };
 
-  useEffect(() => {
-    const loadCSS = (href, fallback) => {
-      const link = document.createElement("link");
-      link.href = href;
-      link.rel = "stylesheet";
-      link.onerror = () => {
-        const fallbackLink = document.createElement("link");
-        fallbackLink.href = fallback;
-        fallbackLink.rel = "stylesheet";
-        document.head.appendChild(fallbackLink);
-      };
-      document.head.appendChild(link);
-      return () => {
-        document.head.removeChild(link);
-      };
-    };
 
-    const cssFiles = [
-      { local: "/css/react-phone-input-2.css", fallback: "https://unpkg.com/react-phone-input-2@2.15.1/lib/style.css" },
-      { local: "/css/react-datepicker.css", fallback: "https://unpkg.com/react-datepicker@4.8.0/dist/react-datepicker.css" },
-      { local: "/css/react-easy-crop.css", fallback: "https://unpkg.com/react-easy-crop@5.0.7/react-easy-crop.css" }
-    ];
-
-    const cleanups = cssFiles.map(({ local, fallback }) => loadCSS(local, fallback));
-    return () => cleanups.forEach(cleanup => cleanup());
-  }, []);
 
   const formatDate = (date, format = 'YYYY-MM-DD') => {
     if (!date) return '';
