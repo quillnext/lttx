@@ -3,6 +3,8 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { mapSupabaseProfile } from "@/lib/supabaseProfile";
+import { adminDb } from "@/lib/firebaseAdmin";
+import crypto from "crypto";
 
 function calculateYearsOfExperience(experience) {
   if (!Array.isArray(experience) || experience.length === 0) return 0;
@@ -152,7 +154,9 @@ export async function POST(request) {
         Query: "${query}"
         Task: Match top experts & analyze intent.
         
-        1. Context: Give succinct 'budgetRange' (e.g. "ruppee 50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
+        1. Context: 
+           - Give succinct 'budgetRange' (e.g. "ruppee 50-100"), 'bestSeason' (e.g. "Oct-Mar"), 'visaStatus' (e.g. "On Arrival").
+           - Generate a detailed, structured, and helpful 'answer' to the travel query or question (approx 100-150 words). Provide clear, direct travel advice, key recommendations, and highlights.
         2. Pointers: Pick relevant IDs from ['visa', 'weather', 'budget', 'transport', 'common_problems', 'related_questions', 'indian_perspective'].
            - If query mentions a location (City/Country), ALWAYS include 'indian_perspective' and 'common_problems'.
         3. Matches: Return 'id', 'score' (0-100), 'reason' (max 8 words).
@@ -191,13 +195,14 @@ export async function POST(request) {
                     },
                     required: ["budgetRange", "bestSeason", "visaStatus"]
                   },
+                  answer: { type: Type.STRING },
                   relevantPointers: {
                     type: Type.ARRAY,
                     items: { type: Type.STRING }
                   },
                   matchReason: { type: Type.STRING }
                 },
-                required: ["querySummary", "matchReason", "relevantPointers"]
+                required: ["querySummary", "answer", "matchReason", "relevantPointers"]
               }
             },
             required: ["matches", "context"]
@@ -220,22 +225,22 @@ export async function POST(request) {
 
       // Save to recent_searches and return the ID for section caching.
       if (aiResponse.context) {
+        // Generate URL-friendly slug
+        const slug = normalizedQuery
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)+/g, '');
+
+        // Simplify experts for storage
+        const expertsToStore = sortedAiExperts.slice(0, 5).map(e => ({
+          id: e.id,
+          fullName: e.fullName,
+          username: e.username || null,
+          photo: e.photo || null,
+          matchScore: e.matchScore,
+          aiMatchReason: e.aiMatchReason || null
+        }));
+
         try {
-          // Generate URL-friendly slug
-          const slug = normalizedQuery
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/(^-|-$)+/g, '');
-
-          // Simplify experts for storage
-          const expertsToStore = sortedAiExperts.slice(0, 5).map(e => ({
-            id: e.id,
-            fullName: e.fullName,
-            username: e.username || null,
-            photo: e.photo || null,
-            matchScore: e.matchScore,
-            aiMatchReason: e.aiMatchReason || null
-          }));
-
           const { data: savedSearch, error: saveSearchError } = await supabase
             .from("recent_searches")
             .insert({
@@ -256,10 +261,43 @@ export async function POST(request) {
             .select("id")
             .single();
 
-          if (saveSearchError) throw saveSearchError;
-          searchId = savedSearch?.id || null;
-        } catch (err) {
-          console.error("Failed to save recent search:", err);
+          if (!saveSearchError && savedSearch?.id) {
+            searchId = savedSearch.id;
+          } else {
+            console.warn("Supabase save to recent_searches failed, using local UUID generation:", saveSearchError?.message || saveSearchError);
+          }
+        } catch (sbErr) {
+          console.warn("Supabase save threw error, using local UUID generation:", sbErr.message || sbErr);
+        }
+
+        // Generate fallback searchId locally if Supabase table didn't exist or write failed
+        if (!searchId) {
+          searchId = crypto.randomUUID();
+        }
+
+        // Write to Firestore RecentSearches
+        if (searchId) {
+          try {
+            await adminDb.collection("RecentSearches").doc(searchId).set({
+              query: normalizedQuery,
+              slug: slug,
+              matches: sortedAiExperts.map(e => ({
+                id: e.id,
+                score: e.matchScore,
+                reason: e.aiMatchReason
+              })),
+              context: aiResponse.context,
+              experts: expertsToStore,
+              relevant_pointers_count: aiResponse.context.relevantPointers?.length || 0,
+              unlocked_sections_count: 0,
+              isIndexed: false,
+              timestamp: new Date().toISOString(),
+              sections: {}
+            });
+            console.log(`Saved search to Firestore RecentSearches: ${searchId}`);
+          } catch (firestoreErr) {
+            console.error("Failed to save to Firestore RecentSearches:", firestoreErr);
+          }
         }
       }
 
@@ -268,7 +306,7 @@ export async function POST(request) {
 
     // --- ACTION: SECTION GENERATION ---
     if (action === 'section') {
-      // 1. Check if section is already cached in Supabase
+      // 1. Check if section is already cached in Supabase or Firestore
       if (searchId) {
         try {
           const { data: searchRow, error: searchError } = await supabase
@@ -277,16 +315,26 @@ export async function POST(request) {
             .eq("id", searchId)
             .single();
 
-          if (!searchError && searchRow) {
-            const sections = searchRow.sections;
-            if (sections && sections[sectionType]) {
-              console.log(`Cache Hit for section: ${sectionType} (searchId: ${searchId})`);
-              return NextResponse.json(sections[sectionType]);
-            }
+          if (!searchError && searchRow?.sections?.[sectionType]) {
+            console.log(`Cache Hit for section: ${sectionType} (searchId: ${searchId})`);
+            return NextResponse.json(searchRow.sections[sectionType]);
           }
         } catch (err) {
-          console.error("Failed to check section cache:", err);
-          // Continue to generation if cache check fails
+          console.error("Failed to check Supabase section cache:", err);
+        }
+
+        try {
+          // Fallback: Check Firestore
+          const docSnap = await adminDb.collection("RecentSearches").doc(searchId).get();
+          if (docSnap.exists) {
+            const data = docSnap.data();
+            if (data?.sections?.[sectionType]) {
+              console.log(`Firestore Cache Hit for section: ${sectionType} (searchId: ${searchId})`);
+              return NextResponse.json(data.sections[sectionType]);
+            }
+          }
+        } catch (fsCacheErr) {
+          console.error("Failed to check Firestore section cache:", fsCacheErr);
         }
       }
 
@@ -462,56 +510,97 @@ export async function POST(request) {
 
       // Async: Update recent_searches with new section data
       if (searchId) {
+        let currentData = null;
+        let isSupabaseSuccess = false;
+
         try {
-          const { data: currentData, error: currentSearchError } = await supabase
+          const { data: currentDataSb, error: currentSearchError } = await supabase
             .from("recent_searches")
             .select("query, sections, unlocked_sections_count, relevant_pointers_count")
             .eq("id", searchId)
             .single();
 
-          if (!currentSearchError && currentData) {
+          if (!currentSearchError && currentDataSb) {
+            currentData = currentDataSb;
+            isSupabaseSuccess = true;
+          }
+        } catch (err) {
+          console.error("Failed to read section data from Supabase:", err);
+        }
+
+        // Fallback: Read from Firestore if Supabase read failed or was empty
+        if (!currentData) {
+          try {
+            const docSnap = await adminDb.collection("RecentSearches").doc(searchId).get();
+            if (docSnap.exists) {
+              const fsDoc = docSnap.data();
+              currentData = {
+                query: fsDoc.query,
+                sections: fsDoc.sections || {},
+                unlocked_sections_count: fsDoc.unlocked_sections_count || 0,
+                relevant_pointers_count: fsDoc.relevant_pointers_count || 3
+              };
+            }
+          } catch (fsErr) {
+            console.error("Failed to read section data from Firestore:", fsErr);
+          }
+        }
+
+        if (currentData) {
+          try {
             const currentSections = currentData.sections || {};
             const nextSections = {
               ...currentSections,
               [sectionType]: sectionData,
             };
 
+            let updatedUnlockedCount = currentData.unlocked_sections_count || 0;
+            let shouldUpdateUnlockedCount = false;
+
             // Only increment if this is a new section being added
             if (!currentSections[sectionType]) {
-              const newUnlockedCount = (currentData.unlocked_sections_count || 0) + 1;
-              const totalNeeded = currentData.relevant_pointers_count || 3;
-
-              // --- BOUNCER LOGIC ---
-              const isQueryTooShort = (currentData.query || "").length < 8;
-              const hasSpamKeywords = ["test", "asdf", "dummy", "hack"].some(kw =>
-                (currentData.query || "").toLowerCase().includes(kw)
-              );
-
-              const isHighQuality = !isQueryTooShort && !hasSpamKeywords;
-
-              const { error: updateError } = await supabase
-                .from("recent_searches")
-                .update({
-                  sections: nextSections,
-                  unlocked_sections_count: newUnlockedCount,
-                  // Mark as indexed if high quality AND most sections are unlocked (at least 3)
-                  is_indexed: isHighQuality && newUnlockedCount >= Math.min(totalNeeded, 3)
-                })
-                .eq("id", searchId);
-
-              if (updateError) throw updateError;
-            } else {
-              const { error: updateError } = await supabase
-                .from("recent_searches")
-                .update({ sections: nextSections })
-                .eq("id", searchId);
-
-              if (updateError) throw updateError;
+              updatedUnlockedCount = (currentData.unlocked_sections_count || 0) + 1;
+              shouldUpdateUnlockedCount = true;
             }
+
+            const totalNeeded = currentData.relevant_pointers_count || 3;
+            const isQueryTooShort = (currentData.query || "").length < 8;
+            const hasSpamKeywords = ["test", "asdf", "dummy", "hack"].some(kw =>
+              (currentData.query || "").toLowerCase().includes(kw)
+            );
+            const isHighQuality = !isQueryTooShort && !hasSpamKeywords;
+
+            // Update Supabase if it was successful initially
+            if (isSupabaseSuccess) {
+              try {
+                await supabase
+                  .from("recent_searches")
+                  .update({
+                    sections: nextSections,
+                    unlocked_sections_count: updatedUnlockedCount,
+                    is_indexed: isHighQuality && updatedUnlockedCount >= Math.min(totalNeeded, 3)
+                  })
+                  .eq("id", searchId);
+              } catch (sbUpdateErr) {
+                console.error("Failed to update section in Supabase:", sbUpdateErr);
+              }
+            }
+
+            // Mirror section update to Firestore RecentSearches
+            try {
+              const docRef = adminDb.collection("RecentSearches").doc(searchId);
+              await docRef.update({
+                sections: nextSections,
+                unlocked_sections_count: updatedUnlockedCount,
+                isIndexed: isHighQuality && updatedUnlockedCount >= Math.min(totalNeeded, 3)
+              });
+              console.log(`Updated section ${sectionType} in Firestore RecentSearches: ${searchId}`);
+            } catch (firestoreErr) {
+              console.error("Failed to update Firestore RecentSearches section:", firestoreErr);
+            }
+          } catch (err) {
+            console.error("Failed to process section update:", err);
           }
-        } catch (err) {
-          console.error("Failed to update section storage:", err);
-          // Fail silently for the user so UX isn't affected
         }
       }
 

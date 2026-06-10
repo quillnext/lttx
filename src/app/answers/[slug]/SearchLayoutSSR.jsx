@@ -249,6 +249,23 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
                             </div>
                         </div>
 
+                        {/* AI Travel Snapshot Card */}
+                        {context.answer && (
+                            <div className="bg-gradient-to-br from-[#faf6fc] to-white rounded-[32px] shadow-lg border border-purple-100 p-6 md:p-8">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-purple-100 rounded-xl text-purple-700">
+                                        <FaLightbulb className="text-lg" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-gray-900 font-[var(--font-dm-serif-display)]">
+                                         Travel Snapshot
+                                    </h3>
+                                </div>
+                                <p className="text-sm md:text-base text-gray-700 leading-relaxed font-[var(--font-inter)] font-normal">
+                                    {context.answer}
+                                </p>
+                            </div>
+                        )}
+
                         {/* More Compact Grid for Insights */}
                         <div className="space-y-8">
                             <SectionHeading>Strategic Insights</SectionHeading>

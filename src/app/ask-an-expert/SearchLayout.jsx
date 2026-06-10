@@ -453,6 +453,28 @@ const SearchLayout = ({ experts, context, query: currentQuery, searchId, onBookC
                 </div>
             </div>
 
+            {/* AI Travel Snapshot */}
+            {context.answer && (
+                <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="bg-gradient-to-br from-[#faf6fc] to-white rounded-2xl shadow-sm border border-purple-100 p-5 md:p-6 text-left"
+                >
+                    <div className="flex items-center gap-2.5 mb-3">
+                        <div className="p-2 bg-purple-100 rounded-lg text-purple-700">
+                            <FaLightbulb className="text-sm" />
+                        </div>
+                        <h3 className="text-base font-bold text-[#36013F] font-[var(--font-ralewaySans-sans)]">
+                             Travel Snapshot
+                        </h3>
+                    </div>
+                    <p className="text-xs md:text-sm text-gray-700 leading-relaxed font-normal">
+                        {context.answer}
+                    </p>
+                </motion.div>
+            )}
+
             {/* Recent Searches - New Section */}
             {recentSearches.length > 0 && (
                 <div className="mb-6 -mt-4 px-2">
