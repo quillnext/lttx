@@ -16,15 +16,16 @@ export async function POST(request) {
     const supabase = createSupabaseAdminClient();
     const { data: profile, error: fetchError } = await supabase
       .from("profiles")
-      .select("photo_url, certificates, office_photos, user_id")
+      .select("photo_url, certificates, office_photos")
       .eq("id", uid)
       .maybeSingle();
 
     if (fetchError) throw fetchError;
 
-    if (profile?.user_id) {
-      const { error: authError } = await supabase.auth.admin.deleteUser(profile.user_id);
-      if (authError) console.warn("Supabase auth user delete skipped:", authError.message);
+    // Delete user from Supabase Auth using the profile id (uid) since profiles.id maps to auth.users.id
+    const { error: authError } = await supabase.auth.admin.deleteUser(uid);
+    if (authError) {
+      console.warn("Supabase auth user delete skipped:", authError.message);
     }
 
     await supabase.from("expert_recurring_availability").delete().eq("expert_id", uid);
