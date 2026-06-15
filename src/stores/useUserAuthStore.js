@@ -91,8 +91,39 @@ export const useUserAuthStore = create(
         }
       },
 
+      // SEND WHATSAPP OTP ACTION
+      sendWhatsAppOtpAction: async ({ email, name, phone }) => {
+        set({ loading: true, error: "" });
+
+        try {
+          const res = await fetch("/api/user-auth/send-whatsapp-otp", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email, name, phone }),
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to send WhatsApp OTP");
+          }
+
+          set({
+            loading: false,
+            otpSent: true,
+            otpEmail: email.trim().toLowerCase(),
+          });
+
+          return data.verificationType;
+        } catch (error) {
+          set({ loading: false, error: error.message });
+          throw error;
+        }
+      },
+
       // 2. VERIFY OTP + LOGIN
-      verifyOtpAndLogin: async ({ email, otp, name, phone }) => {
+      verifyOtpAndLogin: async ({ email, otp, name, phone, type = "email" }) => {
         set({ loading: true, error: "" });
 
         try {
@@ -101,7 +132,7 @@ export const useUserAuthStore = create(
           const { data, error } = await supabase.auth.verifyOtp({
             email: cleanEmail,
             token: otp,
-            type: "email",
+            type,
           });
 
           if (error) throw error;

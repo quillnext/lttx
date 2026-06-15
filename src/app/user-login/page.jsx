@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
-import { Loader, Mail, Phone, UserRound } from "lucide-react";
+import { Loader, Mail, Phone, UserRound, MessageSquare } from "lucide-react";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 export default function UserLoginPage() {
@@ -13,6 +13,7 @@ export default function UserLoginPage() {
   const searchParams = useSearchParams();
   const {
     sendOtp,
+    sendWhatsAppOtpAction,
     verifyOtpAndLogin,
     loading,
     error,
@@ -28,6 +29,9 @@ export default function UserLoginPage() {
     otp: "",
   });
   const [message, setMessage] = useState("");
+  const [deliveryMethod, setDeliveryMethod] = useState("email"); // "email" | "whatsapp"
+  const [verificationType, setVerificationType] = useState("email"); // "email" | "signup" | "magiclink"
+
   const returnToParam = searchParams.get("returnTo");
   const returnTo =
     returnToParam?.startsWith("/") && !returnToParam.startsWith("//") && !returnToParam.startsWith("/user-login")
@@ -62,8 +66,15 @@ export default function UserLoginPage() {
     }
 
     try {
-      await sendOtp({ email: form.email, name: form.name, phone: form.phone });
-      setMessage("OTP sent to your email.");
+      if (deliveryMethod === "whatsapp") {
+        const type = await sendWhatsAppOtpAction({ email: form.email, name: form.name, phone: form.phone });
+        setVerificationType(type);
+        setMessage("OTP sent to your WhatsApp number.");
+      } else {
+        await sendOtp({ email: form.email, name: form.name, phone: form.phone });
+        setVerificationType("email");
+        setMessage("OTP sent to your email.");
+      }
     } catch {
       setMessage("");
     }
@@ -78,12 +89,12 @@ export default function UserLoginPage() {
     }
 
     if (!form.otp.trim()) {
-      setMessage("Enter the OTP sent to your email.");
+      setMessage(`Enter the OTP sent to your ${deliveryMethod === "whatsapp" ? "WhatsApp" : "email"}.`);
       return;
     }
 
     try {
-      await verifyOtpAndLogin(form);
+      await verifyOtpAndLogin({ ...form, type: verificationType });
       router.replace(returnTo);
     } catch {
       setMessage("");
@@ -111,6 +122,33 @@ export default function UserLoginPage() {
              Verify your identity with OTP.
             </p>
           </div>
+
+          {!otpSent && (
+            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("email")}
+                className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                  deliveryMethod === "email"
+                    ? "bg-white text-[#36013F] shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Email OTP
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryMethod("whatsapp")}
+                className={`py-2 text-xs font-bold rounded-lg transition-all ${
+                  deliveryMethod === "whatsapp"
+                    ? "bg-white text-[#36013F] shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                WhatsApp OTP
+              </button>
+            </div>
+          )}
 
           <label className="block">
             <span className="text-xs font-bold uppercase text-gray-500">Name</span>
@@ -156,7 +194,9 @@ export default function UserLoginPage() {
 
           {otpSent && (
             <label className="block">
-              <span className="text-xs font-bold uppercase text-gray-500">Email OTP</span>
+              <span className="text-xs font-bold uppercase text-gray-500">
+                {deliveryMethod === "whatsapp" ? "WhatsApp OTP" : "Email OTP"}
+              </span>
               <input
                 value={form.otp}
                 onChange={(event) => updateForm("otp", event.target.value)}
@@ -176,10 +216,22 @@ export default function UserLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-[#36013F] py-3 text-white font-bold hover:bg-[#4a0152] disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full rounded-xl bg-[#36013F] py-3 text-white font-bold hover:bg-[#4a0152] disabled:opacity-60 flex items-center justify-center gap-2 transition-all duration-200"
           >
-            {loading ? <Loader className="animate-spin" size={18} /> : otpSent ? <Phone size={18} /> : <Mail size={18} />}
-            {otpSent ? "Verify OTP & Login" : "Send Email OTP"}
+            {loading ? (
+              <Loader className="animate-spin" size={18} />
+            ) : otpSent ? (
+              <Phone size={18} />
+            ) : deliveryMethod === "whatsapp" ? (
+              <MessageSquare size={18} />
+            ) : (
+              <Mail size={18} />
+            )}
+            {otpSent
+              ? "Verify OTP & Login"
+              : deliveryMethod === "whatsapp"
+              ? "Send WhatsApp OTP"
+              : "Send Email OTP"}
           </button>
 
           {otpSent && (

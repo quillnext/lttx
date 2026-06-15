@@ -114,6 +114,7 @@ const sendAiSensyCampaign = async ({
   userName,
   templateParams,
   source,
+  buttons = [],
 }) => {
   const apiKey = process.env.AISENSY_API_KEY;
 
@@ -134,7 +135,7 @@ const sendAiSensyCampaign = async ({
     templateParams,
     source,
     media: {},
-    buttons: [],
+    buttons,
     carouselCards: [],
     location: {},
   };
@@ -209,3 +210,29 @@ export const sendWhatsAppServiceRequestToExpert = async ({
     ],
     source: "service-request-expert-api",
   });
+
+export const sendWhatsAppOTP = async ({ phone, userName, otp }) => {
+  const campaign = process.env.AISENSY_CAMPAIGN_OTP || "otp_verification";
+  const firstName = userName ? userName.trim().split(" ")[0] : "user";
+  return sendAiSensyCampaign({
+    phone,
+    campaign,
+    userName: userName || "Traveller",
+    templateParams: [firstName],
+    source: "whatsapp-otp-login",
+    buttons: [
+      {
+        type: "button",
+        sub_type: "url",
+        index: 0,
+        parameters: [
+          {
+            type: "text",
+            text: otp
+          }
+        ]
+      }
+    ],
+  });
+};
+
