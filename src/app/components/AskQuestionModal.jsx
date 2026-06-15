@@ -233,6 +233,8 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
           userName: name,
           expertEmail: expert.email || "info@xmytravel.com",
           expertName: expert.fullName || "Unknown Expert",
+          expertPhone: expert.phone || "",
+          serviceType: "ASK A QUESTION",
           question,
           userPhone: phone,
           keywords: urlKeywords,

@@ -260,6 +260,8 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
             userPhone: user?.phone || "",
             expertName: expertData?.fullName || "XMyTravel Expert",
             expertEmail: expertData.email,
+            expertPhone: expertData?.phone || "",
+            serviceType: addOnType,
             question: questionText,
             isHandedOver: true,
           }),

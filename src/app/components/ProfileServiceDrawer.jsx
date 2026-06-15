@@ -607,6 +607,8 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
             userPhone: finalPhone,
             expertName: expertData?.fullName || "XMyTravel Expert",
             expertEmail: expertData.email,
+            expertPhone: expertData?.phone || "",
+            serviceType,
             question: questionText,
             isHandedOver: true
           }),

@@ -88,15 +88,17 @@ export const sendWhatsAppReply = async ({
   try {
     const res = await fetch(AISENSY_API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify(payload),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      console.error("AiSensy error:", data);
-      return { success: false, error: data?.message || "AiSensy request failed" };
+      console.error("AiSensy error:", res.status, data);
+      return { success: false, error: data?.message || `AiSensy request failed (${res.status})` };
     }
 
     return { success: true, data };
@@ -105,3 +107,105 @@ export const sendWhatsAppReply = async ({
     return { success: false, error: err.message };
   }
 };
+
+const sendAiSensyCampaign = async ({
+  phone,
+  campaign,
+  userName,
+  templateParams,
+  source,
+}) => {
+  const apiKey = process.env.AISENSY_API_KEY;
+
+  if (!apiKey || !campaign) {
+    return { success: false, error: "AiSensy API key or campaign name not configured" };
+  }
+
+  const destination = normalizePhone(phone);
+  if (!destination) {
+    return { success: false, error: `Invalid phone number: ${phone}` };
+  }
+
+  const payload = {
+    apiKey,
+    campaignName: campaign,
+    destination,
+    userName: userName || "Traveller",
+    templateParams,
+    source,
+    media: {},
+    buttons: [],
+    carouselCards: [],
+    location: {},
+  };
+
+  try {
+    const res = await fetch(AISENSY_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error("AiSensy error:", res.status, data);
+      return { success: false, error: data?.message || `AiSensy request failed (${res.status})` };
+    }
+
+    return { success: true, data };
+  } catch (err) {
+    console.error("AiSensy send error:", err.message);
+    return { success: false, error: err.message };
+  }
+};
+
+export const sendWhatsAppServiceRequestToUser = async ({
+  phone,
+  userName,
+  expertName,
+  serviceType,
+  question,
+  campaign,
+}) =>
+  sendAiSensyCampaign({
+    phone,
+    campaign:
+      campaign ||
+      process.env.AISENSY_CAMPAIGN_REQUEST_USER ||
+      process.env.AISENSY_CAMPAIGN_QUESTION_SUBMITTED,
+    userName: userName || "Traveller",
+    templateParams: [
+      userName || "Traveller",
+      expertName || "XmyTravel Expert",
+      serviceType || "Travel Request",
+      question || "Your service request has been submitted.",
+    ],
+    source: "service-request-user-api",
+  });
+
+export const sendWhatsAppServiceRequestToExpert = async ({
+  phone,
+  userName,
+  expertName,
+  serviceType,
+  question,
+  campaign,
+}) =>
+  sendAiSensyCampaign({
+    phone,
+    campaign:
+      campaign ||
+      process.env.AISENSY_CAMPAIGN_REQUEST_EXPERT ||
+      process.env.AISENSY_CAMPAIGN_QUESTION_SUBMITTED,
+    userName: expertName || "XmyTravel Expert",
+    templateParams: [
+      expertName || "XmyTravel Expert",
+      userName || "Traveller",
+      serviceType || "Travel Request",
+      question || "A traveller has submitted a new service request.",
+    ],
+    source: "service-request-expert-api",
+  });

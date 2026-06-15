@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { buildEmailFooter } from "@/app/utils/emailComponents";
+import {
+  sendWhatsAppServiceRequestToExpert,
+  sendWhatsAppServiceRequestToUser,
+} from "@/lib/aisensy";
 
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
@@ -152,6 +156,8 @@ export async function POST(request) {
       expertName,
       question,
       userPhone,
+      expertPhone,
+      serviceType,
       keywords = [],
       referredByAgencyName,
       isHandedOver
@@ -247,9 +253,55 @@ export async function POST(request) {
       }));
     }
 
-    await Promise.all(emailPromises);
+    const whatsappPromises = [];
 
-    return NextResponse.json({ success: true, message: "Emails sent successfully" }, { status: 200 });
+    const userRequestCampaign =
+      process.env.AISENSY_CAMPAIGN_REQUEST_USER ||
+      process.env.AISENSY_CAMPAIGN_QUESTION_SUBMITTED;
+    const expertRequestCampaign =
+      process.env.AISENSY_CAMPAIGN_REQUEST_EXPERT ||
+      process.env.AISENSY_CAMPAIGN_QUESTION_SUBMITTED;
+
+    if (process.env.AISENSY_API_KEY && userRequestCampaign && userPhone) {
+      whatsappPromises.push(
+        sendWhatsAppServiceRequestToUser({
+          phone: userPhone,
+          userName,
+          expertName,
+          serviceType: serviceType || "Travel Request",
+          question,
+        })
+      );
+    }
+
+    if (process.env.AISENSY_API_KEY && expertRequestCampaign && expertPhone) {
+      whatsappPromises.push(
+        sendWhatsAppServiceRequestToExpert({
+          phone: expertPhone,
+          userName,
+          expertName,
+          serviceType: serviceType || "Travel Request",
+          question,
+        })
+      );
+    }
+
+    const [whatsappResults] = await Promise.all([
+      Promise.all(whatsappPromises).catch((error) => {
+        console.warn("WhatsApp service request notification failed:", error.message);
+        return [];
+      }),
+      Promise.all(emailPromises),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      message: "Emails sent successfully",
+      whatsapp: {
+        attempted: whatsappPromises.length,
+        results: whatsappResults,
+      },
+    }, { status: 200 });
   } catch (error) {
     console.error("Error sending emails:", error.message);
     return NextResponse.json({ error: `Failed to send emails: ${error.message}` }, { status: 500 });

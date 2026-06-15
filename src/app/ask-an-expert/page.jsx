@@ -215,6 +215,7 @@ export default function ExpertsDirectory() {
         title: toSentenceCase(exp.title),
       })) : [],
       email: data.email || "",
+      phone: data.phone || "",
       profileType: data.profileType || 'expert',
       yearsActive: data.yearsActive || '',
     };
@@ -435,7 +436,7 @@ export default function ExpertsDirectory() {
           isOpen={!!modalExpert}
           onClose={() => setModalExpert(null)}
           serviceType={modalExpert.profileType === 'agency' ? 'CUSTOM LUXE PACKAGE' : 'ASK A QUESTION'}
-          expertData={{ id: modalExpert.id, fullName: modalExpert.fullName, email: modalExpert.email }}
+          expertData={{ id: modalExpert.id, fullName: modalExpert.fullName, email: modalExpert.email, phone: modalExpert.phone }}
         />
       )}
       {isLightboxOpen && (
