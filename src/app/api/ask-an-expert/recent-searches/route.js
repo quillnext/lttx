@@ -8,9 +8,9 @@ export async function GET(request) {
     const limit = Math.min(Math.max(Number(searchParams.get("limit") || 5), 1), 20);
 
     const { data, error } = await createSupabaseAdminClient()
-      .from("recent_searches")
-      .select("query")
-      .order("timestamp", { ascending: false })
+      .from("RecentSearches")
+      .select("data")
+      .order("data->>timestamp", { ascending: false })
       .limit(limit * 3);
 
     // Table doesn't exist yet — return empty list instead of 500
@@ -23,7 +23,7 @@ export async function GET(request) {
 
     const seen = new Set();
     const searches = (data || [])
-      .map((row) => row.query)
+      .map((row) => row.data?.query)
       .filter(Boolean)
       .filter((query) => query !== exclude)
       .filter((query) => {

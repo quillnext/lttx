@@ -1,48 +1,39 @@
 
 export const dynamic = "force-dynamic";
 
-import { getFirestore } from "firebase-admin/firestore";
-import { initializeApp, getApps, cert } from "firebase-admin/app";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { notFound } from "next/navigation";
 import SearchLayoutSSR from "./SearchLayoutSSR";
 import Navbar from "../../components/Navbar";
 import Footer from "../../pages/Footer";
 
-// Initialize Firebase Admin if not already initialized
-if (!getApps().length) {
-    try {
-        const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK);
-        initializeApp({
-            credential: cert(serviceAccount),
-        });
-    } catch (error) {
-        console.error("Firebase Admin Init Error:", error);
-    }
-}
-
-const db = getFirestore();
-
 export async function generateMetadata({ params }) {
     const { slug } = await params;
+    const supabase = createSupabaseAdminClient();
 
-    const searchSnapshot = await db
-        .collection("RecentSearches")
-        .where("slug", "==", slug)
+    const { data: row, error } = await supabase
+        .from("RecentSearches")
+        .select("id, data")
+        .eq("data->>slug", slug)
+        .order("data->unlockedSectionsCount", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
-        .get();
+        .maybeSingle();
 
-    if (searchSnapshot.empty) {
+    if (error || !row?.data) {
         return {
             title: "Expert Travel Tips | Xmytravel",
         };
     }
 
-    const data = searchSnapshot.docs[0].data();
+    const data = { id: row.id, is_indexed: row.data.isIndexed || row.data.is_indexed, ...row.data };
+
     const queryTitle = data.query.charAt(0).toUpperCase() + data.query.slice(1).toLowerCase();
     const sections = data.sections || {};
 
     // Build specific description from Strategic Insights if available
     let insightSnippet = "";
+    if (data.context?.answer) insightSnippet += `${data.context.answer} `;
     if (sections.weather?.weatherInfo?.season) insightSnippet += `Best time: ${sections.weather.weatherInfo.season}. `;
     if (sections.visa?.visaSnapshot?.title) insightSnippet += `Visa: ${sections.visa.visaSnapshot.title}. `;
     if (sections.budget?.budgetInfo?.dailyEstimate) insightSnippet += `Budget: Around ${sections.budget.budgetInfo.dailyEstimate}. `;
@@ -58,8 +49,8 @@ export async function generateMetadata({ params }) {
         authors: [{ name: "Xmytravel Expert Team" }],
         publisher: "Xmytravel",
         robots: {
-            index: data.isIndexed || false,
-            follow: data.isIndexed || false,
+            index: data.is_indexed || false,
+            follow: data.is_indexed || false,
         },
         alternates: {
             canonical: `https://www.xmytravel.com/answers/${slug}`,
@@ -78,16 +69,22 @@ import JsonLd from "../../components/JsonLd";
 
 export default async function PublicAnswerPage({ params }) {
     const { slug } = await params;
+    const supabase = createSupabaseAdminClient();
 
-    const searchSnapshot = await db
-        .collection("RecentSearches")
-        .where("slug", "==", slug)
+    const { data: row, error } = await supabase
+        .from("RecentSearches")
+        .select("id, data")
+        .eq("data->>slug", slug)
+        .order("data->unlockedSectionsCount", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
-        .get();
+        .maybeSingle();
 
-    if (searchSnapshot.empty) {
+    if (error || !row?.data) {
         notFound();
     }
+
+    const data = { id: row.id, is_indexed: row.data.isIndexed || row.data.is_indexed, ...row.data };
 
     // ... (helper code for calculateYears remains same)
     const calculateYears = (experience) => {
@@ -113,16 +110,17 @@ export default async function PublicAnswerPage({ params }) {
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 365));
     };
 
-    const data = searchSnapshot.docs[0].data();
-
     // Fetch full expert details for enriched cards
     const enrichedExperts = await Promise.all((data.experts || []).map(async (expert) => {
         try {
-            const profileDoc = await db.collection("Profiles").doc(expert.id).get();
-            if (profileDoc.exists) {
-                const p = profileDoc.data();
-                const years = p.profileType === 'agency'
-                    ? (parseInt(p.yearsActive) || 0)
+            const { data: p, error: pError } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", expert.id)
+                .single();
+            if (!pError && p) {
+                const years = p.profile_type === 'agency'
+                    ? (parseInt(p.years_active) || 0)
                     : calculateYears(p.experience);
 
                 return {
@@ -132,7 +130,7 @@ export default async function PublicAnswerPage({ params }) {
                     expertise: (p.expertise || []).slice(0, 3),
                     tagline: p.tagline || "",
                     yearsOfExperience: years,
-                    profileType: p.profileType || 'expert'
+                    profileType: p.profile_type || 'expert'
                 };
             }
         } catch (err) {
@@ -144,6 +142,9 @@ export default async function PublicAnswerPage({ params }) {
     // Extract Dynamic Points for Strategic Insights without repeating the query
     const sections = data.sections || {};
     let strategicBody = "";
+    if (data.context?.answer) {
+        strategicBody += `${data.context.answer} `;
+    }
     
     // Indian Insights
     if (sections.indian_perspective?.indianPerspective) {

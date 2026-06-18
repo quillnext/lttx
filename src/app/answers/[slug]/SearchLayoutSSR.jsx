@@ -267,33 +267,38 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
                         )}
 
                         {/* More Compact Grid for Insights */}
-                        <div className="space-y-8">
-                            <SectionHeading>Strategic Insights</SectionHeading>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-                                {(() => {
-                                    const sectionKeys = Object.keys(sections).filter(key =>
-                                        POINTER_CONFIG[key] && key !== 'related_questions' && sections[key]
-                                    );
-                                    const isOdd = sectionKeys.length % 2 !== 0;
+                        {(() => {
+                            const sectionKeys = Object.keys(sections).filter(key =>
+                                POINTER_CONFIG[key] && key !== 'related_questions' && sections[key]
+                            );
+                            if (sectionKeys.length < 3) return null;
 
-                                    return sectionKeys.map((key, index) => {
-                                        const config = POINTER_CONFIG[key];
-                                        const isLast = index === sectionKeys.length - 1;
+                            const isOdd = sectionKeys.length % 2 !== 0;
 
-                                        return (
-                                            <div key={key} className={isOdd && isLast ? "sm:col-span-2" : ""}>
-                                                <StaticSection
-                                                    title={config.title}
-                                                    icon={config.icon}
-                                                    data={sections[key]}
-                                                    type={key}
-                                                    config={config}
-                                                />
-                                            </div>
-                                        );
-                                    });
-                                })()}
-                            </div>
+                            return (
+                                <div className="space-y-8">
+                                    <SectionHeading>Strategic Insights</SectionHeading>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
+                                        {sectionKeys.map((key, index) => {
+                                            const config = POINTER_CONFIG[key];
+                                            const isLast = index === sectionKeys.length - 1;
+
+                                            return (
+                                                <div key={key} className={isOdd && isLast ? "sm:col-span-2" : ""}>
+                                                    <StaticSection
+                                                        title={config.title}
+                                                        icon={config.icon}
+                                                        data={sections[key]}
+                                                        type={key}
+                                                        config={config}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                             {/* FAQ - Refined */}
                             {sections.related_questions && (
@@ -313,7 +318,6 @@ const SearchLayoutSSR = ({ experts = [], context = {}, query = "", sections = {}
                                 </div>
                             )}
                         </div>
-                    </div>
 
                     {/* Sidebar */}
                     <div className="lg:col-span-4 space-y-6">

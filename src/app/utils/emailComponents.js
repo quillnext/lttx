@@ -51,51 +51,27 @@ ${mobileStyles}
   <tr>
     <td style="text-align:center;padding:20px 16px;background:#1f0123;border-radius:16px;">
       <img src="https://www.xmytravel.com/logolttx.svg" alt="XMyTravel" class="xmt-logo" width="130" height="auto" style="display:block;margin:0 auto 12px;max-width:100%;height:auto;" />
-      <table role="presentation" cellpadding="0" cellspacing="0" class="xmt-footer-links" style="margin:0 auto 12px;">
-        <tr>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Home</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;white-space:nowrap;">|</td>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#about" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">About</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;white-space:nowrap;">|</td>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#why-us" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Why us</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;white-space:nowrap;">|</td>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#features" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Features</a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#joining-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Joining Process</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/news-and-media" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">News & Media</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/verification-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Verification Process</a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/aaq" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Aaq</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/ask-an-expert" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Ask an Expert</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/privacy-policy" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Privacy Policy</a>
-          </td>
-        </tr>
-      </table>
+      <div class="xmt-footer-links" style="margin:0 auto 12px;text-align:center;max-width:480px;line-height:22px;">
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Home</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#about" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">About</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#why-us" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Why us</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#features" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Features</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#joining-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Joining Process</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/news-and-media" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">News & Media</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/verification-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Verification Process</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/aaq" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Aaq</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/ask-an-expert" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Ask an Expert</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/privacy-policy" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Privacy Policy</a></span>
+      </div>
       <div style="font-size:11px;color:#6b5a73;">&copy; ${year} XMyTravel &bull; <a href="https://www.xmytravel.com" style="color:#6b5a73;text-decoration:none;">xmytravel.com</a></div>
     </td>
   </tr>
@@ -143,51 +119,27 @@ ${expertCard}
     <td style="background:#1f0123;border-radius:16px;padding:24px 16px;text-align:center;">
       <img src="https://www.xmytravel.com/logolttx.svg" alt="XMyTravel" class="xmt-logo" width="130" height="auto" style="display:block;margin:0 auto 10px;max-width:100%;height:auto;" />
       <div style="font-size:12px;color:#cdbed1;margin-bottom:12px;">Personalized Travel Planning For Smarter Journeys</div>
-      <table role="presentation" cellpadding="0" cellspacing="0" class="xmt-footer-links" style="margin:0 auto 14px;">
-        <tr>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Home</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;white-space:nowrap;">|</td>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#about" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">About</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;white-space:nowrap;">|</td>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#why-us" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Why us</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;white-space:nowrap;">|</td>
-          <td style="padding:0 8px;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#features" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Features</a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/about/#joining-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Joining Process</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/news-and-media" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">News & Media</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/verification-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Verification Process</a>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/aaq" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Aaq</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/ask-an-expert" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Ask an Expert</a>
-          </td>
-          <td class="sep" style="color:#5a4060;font-size:12px;padding:8px 0 0;white-space:nowrap;">|</td>
-          <td style="padding:8px 8px 0;white-space:nowrap;">
-            <a href="https://www.xmytravel.com/privacy-policy" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;white-space:nowrap;">Privacy Policy</a>
-          </td>
-        </tr>
-      </table>
+      <div class="xmt-footer-links" style="margin:0 auto 14px;text-align:center;max-width:480px;line-height:22px;">
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Home</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#about" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">About</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#why-us" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Why us</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#features" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Features</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/about/#joining-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Joining Process</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/news-and-media" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">News & Media</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/verification-process" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Verification Process</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/aaq" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Aaq</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/ask-an-expert" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Ask an Expert</a></span>
+        <span class="sep" style="color:#5a4060;font-size:12px;padding:0 4px;">|</span>
+        <span style="display:inline-block;white-space:nowrap;padding:0 6px;"><a href="https://www.xmytravel.com/privacy-policy" style="font-size:12px;color:#a897af;text-decoration:none;font-weight:600;">Privacy Policy</a></span>
+      </div>
       <div style="font-size:11px;color:#6b5a73;">&copy; ${year} XMyTravel &bull; <a href="https://www.xmytravel.com" style="color:#6b5a73;text-decoration:none;">xmytravel.com</a> &bull; info@xmytravel.com</div>
     </td>
   </tr>

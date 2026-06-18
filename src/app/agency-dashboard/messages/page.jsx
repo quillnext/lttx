@@ -457,12 +457,16 @@ export default function Messages() {
   const loadSessionData = async (sessionId) => {
     if (!sessionId || sessionData[sessionId]) return;
     try {
-      const docSnap = await getDocs(query(collection(db, "RecentSearches"), where(documentId(), "==", sessionId)));
-      if (!docSnap.empty) {
-        setSessionData(prev => ({ ...prev, [sessionId]: docSnap.docs[0].data() }));
+      const { data: row, error: sessionErr } = await supabase
+        .from("RecentSearches")
+        .select("id, data")
+        .eq("id", sessionId)
+        .single();
+      if (!sessionErr && row?.data) {
+        setSessionData(prev => ({ ...prev, [sessionId]: { id: row.id, ...row.data } }));
       }
     } catch (error) {
-      console.error("Error fetching session:", error);
+      console.error("Error fetching session from Supabase:", error);
     }
   };
 

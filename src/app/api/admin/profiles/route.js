@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { defaultExpertSchedule, mapProfileFormToSupabase, mapSupabaseProfile } from "@/lib/supabaseProfile";
+import crypto from "crypto";
 
 const generateReferralCode = () => {
   const timestamp = Date.now().toString().slice(-4);
@@ -99,6 +100,7 @@ export async function POST(request) {
     }
 
     const profileData = cleanPayload({
+      id: crypto.randomUUID(),
       ...mapProfileFormToSupabase(body),
       status: "approved",
       is_public: body.isPublic !== false,

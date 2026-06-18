@@ -170,12 +170,20 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
       let sessionSnapshot = null;
       if (sessionId) {
         try {
-          const sessionDoc = await getDoc(doc(db, "RecentSearches", sessionId));
-          if (sessionDoc.exists()) {
-            sessionSnapshot = sessionDoc.data();
+          const { data: row, error: sessionError } = await supabase
+            .from("RecentSearches")
+            .select("id, data")
+            .eq("id", sessionId)
+            .single();
+          if (!sessionError && row?.data) {
+            sessionSnapshot = {
+              id: row.id,
+              ...row.data,
+              isIndexed: row.data.isIndexed || row.data.is_indexed
+            };
           }
         } catch (err) {
-          console.warn("Failed to fetch session snapshot:", err);
+          console.warn("Failed to fetch session snapshot from Supabase:", err);
         }
       }
 
