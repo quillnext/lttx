@@ -56,7 +56,7 @@ export async function POST(request) {
   } catch (error) {
     console.error("Profile generation error:", error);
     return NextResponse.json(
-      { error: "Failed to generate profile sections." },
+      { error: "Failed to generate profile sections.", message: error.message, stack: error.stack },
       { status: 500 }
     );
   }
