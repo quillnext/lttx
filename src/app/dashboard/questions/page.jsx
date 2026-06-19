@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc, query, where, documentId } from "firebase/firestore";
 import { app } from "@/lib/firebase";
-import { ChevronDown, ChevronUp, CircleCheckBig, Loader } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleCheckBig, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 import { supabase } from "@/lib/supabase";
 
@@ -181,6 +181,33 @@ export default function AdminQuestions() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredQuestions.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      let start = Math.max(1, currentPage - 2);
+      let end = Math.min(totalPages, currentPage + 2);
+
+      if (currentPage <= 3) {
+        start = 1;
+        end = Math.min(totalPages, 5);
+      } else if (currentPage >= totalPages - 2) {
+        start = Math.max(1, totalPages - 4);
+        end = totalPages;
+      }
+
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+    }
+    return pages;
+  };
 
   const [reminding, setReminding] = useState({});
   const [experts, setExperts] = useState([]);
@@ -488,16 +515,34 @@ export default function AdminQuestions() {
       )}
 
       {totalPages > 1 && (
-        <div className="flex justify-center mt-6 gap-2">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+        <div className="flex justify-center items-center mt-6 gap-2">
+          <button
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent disabled:scale-100 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            <ChevronLeft size={16} />
+          </button>
+          {getPageNumbers().map((page) => (
             <button
               key={page}
-              className={`px-3 py-1 rounded-md text-sm font-medium border transition ${page === currentPage ? "bg-[#36013F] text-white border-[#36013F]" : "border-gray-300 hover:bg-gray-100"}`}
+              className={`w-10 h-10 rounded-xl text-sm font-semibold border transition-all duration-200 active:scale-95 ${
+                page === currentPage
+                  ? "bg-[#36013F] text-white border-[#36013F] shadow-sm shadow-[#36013F]/20"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
               onClick={() => setCurrentPage(page)}
             >
               {page}
             </button>
           ))}
+          <button
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="p-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 disabled:opacity-40 disabled:hover:bg-transparent disabled:scale-100 disabled:cursor-not-allowed transition-all duration-200"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
     </div>

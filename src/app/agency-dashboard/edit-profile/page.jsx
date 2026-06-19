@@ -3,14 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAuth } from "firebase/auth";
-import { doc, getFirestore, getDoc, updateDoc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { app } from "@/lib/firebase";
 import EditProfileForm from "@/app/components/EditProfileForm";
+import { supabase } from "@/lib/supabase";
+import { mapSupabaseProfile, getProfileByUidOrEmail, mapProfileFormToSupabase } from "@/lib/supabaseProfile";
 
 const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
 
 export default function UserEditProfile() {
   const [profileData, setProfileData] = useState(null);
@@ -38,53 +36,39 @@ export default function UserEditProfile() {
       }
 
       try {
-        const docRef = doc(db, "Profiles", user.uid);
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists()) {
-          const data = snapshot.data();
+        const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
+
+        if (data) {
+          const mapped = mapSupabaseProfile(data);
+          
+          const safeArray = (val) => {
+              if (Array.isArray(val)) return val;
+              if (typeof val === 'string' && val.trim()) return val.split(',').map(s => s.trim());
+              return [];
+          };
+
           setProfileData({
-            ...data,
-            dateOfBirth: data.dateOfBirth ? parseDate(data.dateOfBirth, "YYYY-MM-DD") : null,
-            services: Array.isArray(data.services)
-              ? data.services.filter((s) => typeof s === "string" && s.trim())
+            ...mapped,
+            dateOfBirth: mapped.dateOfBirth ? parseDate(mapped.dateOfBirth, "YYYY-MM-DD") : null,
+            languages: safeArray(mapped.languages),
+            expertise: safeArray(mapped.expertise),
+            certifications: safeArray(mapped.certifications),
+            services: Array.isArray(mapped.services)
+              ? mapped.services.filter((s) => typeof s === "string" && s.trim())
               : [""],
-            regions: Array.isArray(data.regions) ? data.regions : [],
-            expertise: Array.isArray(data.expertise) ? data.expertise : [],
-            experience: Array.isArray(data.experience) && data.experience.length
-              ? data.experience.map((exp) => ({
+            regions: Array.isArray(mapped.regions) ? mapped.regions : [],
+            experience: Array.isArray(mapped.experience) && mapped.experience.length
+              ? mapped.experience.map((exp) => ({
                   ...exp,
                   startDate: exp.startDate ? parseDate(exp.startDate, "YYYY-MM") : null,
                   endDate: exp.endDate === "Present" ? "Present" : parseDate(exp.endDate, "YYYY-MM"),
                 }))
               : [{ title: "", company: "", startDate: null, endDate: null }],
+            certificates: safeArray(mapped.certificates),
+            officePhotos: safeArray(mapped.officePhotos),
           });
         } else {
-          // Fallback to Supabase
-          const { supabase } = await import("@/lib/supabase");
-          const { mapSupabaseProfile, getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
-          const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
-
-          if (data) {
-            const mapped = mapSupabaseProfile(data);
-            setProfileData({
-              ...mapped,
-              dateOfBirth: mapped.dateOfBirth ? parseDate(mapped.dateOfBirth, "YYYY-MM-DD") : null,
-              services: Array.isArray(mapped.services)
-                ? mapped.services.filter((s) => typeof s === "string" && s.trim())
-                : [""],
-              regions: Array.isArray(mapped.regions) ? mapped.regions : [],
-              expertise: Array.isArray(mapped.expertise) ? mapped.expertise : [],
-              experience: Array.isArray(mapped.experience) && mapped.experience.length
-                ? mapped.experience.map((exp) => ({
-                    ...exp,
-                    startDate: exp.startDate ? parseDate(exp.startDate, "YYYY-MM") : null,
-                    endDate: exp.endDate === "Present" ? "Present" : parseDate(exp.endDate, "YYYY-MM"),
-                  }))
-                : [{ title: "", company: "", startDate: null, endDate: null }],
-            });
-          } else {
-            console.error("Profile not found for user in Firestore and Supabase:", user.uid);
-          }
+          console.error("Profile not found for user in Supabase:", user.uid);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -102,21 +86,51 @@ export default function UserEditProfile() {
     }
 
     try {
-      let newPhotoURL = updatedData.photo;
+      const sanitizedName = updatedData.fullName?.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") || "Unknown";
+      
+      const uploadProfileAsset = async (file, folder, namePrefix) => {
+        const uploadData = new FormData();
+        uploadData.append("file", file);
+        uploadData.append("folder", folder);
+        uploadData.append("namePrefix", namePrefix);
 
+        const response = await fetch("/api/profile-assets/upload", {
+          method: "POST",
+          body: uploadData,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "Failed to upload file");
+        return result.publicUrl;
+      };
+
+      let photoURL = updatedData.photo;
       if (updatedData.photo instanceof File) {
-        const sanitizedName =
-          updatedData.fullName?.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "") || "Unknown";
-        const timestamp = Date.now();
-        const ext = updatedData.photo.name.split(".").pop();
-        const fileName = `profile_${timestamp}.${ext}`;
-        const storageRef = ref(storage, `Profiles/${sanitizedName}/${fileName}`);
-        await uploadBytes(storageRef, updatedData.photo);
-        newPhotoURL = await getDownloadURL(storageRef);
+        photoURL = await uploadProfileAsset(updatedData.photo, "profiles", `profile_${sanitizedName}`);
+      }
+
+      const finalCertificates = [];
+      const certificatesList = Array.isArray(updatedData.certificates) ? updatedData.certificates : [];
+      for (const cert of certificatesList) {
+        if (cert instanceof File) {
+          finalCertificates.push(await uploadProfileAsset(cert, "certificates", `cert_${sanitizedName}`));
+        } else if (typeof cert === 'string') {
+          finalCertificates.push(cert);
+        }
+      }
+
+      const finalOfficePhotos = [];
+      const officePhotosList = Array.isArray(updatedData.officePhotos) ? updatedData.officePhotos : [];
+      for (const oPhoto of officePhotosList) {
+        if (oPhoto instanceof File) {
+          finalOfficePhotos.push(await uploadProfileAsset(oPhoto, "office-photos", `office_${sanitizedName}`));
+        } else if (typeof oPhoto === 'string') {
+          finalOfficePhotos.push(oPhoto);
+        }
       }
 
       const formatDate = (date, format = "YYYY-MM-DD") => {
         if (!date) return "";
+        if (typeof date === 'string') return date;
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         if (format === "YYYY-MM") return `${year}-${month}`;
@@ -124,66 +138,39 @@ export default function UserEditProfile() {
         return `${year}-${month}-${day}`;
       };
 
-      const { photo, ...dataToSave } = updatedData;
-      
-      const payload = {
-        ...dataToSave,
-        photo: newPhotoURL,
+      const formattedDataForSupabaseMapping = {
+        ...updatedData,
+        photo: photoURL,
+        certificates: finalCertificates,
+        officePhotos: finalOfficePhotos,
         dateOfBirth: updatedData.dateOfBirth ? formatDate(updatedData.dateOfBirth, "YYYY-MM-DD") : "",
-        services: updatedData.services.filter((s) => typeof s === "string" && s.trim()),
-        experience: updatedData.experience.map((exp) => ({
-          title: exp.title || "",
-          company: exp.company || "",
-          startDate: exp.startDate ? formatDate(exp.startDate, "YYYY-MM") : "",
-          endDate: exp.endDate === "Present" ? "Present" : exp.endDate ? formatDate(exp.endDate, "YYYY-MM") : "",
-        })),
+        services: Array.isArray(updatedData.services)
+          ? updatedData.services.filter((s) => typeof s === "string" && s.trim())
+          : [],
+        experience: Array.isArray(updatedData.experience)
+          ? updatedData.experience.map((exp) => ({
+              title: exp.title || "",
+              company: exp.company || "",
+              startDate: exp.startDate instanceof Date ? formatDate(exp.startDate, "YYYY-MM") : exp.startDate || "",
+              endDate: exp.endDate === "Present" ? "Present" : (exp.endDate instanceof Date ? formatDate(exp.endDate, "YYYY-MM") : exp.endDate || ""),
+            }))
+          : [],
       };
 
-      // 1. Update in Firestore if it exists
-      try {
-        const docRef = doc(db, "Profiles", user.uid);
-        const snapshot = await getDoc(docRef);
-        if (snapshot.exists()) {
-          await updateDoc(docRef, payload);
-        }
-      } catch (firestoreErr) {
-        console.error("Firestore update error:", firestoreErr);
-      }
+      const supabasePayload = mapProfileFormToSupabase(formattedDataForSupabaseMapping);
+      supabasePayload.updated_at = new Date().toISOString();
 
-      // 2. Always update in Supabase
-      try {
-        const { mapProfileFormToSupabase } = await import("@/lib/supabaseProfile");
+      const profileId = updatedData.id || user.uid;
+      
+      const response = await fetch("/api/profile/by-uid", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileId, payload: supabasePayload }),
+      });
 
-        // Format dates correctly for saving
-        const formattedDataForSupabaseMapping = {
-          ...updatedData,
-          photo: newPhotoURL,
-          dateOfBirth: updatedData.dateOfBirth ? formatDate(updatedData.dateOfBirth, "YYYY-MM-DD") : "",
-          experience: updatedData.experience.map((exp) => ({
-            title: exp.title || "",
-            company: exp.company || "",
-            startDate: exp.startDate ? formatDate(exp.startDate, "YYYY-MM") : "",
-            endDate: exp.endDate === "Present" ? "Present" : exp.endDate ? formatDate(exp.endDate, "YYYY-MM") : "",
-          })),
-        };
-
-        const supabasePayload = mapProfileFormToSupabase(formattedDataForSupabaseMapping);
-        supabasePayload.updated_at = new Date().toISOString();
-
-        const profileId = updatedData.id || user.uid;
-        
-        const response = await fetch("/api/profile/by-uid", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profileId, payload: supabasePayload }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json();
-          throw new Error(errData.error || "Failed to update profile via API");
-        }
-      } catch (supabaseErr) {
-        console.error("Supabase update error:", supabaseErr);
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || "Failed to update profile via API");
       }
 
     } catch (error) {

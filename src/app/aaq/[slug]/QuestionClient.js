@@ -158,8 +158,9 @@ export default function QuestionClient({
     };
 
     const profile = featuredQuestion
-        ? expertProfileMap[featuredQuestion.expertName] || {
+        ? expertProfileMap[featuredQuestion.expertId] || {
             username: null,
+            photo: "/default.jpg",
             profilePhoto: "/default.jpg",
             tagline: "No tagline available",
         }
@@ -222,16 +223,15 @@ export default function QuestionClient({
                             <div className="flex flex-wrap justify-between items-center gap-4">
                                 <div className="flex items-center gap-3">
                                     <button
-                                        onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
+                                        onClick={() => openLightbox(profile.photo || profile.profilePhoto || "/default.jpg")}
                                         className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
                                     >
                                         <Image
-                                            src={profile.profilePhoto || "/default.jpg"}
+                                            src={profile.photo || profile.profilePhoto || "/default.jpg"}
                                             alt={`${featuredQuestion.expertName || "Expert"}'s profile photo`}
                                             fill
                                             sizes="40px"
                                             className="object-cover"
-                                            onError={(e) => (e.target.src = "/default.jpg")}
                                         />
                                     </button>
                                     <div>
@@ -253,7 +253,7 @@ export default function QuestionClient({
                                         setModalExpert({
                                             fullName: featuredQuestion.expertName,
                                             username: profile.username,
-                                            profilePhoto: profile.profilePhoto || "/default.jpg",
+                                            profilePhoto: profile.photo || profile.profilePhoto || "/default.jpg",
                                             tagline: profile.tagline,
                                         })
                                     }
@@ -298,8 +298,9 @@ export default function QuestionClient({
                                 <h2 className="text-2xl font-bold text-[#36013F] mb-4">More Answered Questions</h2>
                                 <div className="space-y-4">
                                     {paginatedQuestions.map((q) => {
-                                        const profile = expertProfileMap[q.expertName] || {
+                                        const profile = expertProfileMap[q.expertId] || {
                                             username: null,
+                                            photo: "/default.jpg",
                                             profilePhoto: "/default.jpg",
                                             tagline: "No tagline available",
                                         };
@@ -326,16 +327,15 @@ export default function QuestionClient({
                                                     <div className="flex flex-wrap justify-between items-center gap-4">
                                                         <div className="flex items-center gap-3">
                                                             <button
-                                                                onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
+                                                                onClick={() => openLightbox(profile.photo || profile.profilePhoto || "/default.jpg")}
                                                                 className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
                                                             >
                                                                 <Image
-                                                                    src={profile.profilePhoto || "/default.jpg"}
+                                                                    src={profile.photo || profile.profilePhoto || "/default.jpg"}
                                                                     alt={`${q.expertName || "Expert"}'s profile photo`}
                                                                     fill
                                                                     sizes="40px"
                                                                     className="object-cover"
-                                                                    onError={(e) => (e.target.src = "/default.jpg")}
                                                                 />
                                                             </button>
                                                             <div>
@@ -357,7 +357,7 @@ export default function QuestionClient({
                                                                 setModalExpert({
                                                                     fullName: q.expertName,
                                                                     username: profile.username,
-                                                                    profilePhoto: profile.profilePhoto || "/default.jpg",
+                                                                    profilePhoto: profile.photo || profile.profilePhoto || "/default.jpg",
                                                                     tagline: profile.tagline,
                                                                 })
                                                             }
@@ -406,27 +406,27 @@ export default function QuestionClient({
                                     <div className="space-y-4">
                                         {topExperts.map((expert) => {
                                             const profile =
-                                                expertProfileMap[expert.expertName] || {
+                                                expertProfileMap[expert.expertId] || {
                                                     username: null,
+                                                    photo: "/default.jpg",
                                                     profilePhoto: "/default.jpg",
                                                     tagline: "No tagline available",
                                                 };
                                             return (
                                                 <div
-                                                    key={expert.expertName}
+                                                    key={expert.expertId}
                                                     className="flex items-center gap-4 p-3 bg-white rounded-xl shadow-sm border border-primary hover:shadow-md transition-shadow w-full md:w-[80%] mx-auto"
                                                 >
                                                     <button
-                                                        onClick={() => openLightbox(profile.profilePhoto)}
+                                                        onClick={() => openLightbox(profile.photo || profile.profilePhoto || "/default.jpg")}
                                                         className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-[#36013F]"
                                                     >
                                                         <Image
-                                                            src={profile.profilePhoto}
+                                                            src={profile.photo || profile.profilePhoto || "/default.jpg"}
                                                             alt={`${expert.expertName || "Expert"}'s profile photo`}
                                                             fill
                                                             sizes="56px"
                                                             className="object-cover object-center"
-                                                            onError={(e) => (e.target.src = "/default.jpg")}
                                                         />
                                                     </button>
                                                     <div className="flex flex-col">

@@ -1,14 +1,10 @@
 
 import React from "react";
-import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
-import { app } from "@/lib/firebase";
-import slugify from "slugify";
 import QuestionClient from "./QuestionClient";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 // Force dynamic rendering since we are fetching data that might change
 export const dynamic = "force-dynamic";
-
-const db = getFirestore(app);
 
 // Helper function to decode slug back to search term
 const fromSlug = (slug) => {
@@ -36,21 +32,29 @@ const levenshteinDistance = (a, b) => {
 async function fetchData(slug) {
   const searchTermFromUrl = slug ? fromSlug(slug) : "";
   const searchTermLower = searchTermFromUrl.toLowerCase();
+  const supabase = createSupabaseAdminClient();
 
   try {
-    const q = query(
-      collection(db, "Questions"),
-      where("isPublic", "==", true),
-      where("status", "==", "answered")
-    );
-    const querySnapshot = await getDocs(q);
+    const { data: querySnapshot, error } = await supabase
+      .from("questions")
+      .select("*")
+      .eq("is_public", true)
+      .eq("status", "answered");
 
-    const questionList = querySnapshot.docs.map((docSnap) => {
-      const data = docSnap.data();
-      const rawDate = new Date(data.createdAt || Date.now());
+    if (error) throw error;
+
+    const questionList = (querySnapshot || []).map((data) => {
+      const rawDate = new Date(data.created_at || Date.now());
       return {
-        id: docSnap.id,
-        ...data,
+        id: data.id,
+        question: data.question,
+        reply: data.reply,
+        expertName: data.expert_name?.trim(),
+        expertId: data.expert_id,
+        status: data.status,
+        isPublic: data.is_public,
+        likes: data.likes || 0,
+        dislikes: data.dislikes || 0,
         timestamp:
           rawDate.toLocaleDateString("en-GB") +
           " " +
@@ -62,31 +66,36 @@ async function fetchData(slug) {
     const sortedQuestions = questionList.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
 
     const answerCountMap = questionList.reduce((map, q) => {
-      map[q.expertName] = (map[q.expertName] || 0) + 1;
+      if (q.expertId) {
+        map[q.expertId] = (map[q.expertId] || 0) + 1;
+      }
       return map;
     }, {});
 
-    const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
-    const profilePromises = uniqueExpertNames.map(async (expertName) => {
-      const q = query(collection(db, "Profiles"), where("fullName", "==", expertName));
-      const profileSnapshot = await getDocs(q);
-      let username = null;
-      let profilePhoto = null;
-      let tagline = null;
-      profileSnapshot.forEach((doc) => {
-        username = doc.data().username;
-        profilePhoto = doc.data().profilePhoto || doc.data().photo;
-        tagline = doc.data().tagline || "No tagline available";
-      });
-      return { expertName, username, profilePhoto, tagline, answerCount: answerCountMap[expertName] || 0 };
+    const uniqueExpertIds = [...new Set(questionList.map((q) => q.expertId))].filter(Boolean);
+    const profilePromises = uniqueExpertIds.map(async (expertId) => {
+      const { data: profileSnapshot } = await supabase
+        .from("profiles")
+        .select("username, photo_url, tagline, full_name")
+        .eq("id", expertId);
+
+      let username = null, photo = null, tagline = null, fullName = null;
+      if (profileSnapshot && profileSnapshot.length > 0) {
+        const doc = profileSnapshot[0];
+        username = doc.username;
+        photo = doc.photo_url;
+        tagline = doc.tagline || "No tagline available";
+        fullName = doc.full_name;
+      }
+      return { expertId, username, photo, tagline, expertName: fullName || "Unknown Expert", answerCount: answerCountMap[expertId] || 0 };
     });
 
     const profileResults = await Promise.all(profilePromises);
     const newExpertProfileMap = profileResults.reduce((map, result) => {
-      if (result.expertName) {
-        map[result.expertName] = {
+      if (result.expertId) {
+        map[result.expertId] = {
           username: result.username,
-          profilePhoto: result.profilePhoto || "/default.jpg",
+          photo: result.photo || "/default.jpg",
           tagline: result.tagline,
         };
       }
@@ -99,7 +108,6 @@ async function fetchData(slug) {
       .map((expert, index) => ({ ...expert, rank: index + 1 }));
 
     // Find the triggered question for Metadata
-    // Logic similar to filteredQuestions in Client
     let featuredQuestion = null;
     if (searchTermFromUrl) {
       const withScores = sortedQuestions.map(question => {
@@ -125,7 +133,6 @@ async function fetchData(slug) {
       expertProfileMap: newExpertProfileMap,
       featuredQuestion
     };
-
   } catch (error) {
     console.error("Error fetching data:", error);
     return {

@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, query, where, onSnapshot, doc, updateDoc, increment } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
 import { FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
@@ -12,8 +11,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../pages/Footer";
 import slugify from "slugify";
 import PrescriptionUserView from "../components/PrescriptionUserView";
-
-const db = getFirestore(app);
+import { useRouter } from "next/navigation";
 
 const truncateByChars = (text, maxLength) => {
   if (!text) return "";
@@ -27,16 +25,21 @@ const toSlug = (text) => {
     strict: true, // Remove special characters
     remove: /[*+~.()'"!:@]/g, // Remove additional special characters
     trim: true,
-    replacement: '-', // Replace spaces with hyphens
-  }).substring(0, 100); // Limit slug length for URL safety
+    replacement: '-', 
+  }).substring(0, 100); 
 };
 
-export default function FAQPage() {
+export default function FAQPage({
+  initialQuestions = [],
+  initialTopExperts = [],
+  initialExpertProfileMap = {}
+}) {
+  const router = useRouter();
   const [groupedQuestions, setGroupedQuestions] = useState([]);
-  const [topExperts, setTopExperts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [topExperts, setTopExperts] = useState(initialTopExperts);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [expertProfileMap, setExpertProfileMap] = useState({});
+  const [expertProfileMap, setExpertProfileMap] = useState(initialExpertProfileMap);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,6 +69,7 @@ export default function FAQPage() {
         group.answerGroups[replyKey] = {
           reply: q.reply,
           experts: new Set(),
+          expertIds: new Set(),
           totalLikes: 0,
           totalDislikes: 0,
           ids: [],
@@ -74,6 +78,7 @@ export default function FAQPage() {
       }
       const ag = group.answerGroups[replyKey];
       ag.experts.add(q.expertName);
+      ag.expertIds.add(q.expertId);
       ag.totalLikes += q.likes || 0;
       ag.totalDislikes += q.dislikes || 0;
       ag.ids.push(q.id);
@@ -95,103 +100,32 @@ export default function FAQPage() {
   };
 
   useEffect(() => {
-    const fetchQuestionsAndUsernames = async () => {
-      try {
-        const q = query(
-          collection(db, "Questions"),
-          where("isPublic", "==", true),
-          where("status", "==", "answered")
-        );
-        const querySnapshot = await getDocs(q);
-        const questionList = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = new Date(data.createdAt || Date.now());
-          return {
-            id: docSnap.id,
-            ...data,
-            timestamp:
-              rawDate.toLocaleDateString("en-GB") +
-              " " +
-              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-            rawTimestamp: rawDate.getTime(),
-          };
-        });
+    if (initialQuestions && initialQuestions.length > 0) {
+      setGroupedQuestions(groupQuestions(initialQuestions));
+    }
+  }, [initialQuestions]);
 
-        const grouped = groupQuestions(questionList);
+  useEffect(() => {
+    const channel = supabase
+      .channel("public-answered-questions")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "questions",
+          filter: "is_public=eq.true",
+        },
+        async () => {
+          router.refresh();
+        }
+      )
+      .subscribe();
 
-        const answerCountMap = questionList.reduce((map, q) => {
-          map[q.expertName] = (map[q.expertName] || 0) + 1;
-          return map;
-        }, {});
-
-        const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
-        const profilePromises = uniqueExpertNames.map(async (expertName) => {
-          const qProfile = query(collection(db, "Profiles"), where("fullName", "==", expertName));
-          const profileSnapshot = await getDocs(qProfile);
-          let username = null, profilePhoto = null, tagline = null;
-          profileSnapshot.forEach((doc) => {
-            username = doc.data().username;
-            profilePhoto = doc.data().profilePhoto || doc.data().photo;
-            tagline = doc.data().tagline || "No tagline available";
-          });
-          return { expertName, username, profilePhoto, tagline, answerCount: answerCountMap[expertName] || 0 };
-        });
-
-        const profileResults = await Promise.all(profilePromises);
-        const newExpertProfileMap = profileResults.reduce((map, result) => {
-          if (result.expertName) {
-            map[result.expertName] = {
-              username: result.username,
-              profilePhoto: result.profilePhoto || "/default.jpg",
-              tagline: result.tagline,
-            };
-          }
-          return map;
-        }, {});
-
-        const topExpertsList = profileResults
-          .sort((a, b) => b.answerCount - a.answerCount)
-          .slice(0, 10)
-          .map((expert, index) => ({ ...expert, rank: index + 1 }));
-
-        setExpertProfileMap(newExpertProfileMap);
-        setGroupedQuestions(grouped);
-        setTopExperts(topExpertsList);
-      } catch (error) {
-        console.error("Error fetching data:", error.message);
-      } finally {
-        setLoading(false);
-      }
+    return () => {
+      supabase.removeChannel(channel);
     };
-
-    const q = query(
-      collection(db, "Questions"),
-      where("isPublic", "==", true),
-      where("status", "==", "answered")
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const questionList = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        const rawDate = new Date(data.createdAt || Date.now());
-        return {
-          id: docSnap.id,
-          ...data,
-          timestamp:
-            rawDate.toLocaleDateString("en-GB") +
-            " " +
-            rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          rawTimestamp: rawDate.getTime(),
-        };
-      });
-      const grouped = groupQuestions(questionList);
-      setGroupedQuestions(grouped);
-    }, (error) => {
-      console.error("Error with real-time listener:", error.message);
-    });
-
-    fetchQuestionsAndUsernames();
-    return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const filteredGroups = groupedQuestions.filter(
     (group) =>
@@ -217,14 +151,22 @@ export default function FAQPage() {
 
   const handleLikeDislike = async (ids, action) => {
     try {
-      const updates = ids.map((id) =>
-        updateDoc(doc(db, "Questions", id), {
-          [action === "like" ? "likes" : "dislikes"]: increment(1),
-        })
-      );
-      await Promise.all(updates);
+      for (const id of ids) {
+        const { data: row } = await supabase
+          .from("questions")
+          .select("likes, dislikes")
+          .eq("id", id)
+          .single();
+        if (row) {
+          const count = (action === "like" ? row.likes : row.dislikes) || 0;
+          await supabase
+            .from("questions")
+            .update({ [action === "like" ? "likes" : "dislikes"]: count + 1 })
+            .eq("id", id);
+        }
+      }
     } catch (error) {
-      console.error(`Error updating ${action}:`, error.message);
+      console.error(`Error updating ${action}:`, error);
     }
   };
 
@@ -252,7 +194,6 @@ export default function FAQPage() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                // Optionally handle search submission if needed
               }}
               className="relative w-full max-w-2xl mx-auto mt-8"
             >
@@ -312,79 +253,83 @@ export default function FAQPage() {
                         <FaChevronDown className="w-5 h-5 flex-shrink-0 text-gray-400 transition-transform duration-300 group-open:rotate-180 group-open:text-[#36013F]" />
                       </summary>
                       <div className="p-5 border-t border-gray-200">
-                        {group.answerGroupsArray.map((ag) => {
-                          const expertsArray = Array.from(ag.experts);
-                          const isSingleExpert = ag.experts.size === 1;
-                          const singleExpertName = isSingleExpert ? expertsArray[0] : null;
-                          const profile = isSingleExpert && singleExpertName
-                            ? (expertProfileMap[singleExpertName] || { username: null, profilePhoto: "/default.jpg", tagline: "No tagline available" })
-                            : null;
+                          <div className="relative border-l-2 border-gray-100 ml-4 pl-6 sm:pl-8 space-y-6 my-2">
+                            {group.answerGroupsArray.map((ag) => {
+                              const expertsArray = Array.from(ag.experts);
+                              const expertIdsArray = ag.expertIds ? Array.from(ag.expertIds) : [];
+                              const isSingleExpert = ag.expertIds ? ag.expertIds.size === 1 : ag.experts.size === 1;
+                              const singleExpertId = isSingleExpert && expertIdsArray.length > 0 ? expertIdsArray[0] : null;
+                              const singleExpertName = isSingleExpert ? expertsArray[0] : null;
+                              const profile = isSingleExpert && singleExpertId
+                                ? (expertProfileMap[singleExpertId] || { username: null, photo: "/default.jpg", tagline: "No tagline available" })
+                                : null;
 
-                          return (
-                            <div key={ag.reply} className="border-b border-gray-100 pb-4 last:border-b-0">
-                              <div className="mb-6">
-                                {(() => {
-                                  try {
-                                    const parsed = JSON.parse(ag.reply);
-                                    return <PrescriptionUserView prescription={parsed} />;
-                                  } catch (e) {
-                                    return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{ag.reply || "No answer available yet."}</p>;
-                                  }
-                                })()}
-                              </div>
-                              <div className="flex flex-wrap justify-between items-center gap-4">
-                                <div className="flex items-center gap-3">
-                                  {isSingleExpert && profile && (
-                                    <button
-                                      onClick={() => openLightbox(profile.profilePhoto)}
-                                      className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
-                                    >
+                              return (
+                                <div key={ag.reply} className="relative bg-gray-50/50 p-4 sm:p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md">
+                                  {/* Timeline avatar / connector dot */}
+                                  <div className="absolute -left-[35px] sm:-left-[43px] top-5 w-6 h-6 rounded-full border-2 border-white bg-gray-200 overflow-hidden shadow-sm flex items-center justify-center">
+                                    {isSingleExpert && profile ? (
                                       <Image
-                                        src={profile.profilePhoto}
-                                        alt={`${singleExpertName || "Expert"}'s profile photo`}
-                                        fill
-                                        sizes="40px"
-                                        className="object-cover"
-                                        onError={(e) => (e.target.src = "/default.jpg")}
+                                        src={profile.photo || "/default.jpg"}
+                                        alt={`${singleExpertName || "Expert"}'s avatar`}
+                                        width={24}
+                                        height={24}
+                                        className="object-cover w-full h-full cursor-pointer"
+                                        onClick={() => profile.photo && openLightbox(profile.photo)}
                                       />
-                                    </button>
-                                  )}
-                                  <div>
-                                    {isSingleExpert ? (
-                                      <>
-                                        <span className="text-sm text-gray-500">Answered by</span>
-                                        {profile && profile.username ? (
-                                          <Link
-                                            href={`/experts/${profile.username}`}
-                                            className="block text-[#36013F] font-bold hover:underline"
-                                          >
-                                            {singleExpertName}
-                                          </Link>
-                                        ) : (
-                                          <p className="font-bold text-gray-600">{singleExpertName || "Unknown Expert"}</p>
-                                        )}
-                                      </>
                                     ) : (
-                                      <p className="font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
+                                      <span className="text-[8px] font-bold text-gray-600 bg-gray-300 w-full h-full flex items-center justify-center">EXP</span>
                                     )}
                                   </div>
+
+                                  <div className="mb-4">
+                                    {(() => {
+                                      try {
+                                        const parsed = JSON.parse(ag.reply);
+                                        return <PrescriptionUserView prescription={parsed} />;
+                                      } catch (e) {
+                                        return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{ag.reply || "No answer available yet."}</p>;
+                                      }
+                                    })()}
+                                  </div>
+
+                                  <div className="flex flex-wrap justify-between items-center gap-4 mt-4 pt-3 border-t border-gray-100">
+                                    <div>
+                                      {isSingleExpert ? (
+                                        <div className="text-sm">
+                                          <span className="text-gray-500">Answered by </span>
+                                          {profile && profile.username ? (
+                                            <Link
+                                              href={`/experts/${profile.username}`}
+                                              className="inline-block text-[#36013F] font-bold hover:underline"
+                                            >
+                                              {singleExpertName}
+                                            </Link>
+                                          ) : (
+                                            <span className="font-bold text-gray-600">{singleExpertName || "Unknown Expert"}</span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <p className="text-xs text-gray-500">{ag.timestamp}</p>
+                                      <Link
+                                        href={`/aaq/${toSlug(group.originalQuestion)}`}
+                                        className="text-[#36013F] hover:text-[#F4D35E] p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                                        title="View full page"
+                                      >
+                                        <FaExternalLinkAlt className="w-3.5 h-3.5" />
+                                      </Link>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-4">
-                                  <p className="text-xs text-gray-500 self-end">{ag.timestamp}</p>
-                                  <Link
-                                    href={`/aaq/${toSlug(group.originalQuestion)}`}
-                                    className="text-[#36013F] hover:text-[#F4D35E] p-2 rounded-full hover:bg-gray-100 transition-colors"
-                                    title="View full page"
-                                  >
-                                    <FaExternalLinkAlt className="w-4 h-4" />
-                                  </Link>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </details>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </details>
                   ))}
                   {totalPages > 1 && (
                     <div className="flex justify-center items-center gap-2 sm:gap-4 mt-8">
@@ -420,27 +365,26 @@ export default function FAQPage() {
                     </h2>
                     <div className="space-y-4">
                       {topExperts.map((expert) => {
-                        const profile = expertProfileMap[expert.expertName] || {
+                        const profile = expertProfileMap[expert.expertId] || {
                           username: null,
-                          profilePhoto: "/default.jpg",
+                          photo: "/default.jpg",
                           tagline: "No tagline available",
                         };
                         return (
                           <div
-                            key={expert.expertName}
+                            key={expert.expertId}
                             className="flex items-center gap-4 p-3 bg-white rounded-xl shadow-sm border border-[#36013F] hover:shadow-md transition-shadow w-full md:w-[80%] mx-auto"
                           >
                             <button
-                              onClick={() => openLightbox(profile.profilePhoto)}
+                              onClick={() => openLightbox(profile.photo || "/default.jpg")}
                               className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-[#36013F]"
                             >
                               <Image
-                                src={profile.profilePhoto}
+                                src={profile.photo || "/default.jpg"}
                                 alt={`${expert.expertName || "Expert"}'s profile photo`}
                                 fill
                                 sizes="56px"
                                 className="object-cover object-center"
-                                onError={(e) => (e.target.src = "/default.jpg")}
                               />
                             </button>
                             <div className="flex flex-col">
@@ -470,12 +414,6 @@ export default function FAQPage() {
               </div>
             </aside>
           </main>
-
-          {/* <div className="text-center mt-8">
-          <Link href="/faq" className="text-[#36013F] font-semibold hover:underline">
-            View all Questions
-          </Link>
-        </div> */}
         </div>
       </div>
 
