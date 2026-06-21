@@ -169,7 +169,7 @@ const ServiceResponseDisplay = ({ reply, serviceType }) => {
           <p className="text-sm whitespace-pre-line">{opt.nextSteps}</p>
         </Block>
       )}
-      {opt.dayWiseStructure && (
+      {opt.dayWiseStructure && serviceType?.toUpperCase() !== "THE MASTER PLAN" && (
         <Block label="Day-wise Structure" color="blue">
           <p className="text-sm whitespace-pre-line">{opt.dayWiseStructure}</p>
         </Block>

@@ -18,7 +18,6 @@ const getServiceConfig = (serviceType = "") => {
       type: "master-plan",
       label: "Master Plan Direction",
       fields: [
-        { key: "dayWiseStructure", label: "Day-wise or Structure Suggestion", rows: 3 },
         { key: "stayStrategy", label: "Stay Strategy", rows: 3 },
         { key: "routeLogic", label: "Route Logic", rows: 3 },
       ],
@@ -182,7 +181,6 @@ export default function ExpertPrescriptionBuilder({ question, onDraftGenerate, o
       mapped.diagnosis  = draft.planVerdict || draft.diagnosis || "";
       mapped.coreAdvice = draft.dayStructure || draft.coreAdvice || "";
       mapped.risks      = Array.isArray(draft.mustDos) ? draft.mustDos : mapped.risks;
-      mapped.optionalSections.dayWiseStructure = draft.dayStructure || "";
       mapped.optionalSections.stayStrategy     = draft.stayStrategy || "";
       mapped.optionalSections.routeLogic       = draft.howToMove || "";
     } else if (sType.includes("luxe") || sType.includes("custom")) {

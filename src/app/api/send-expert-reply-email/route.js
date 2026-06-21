@@ -104,7 +104,7 @@ const renderPrescriptionEmail = (prescription) => {
     nextStepCta,
   } = prescription;
 
-  const visibleOptionalSections = Object.entries(optionalSections).filter(([, value]) => plainText(value));
+  const visibleOptionalSections = Object.entries(optionalSections).filter(([key, value]) => plainText(value) && key !== "dayWiseStructure");
 
   const riskItems = Array.isArray(risks)
     ? risks.filter((r) => plainText(r))

@@ -26,8 +26,8 @@ export default function PrescriptionUserView({ prescription }) {
     optionalSections = {},
     nextStepCta,
   } = prescription;
-  const visibleOptionalSections = Object.entries(optionalSections).filter(([, value]) =>
-    String(value || "").trim()
+  const visibleOptionalSections = Object.entries(optionalSections).filter(([key, value]) =>
+    String(value || "").trim() && key !== "dayWiseStructure"
   );
 
   return (
