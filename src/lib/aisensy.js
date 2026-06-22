@@ -140,6 +140,8 @@ const sendAiSensyCampaign = async ({
     location: {},
   };
 
+  console.log("Sending AiSensy Campaign. Payload:", JSON.stringify(payload, null, 2));
+
   try {
     const res = await fetch(AISENSY_API_URL, {
       method: "POST",
@@ -150,6 +152,7 @@ const sendAiSensyCampaign = async ({
     });
 
     const data = await res.json();
+    console.log("AiSensy API Response:", res.status, data);
 
     if (!res.ok) {
       console.error("AiSensy error:", res.status, data);
@@ -213,12 +216,11 @@ export const sendWhatsAppServiceRequestToExpert = async ({
 
 export const sendWhatsAppOTP = async ({ phone, userName, otp }) => {
   const campaign = process.env.AISENSY_CAMPAIGN_OTP || "otp_verification";
-  const firstName = userName ? userName.trim().split(" ")[0] : "user";
   return sendAiSensyCampaign({
     phone,
     campaign,
     userName: userName || "Traveller",
-    templateParams: [firstName],
+    templateParams: [otp],
     source: "whatsapp-otp-login",
     buttons: [
       {
