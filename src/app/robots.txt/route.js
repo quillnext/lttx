@@ -25,6 +25,20 @@ User-agent: ClaudeBot
 Allow: /aaq/
 Allow: /answers/
 
+# Enhanced rules for AI Answer Engines
+User-agent: GPTBot
+Allow: /aaq/
+Allow: /answers/
+Disallow: /dashboard/
+
+User-agent: PerplexityBot
+Allow: /aaq/
+Allow: /answers/
+
+User-agent: ClaudeBot
+Allow: /aaq/
+Allow: /answers/
+
 Sitemap: ${baseUrl}/sitemap.xml
 `;
 
