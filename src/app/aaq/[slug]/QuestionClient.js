@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { FaSearch, FaChevronDown } from "react-icons/fa";
+import { FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import AskQuestionModal from "@/app/components/AskQuestionModal";
@@ -100,8 +100,59 @@ export default function QuestionClient({
     // But it is under [slug]/page.js, so it should always get props.
     // We'll keep it simple and rely on props.
 
+    const groupQuestions = (questionList) => {
+        const grouped = {};
+        questionList.forEach((q) => {
+            const questionKey = q.question?.trim().toLowerCase() || "";
+            if (!grouped[questionKey]) {
+                grouped[questionKey] = {
+                    originalQuestion: q.question,
+                    answerGroups: {},
+                    maxTimestamp: 0,
+                    maxScore: q.score || 0,
+                };
+            }
+            const group = grouped[questionKey];
+            group.maxTimestamp = Math.max(group.maxTimestamp, q.rawTimestamp || 0);
+            group.maxScore = Math.max(group.maxScore, q.score || 0);
+
+            const replyKey = q.reply?.trim() || "";
+            if (!group.answerGroups[replyKey]) {
+                group.answerGroups[replyKey] = {
+                    reply: q.reply,
+                    experts: new Set(),
+                    expertIds: new Set(),
+                    totalLikes: 0,
+                    totalDislikes: 0,
+                    ids: [],
+                    timestamps: [],
+                };
+            }
+            const ag = group.answerGroups[replyKey];
+            ag.experts.add(q.expertName);
+            ag.expertIds.add(q.expertId);
+            ag.totalLikes += q.likes || 0;
+            ag.totalDislikes += q.dislikes || 0;
+            ag.ids.push(q.id);
+            ag.timestamps.push(q.rawTimestamp || 0);
+        });
+
+        Object.keys(grouped).forEach((key) => {
+            grouped[key].answerGroupsArray = Object.values(grouped[key].answerGroups).map((ag) => ({
+                ...ag,
+                minTimestamp: Math.min(...ag.timestamps),
+                timestamp:
+                    new Date(Math.min(...ag.timestamps)).toLocaleDateString("en-GB") +
+                    " " +
+                    new Date(Math.min(...ag.timestamps)).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+            }));
+        });
+
+        return Object.values(grouped);
+    };
+
     // Enhanced filtering to prioritize exact or near-exact question matches
-    const filteredQuestions = searchTerm
+    const scoredQuestions = searchTerm
         ? questions
             .map((question) => {
                 const questionText = question.question?.toLowerCase() || '';
@@ -127,16 +178,18 @@ export default function QuestionClient({
                 return { ...question, score };
             })
             .filter((question) => question.score > 0)
-            .sort((a, b) => b.score - a.score || b.rawTimestamp - a.rawTimestamp) // Sort by score, then recency
         : [];
 
-    const featuredQuestion = filteredQuestions.length > 0 ? filteredQuestions[0] : null;
-    const allQuestions = featuredQuestion
-        ? filteredQuestions.filter((q) => q.id !== featuredQuestion.id)
-        : filteredQuestions;
+    const groupedQuestions = groupQuestions(scoredQuestions);
+    const sortedGroups = groupedQuestions.sort((a, b) => b.maxScore - a.maxScore || b.maxTimestamp - a.maxTimestamp);
 
-    const totalPages = Math.ceil(allQuestions.length / itemsPerPage) || 1;
-    const paginatedQuestions = allQuestions.slice(
+    const featuredGroup = sortedGroups.length > 0 ? sortedGroups[0] : null;
+    const allGroups = featuredGroup
+        ? sortedGroups.filter((g) => g.originalQuestion?.toLowerCase().trim() !== featuredGroup.originalQuestion?.toLowerCase().trim())
+        : sortedGroups;
+
+    const totalPages = Math.ceil(allGroups.length / itemsPerPage) || 1;
+    const paginatedGroups = allGroups.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
@@ -156,15 +209,6 @@ export default function QuestionClient({
             toast.error("Please enter a search query.");
         }
     };
-
-    const profile = featuredQuestion
-        ? expertProfileMap[featuredQuestion.expertId] || {
-            username: null,
-            photo: "/default.jpg",
-            profilePhoto: "/default.jpg",
-            tagline: "No tagline available",
-        }
-        : null;
 
     return (
         <div className="bg-gray-100 min-h-screen font-sans">
@@ -206,61 +250,92 @@ export default function QuestionClient({
                     </form>
                 </header>
 
-                {featuredQuestion ? (
+                {featuredGroup ? (
                     <section className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
                         <div className="p-5">
-                            <h1 className="text-3xl text-gray-700 mb-4">{featuredQuestion.question}</h1>
-                            <div className="mb-6">
-                                {(() => {
-                                    try {
-                                        const parsed = JSON.parse(featuredQuestion.reply);
-                                        return <PrescriptionUserView prescription={parsed} />;
-                                    } catch (e) {
-                                        return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{featuredQuestion.reply || "No answer available yet."}</p>;
-                                    }
-                                })()}
-                            </div>
-                            <div className="flex flex-wrap justify-between items-center gap-4">
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => openLightbox(profile.photo || profile.profilePhoto || "/default.jpg")}
-                                        className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
-                                    >
-                                        <Image
-                                            src={profile.photo || profile.profilePhoto || "/default.jpg"}
-                                            alt={`${featuredQuestion.expertName || "Expert"}'s profile photo`}
-                                            fill
-                                            sizes="40px"
-                                            className="object-cover"
-                                        />
-                                    </button>
-                                    <div>
-                                        <span className="text-sm text-gray-500">Answered by</span>
-                                        {profile.username ? (
-                                            <Link
-                                                href={`/experts/${profile.username}`}
-                                                className="block text-[#36013F] font-bold hover:underline"
-                                            >
-                                                {featuredQuestion.expertName}
-                                            </Link>
-                                        ) : (
-                                            <p className="font-bold text-gray-600">{featuredQuestion.expertName || "Unknown Expert"}</p>
-                                        )}
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() =>
-                                        setModalExpert({
-                                            fullName: featuredQuestion.expertName,
-                                            username: profile.username,
-                                            profilePhoto: profile.photo || profile.profilePhoto || "/default.jpg",
-                                            tagline: profile.tagline,
-                                        })
-                                    }
-                                    className="bg-[#36013F] text-white py-1.5 px-4 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
-                                >
-                                    Ask a New Question
-                                </button>
+                            <h1 className="text-3xl text-gray-700 mb-6">{featuredGroup.originalQuestion}</h1>
+                            <div className="relative border-l-2 border-gray-100 ml-4 pl-6 sm:pl-8 space-y-6 my-2">
+                                {featuredGroup.answerGroupsArray.map((ag) => {
+                                    const expertsArray = Array.from(ag.experts);
+                                    const expertIdsArray = ag.expertIds ? Array.from(ag.expertIds) : [];
+                                    const isSingleExpert = ag.expertIds ? ag.expertIds.size === 1 : ag.experts.size === 1;
+                                    const singleExpertId = isSingleExpert && expertIdsArray.length > 0 ? expertIdsArray[0] : null;
+                                    const singleExpertName = isSingleExpert ? expertsArray[0] : null;
+                                    const profile = isSingleExpert && singleExpertId
+                                        ? (expertProfileMap[singleExpertId] || { username: null, photo: "/default.jpg", tagline: "No tagline available" })
+                                        : { username: null, photo: "/default.jpg", tagline: "No tagline available" };
+
+                                    return (
+                                        <div key={ag.reply} className="relative bg-gray-50/50 p-4 sm:p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md">
+                                            {/* Timeline avatar / connector dot */}
+                                            <div className="absolute -left-[35px] sm:-left-[43px] top-5 w-6 h-6 rounded-full border-2 border-white bg-gray-200 overflow-hidden shadow-sm flex items-center justify-center">
+                                                {isSingleExpert && profile ? (
+                                                    <Image
+                                                        src={profile.photo || "/default.jpg"}
+                                                        alt={`${singleExpertName || "Expert"}'s avatar`}
+                                                        width={24}
+                                                        height={24}
+                                                        className="object-cover w-full h-full cursor-pointer"
+                                                        onClick={() => profile.photo && openLightbox(profile.photo)}
+                                                    />
+                                                ) : (
+                                                    <span className="text-[8px] font-bold text-gray-600 bg-gray-300 w-full h-full flex items-center justify-center">EXP</span>
+                                                )}
+                                            </div>
+
+                                            <div className="mb-4">
+                                                {(() => {
+                                                    try {
+                                                        const parsed = JSON.parse(ag.reply);
+                                                        return <PrescriptionUserView prescription={parsed} />;
+                                                    } catch (e) {
+                                                        return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{ag.reply || "No answer available yet."}</p>;
+                                                    }
+                                                })()}
+                                            </div>
+
+                                            <div className="flex flex-wrap justify-between items-center gap-4 mt-4 pt-3 border-t border-gray-100">
+                                                <div>
+                                                    {isSingleExpert ? (
+                                                        <div className="text-sm">
+                                                            <span className="text-gray-500">Answered by </span>
+                                                            {profile && profile.username ? (
+                                                                <Link
+                                                                    href={`/experts/${profile.username}`}
+                                                                    className="inline-block text-[#36013F] font-bold hover:underline"
+                                                                >
+                                                                    {singleExpertName}
+                                                                </Link>
+                                                            ) : (
+                                                                <span className="font-bold text-gray-600">{singleExpertName || "Unknown Expert"}</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <p className="text-xs text-gray-500">{ag.timestamp}</p>
+                                                    {isSingleExpert && (
+                                                        <button
+                                                            onClick={() =>
+                                                                setModalExpert({
+                                                                    fullName: singleExpertName,
+                                                                    username: profile.username,
+                                                                    profilePhoto: profile.photo || "/default.jpg",
+                                                                    tagline: profile.tagline,
+                                                                })
+                                                            }
+                                                            className="bg-[#36013F] text-white py-1 px-3 rounded-full hover:bg-opacity-90 transition-all text-xs cursor-pointer"
+                                                        >
+                                                            Ask a New Question
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </section>
@@ -288,7 +363,7 @@ export default function QuestionClient({
                                 </svg>
                                 <span className="text-lg font-medium">Loading Insights...</span>
                             </div>
-                        ) : allQuestions.length === 0 && filteredQuestions.length > 0 ? (
+                        ) : allGroups.length === 0 && sortedGroups.length > 0 ? (
                             <div className="text-center bg-white p-8 rounded-lg shadow-sm border">
                                 <p className="text-lg font-medium text-gray-700">No additional questions found.</p>
                                 <p className="text-gray-500">The featured question above is the only match.</p>
@@ -297,74 +372,106 @@ export default function QuestionClient({
                             <div>
                                 <h2 className="text-2xl font-bold text-[#36013F] mb-4">More Answered Questions</h2>
                                 <div className="space-y-4">
-                                    {paginatedQuestions.map((q) => {
-                                        const profile = expertProfileMap[q.expertId] || {
-                                            username: null,
-                                            photo: "/default.jpg",
-                                            profilePhoto: "/default.jpg",
-                                            tagline: "No tagline available",
-                                        };
+                                    {paginatedGroups.map((group) => {
                                         return (
                                             <details
-                                                key={q.id}
+                                                key={group.originalQuestion}
                                                 className="group bg-white rounded-lg shadow-sm transition-all duration-300 overflow-hidden border border-gray-200 hover:shadow-lg hover:border-[#F4D35E]"
                                             >
                                                 <summary className="flex items-center justify-between p-5 cursor-pointer font-semibold text-[#36013F] hover:bg-gray-50">
-                                                    <span className="text-lg pr-4">{q.question}</span>
+                                                    <span className="text-lg pr-4">{group.originalQuestion}</span>
                                                     <FaChevronDown className="w-5 h-5 flex-shrink-0 text-gray-400 transition-transform duration-300 group-open:rotate-180 group-open:text-[#36013F]" />
                                                 </summary>
                                                 <div className="p-5 border-t border-gray-200">
-                                                    <div className="mb-6">
-                                                        {(() => {
-                                                            try {
-                                                                const parsed = JSON.parse(q.reply);
-                                                                return <PrescriptionUserView prescription={parsed} />;
-                                                            } catch (e) {
-                                                                return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{q.reply || "No answer available yet."}</p>;
-                                                            }
-                                                        })()}
-                                                    </div>
-                                                    <div className="flex flex-wrap justify-between items-center gap-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <button
-                                                                onClick={() => openLightbox(profile.photo || profile.profilePhoto || "/default.jpg")}
-                                                                className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
-                                                            >
-                                                                <Image
-                                                                    src={profile.photo || profile.profilePhoto || "/default.jpg"}
-                                                                    alt={`${q.expertName || "Expert"}'s profile photo`}
-                                                                    fill
-                                                                    sizes="40px"
-                                                                    className="object-cover"
-                                                                />
-                                                            </button>
-                                                            <div>
-                                                                <span className="text-sm text-gray-500">Answered by</span>
-                                                                {profile.username ? (
-                                                                    <Link
-                                                                        href={`/experts/${profile.username}`}
-                                                                        className="block text-[#36013F] font-bold hover:underline"
-                                                                    >
-                                                                        {q.expertName}
-                                                                    </Link>
-                                                                ) : (
-                                                                    <p className="font-bold text-gray-600">{q.expertName || "Unknown Expert"}</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            onClick={() =>
-                                                                setModalExpert({
-                                                                    fullName: q.expertName,
-                                                                    username: profile.username,
-                                                                    profilePhoto: profile.photo || profile.profilePhoto || "/default.jpg",
-                                                                    tagline: profile.tagline,
-                                                                })
-                                                            }
-                                                            className="bg-[#36013F] text-white py-1.5 px-4 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
-                                                        >
-                                                            Ask a New Question
-                                                        </button>
+                                                    <div className="relative border-l-2 border-gray-100 ml-4 pl-6 sm:pl-8 space-y-6 my-2">
+                                                        {group.answerGroupsArray.map((ag) => {
+                                                            const expertsArray = Array.from(ag.experts);
+                                                            const expertIdsArray = ag.expertIds ? Array.from(ag.expertIds) : [];
+                                                            const isSingleExpert = ag.expertIds ? ag.expertIds.size === 1 : ag.experts.size === 1;
+                                                            const singleExpertId = isSingleExpert && expertIdsArray.length > 0 ? expertIdsArray[0] : null;
+                                                            const singleExpertName = isSingleExpert ? expertsArray[0] : null;
+                                                            const profile = isSingleExpert && singleExpertId
+                                                                ? (expertProfileMap[singleExpertId] || { username: null, photo: "/default.jpg", tagline: "No tagline available" })
+                                                                : { username: null, photo: "/default.jpg", tagline: "No tagline available" };
+
+                                                            return (
+                                                                <div key={ag.reply} className="relative bg-gray-50/50 p-4 sm:p-5 rounded-2xl border border-gray-100 transition-all hover:bg-white hover:shadow-md">
+                                                                    {/* Timeline avatar / connector dot */}
+                                                                    <div className="absolute -left-[35px] sm:-left-[43px] top-5 w-6 h-6 rounded-full border-2 border-white bg-gray-200 overflow-hidden shadow-sm flex items-center justify-center">
+                                                                        {isSingleExpert && profile ? (
+                                                                            <Image
+                                                                                src={profile.photo || "/default.jpg"}
+                                                                                alt={`${singleExpertName || "Expert"}'s avatar`}
+                                                                                width={24}
+                                                                                height={24}
+                                                                                className="object-cover w-full h-full cursor-pointer"
+                                                                                onClick={() => profile.photo && openLightbox(profile.photo)}
+                                                                            />
+                                                                        ) : (
+                                                                            <span className="text-[8px] font-bold text-gray-600 bg-gray-300 w-full h-full flex items-center justify-center">EXP</span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="mb-4">
+                                                                        {(() => {
+                                                                            try {
+                                                                                const parsed = JSON.parse(ag.reply);
+                                                                                return <PrescriptionUserView prescription={parsed} />;
+                                                                            } catch (e) {
+                                                                                return <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{ag.reply || "No answer available yet."}</p>;
+                                                                            }
+                                                                        })()}
+                                                                    </div>
+
+                                                                    <div className="flex flex-wrap justify-between items-center gap-4 mt-4 pt-3 border-t border-gray-100">
+                                                                        <div>
+                                                                            {isSingleExpert ? (
+                                                                                <div className="text-sm">
+                                                                                    <span className="text-gray-500">Answered by </span>
+                                                                                    {profile && profile.username ? (
+                                                                                        <Link
+                                                                                            href={`/experts/${profile.username}`}
+                                                                                            className="inline-block text-[#36013F] font-bold hover:underline"
+                                                                                        >
+                                                                                            {singleExpertName}
+                                                                                        </Link>
+                                                                                    ) : (
+                                                                                        <span className="font-bold text-gray-600">{singleExpertName || "Unknown Expert"}</span>
+                                                                                    )}
+                                                                                </div>
+                                                                            ) : (
+                                                                                <p className="text-sm font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <p className="text-xs text-gray-500">{ag.timestamp}</p>
+                                                                            <Link
+                                                                                href={`/aaq/${toSlug(group.originalQuestion)}`}
+                                                                                className="text-[#36013F] hover:text-[#F4D35E] p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                                                                                title="View full page"
+                                                                            >
+                                                                                <FaExternalLinkAlt className="w-3.5 h-3.5" />
+                                                                            </Link>
+                                                                            {isSingleExpert && (
+                                                                                <button
+                                                                                    onClick={() =>
+                                                                                        setModalExpert({
+                                                                                            fullName: singleExpertName,
+                                                                                            username: profile.username,
+                                                                                            profilePhoto: profile.photo || "/default.jpg",
+                                                                                            tagline: profile.tagline,
+                                                                                        })
+                                                                                    }
+                                                                                    className="bg-[#36013F] text-white py-1 px-3 rounded-full hover:bg-opacity-90 transition-all text-xs cursor-pointer"
+                                                                                >
+                                                                                    Ask a New Question
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             </details>
