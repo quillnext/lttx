@@ -8,7 +8,7 @@ import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Compass, History } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -113,7 +113,9 @@ export default function AgencyLayout({ children }) {
             "/agency-dashboard/change-password",
             "/agency-dashboard/contact-us",
             "/agency-dashboard/availability",
-            "/agency-dashboard/bookings"
+            "/agency-dashboard/bookings",
+            "/agency-dashboard/experts",
+            "/agency-dashboard/my-requests"
           ];
           if (!allowedPaths.includes(pathname)) {
             router.push("/agency-dashboard/change-password");
@@ -314,10 +316,40 @@ export default function AgencyLayout({ children }) {
         : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
     }`}
     prefetch={true}
-    aria-label="Contact Us"
+    aria-label="Booking"
   >
     <CalendarCheck className="w-6 h-6" /> 
     <span className="hidden md:inline">Booking</span>
+  </Link>
+
+  <Link
+    href="/agency-dashboard/experts"
+    onClick={() => handleNavClick("/agency-dashboard/experts")}
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/agency-dashboard/experts"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="Browse Experts"
+  >
+    <Compass className="w-6 h-6" /> 
+    <span className="hidden md:inline">Browse Experts</span>
+  </Link>
+
+  <Link
+    href="/agency-dashboard/my-requests"
+    onClick={() => handleNavClick("/agency-dashboard/my-requests")}
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/agency-dashboard/my-requests"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="My Requests"
+  >
+    <History className="w-6 h-6" /> 
+    <span className="hidden md:inline">My Requests</span>
   </Link>
 
           </nav>
