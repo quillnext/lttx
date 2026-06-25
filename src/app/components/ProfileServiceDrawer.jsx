@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { getAuth } from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 const SERVICES_DATA = {
   "1:1 STRATEGIC CONSULTATION": {
@@ -128,8 +130,61 @@ const loadRazorpayScript = () =>
   });
 
 export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
-  const { user, updateUser } = useUserAuthStore();
+  const { user: supabaseUser, updateUser } = useUserAuthStore();
   const router = useRouter();
+  
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [activeUser, setActiveUser] = useState(null);
+  const [loadingActiveUser, setLoadingActiveUser] = useState(true);
+
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = auth.onAuthStateChanged(async (fUser) => {
+      if (fUser) {
+        setFirebaseUser(fUser);
+        try {
+          const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(fUser.uid)}&email=${encodeURIComponent(fUser.email || "")}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result.profile) {
+              setActiveUser({
+                name: result.profile.full_name || result.profile.fullName || fUser.displayName || "Agency/Expert",
+                email: fUser.email || result.profile.email || "",
+                phone: result.profile.phone || fUser.phoneNumber || "",
+                id: result.profile.id,
+                isFirebase: true
+              });
+              setLoadingActiveUser(false);
+              return;
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching firebase user profile:", e);
+        }
+        setActiveUser({
+          name: fUser.displayName || "Agency/Expert",
+          email: fUser.email || "",
+          phone: fUser.phoneNumber || "",
+          isFirebase: true
+        });
+      } else {
+        setFirebaseUser(null);
+        if (supabaseUser) {
+          setActiveUser({
+            name: supabaseUser.name || "Traveller",
+            email: supabaseUser.email || "",
+            phone: supabaseUser.phone || "",
+            isFirebase: false
+          });
+        } else {
+          setActiveUser(null);
+        }
+      }
+      setLoadingActiveUser(false);
+    });
+
+    return () => unsubscribe();
+  }, [supabaseUser]);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({});
@@ -181,18 +236,21 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   };
 
   useEffect(() => {
-    if (isOpen) {
-      if (!user) {
-        // Include the clicked service in the returnTo URL so we can re-open
-        // the drawer automatically after the user logs in
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("openService", serviceType);
-        const currentUrl = `${pathname}?${params.toString()}`;
-        router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+    if (isOpen && !loadingActiveUser) {
+      if (!activeUser) {
+        const isAgencyDashboard = pathname?.startsWith("/agency-dashboard");
+        if (isAgencyDashboard) {
+          router.push("/expert-login");
+        } else {
+          const params = new URLSearchParams(searchParams.toString());
+          params.set("openService", serviceType);
+          const currentUrl = `${pathname}?${params.toString()}`;
+          router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+        }
         onClose();
       }
     }
-  }, [isOpen, user, router, onClose, pathname, searchParams, serviceType]);
+  }, [isOpen, activeUser, loadingActiveUser, router, onClose, pathname, searchParams, serviceType]);
 
   if (!isOpen || !serviceType) return null;
 
@@ -555,7 +613,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
     try {
       const payment = await collectPayment();
 
-      const userPhone = formData.phone || formData.whatsapp || user?.phone || "";
+      const userPhone = formData.phone || formData.whatsapp || activeUser?.phone || "";
 
       const { error } = await supabase
         .from('leads')
@@ -576,8 +634,8 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           expert_id: expertData?.id || "unknown",
           expert_name: expertData?.fullName || "Unknown Expert",
           status: "pending",
-          user_name: user?.name || "Traveller",
-          user_email: user?.email || "",
+          user_name: activeUser?.name || "Traveller",
+          user_email: activeUser?.email || "",
           destination: formData.destination || formData.dest || "",
           trip_dates: (formData.startDate && formData.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData.dates || ""),
           source: 'profile_v2'
@@ -586,15 +644,15 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       if (error) throw error;
       
       // Update user auth store if they are logged in to persist contact details
-      if (user && formData.whatsapp) {
+      if (activeUser && !activeUser.isFirebase && formData.whatsapp) {
         updateUser({
-          phone: formData.whatsapp || user.phone
+          phone: formData.whatsapp || activeUser.phone
         });
       }
 
       const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
-      const finalEmail = user?.email;
-      const finalName = user?.name || "Traveller";
+      const finalEmail = activeUser?.email;
+      const finalName = activeUser?.name || "Traveller";
       const finalPhone = userPhone;
 
       if (finalEmail && expertData?.email) {
