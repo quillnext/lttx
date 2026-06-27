@@ -180,6 +180,25 @@ export async function GET(request) {
       }
     }
 
+    // Ensure wallet exists for this profile (Server-side bypasses RLS)
+    if (profile) {
+      try {
+        const { data: existingWallet } = await supabase
+          .from("wallets")
+          .select("id")
+          .eq("profile_id", profile.id)
+          .maybeSingle();
+
+        if (!existingWallet) {
+          await supabase
+            .from("wallets")
+            .insert({ profile_id: profile.id, balance: 0.00, currency: "INR" });
+        }
+      } catch (walletInitErr) {
+        console.error("Failed to auto-initialize wallet server-side:", walletInitErr);
+      }
+    }
+
     return NextResponse.json({ profile }, { status: 200 });
   } catch (error) {
     console.error("Error fetching profile by UID/email in API:", error);

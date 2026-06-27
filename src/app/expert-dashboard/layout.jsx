@@ -8,7 +8,7 @@ import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Wallet } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -113,7 +113,8 @@ export default function UserLayout({ children }) {
             "/expert-dashboard/change-password",
             "/expert-dashboard/contact-us",
             "/expert-dashboard/availability",
-            "/expert-dashboard/bookings"
+            "/expert-dashboard/bookings",
+            "/expert-dashboard/wallet"
           ];
           if (!allowedPaths.includes(pathname)) {
             router.push("/expert-dashboard/change-password");
@@ -314,12 +315,26 @@ export default function UserLayout({ children }) {
         : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
     }`}
     prefetch={true}
-    aria-label="Contact Us"
+    aria-label="Booking"
   >
     <CalendarCheck className="w-6 h-6" /> 
     <span className="hidden md:inline">Booking</span>
   </Link>
 
+  <Link
+    href="/expert-dashboard/wallet"
+    onClick={() => handleNavClick("/expert-dashboard/wallet")}
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/expert-dashboard/wallet"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="Wallet"
+  >
+    <Wallet className="w-6 h-6" /> 
+    <span className="hidden md:inline">Wallet & Payouts</span>
+  </Link>
           </nav>
         </div>
 

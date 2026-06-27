@@ -98,6 +98,20 @@ export async function PATCH(request) {
       );
     }
 
+    // If the question is being answered/replied, release the pending payment in the wallet system
+    if (updates && (updates.reply || updates.status === "replied")) {
+      try {
+        await supabase
+          .from("wallet_transactions")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("reference_id", id)
+          .eq("type", "question_earnings")
+          .eq("status", "pending");
+      } catch (walletErr) {
+        console.error("Failed to release expert earnings on question reply:", walletErr);
+      }
+    }
+
     return NextResponse.json({ success: true, question: data?.[0] }, { status: 200 });
   } catch (error) {
     console.error("Error updating question:", error);

@@ -8,7 +8,7 @@ import Image from "next/image";
 import { getAuth, signOut } from "firebase/auth";
 import { app, db } from "@/lib/firebase";
 import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Compass, History } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Compass, History, Wallet } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -115,7 +115,8 @@ export default function AgencyLayout({ children }) {
             "/agency-dashboard/availability",
             "/agency-dashboard/bookings",
             "/agency-dashboard/experts",
-            "/agency-dashboard/my-requests"
+            "/agency-dashboard/my-requests",
+            "/agency-dashboard/wallet"
           ];
           if (!allowedPaths.includes(pathname)) {
             router.push("/agency-dashboard/change-password");
@@ -352,6 +353,20 @@ export default function AgencyLayout({ children }) {
     <span className="hidden md:inline">My Requests</span>
   </Link>
 
+  <Link
+    href="/agency-dashboard/wallet"
+    onClick={() => handleNavClick("/agency-dashboard/wallet")}
+    className={`flex items-center gap-2 p-2 ${
+      pathname === "/agency-dashboard/wallet"
+        ? "bg-[#F4D35E] rounded-3xl text-black"
+        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+    }`}
+    prefetch={true}
+    aria-label="Wallet"
+  >
+    <Wallet className="w-6 h-6" /> 
+    <span className="hidden md:inline">Wallet & Payouts</span>
+  </Link>
           </nav>
         </div>
 

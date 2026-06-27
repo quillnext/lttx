@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
-import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList } from "lucide-react";
+import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList, Wallet } from "lucide-react";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import { app } from "@/lib/firebase";
 
@@ -206,6 +206,17 @@ export default function AdminLayout({ children }) {
               <CalendarClock /> Scheduling
             </Link>
 
+            <Link
+              href="/dashboard/payouts"
+              onClick={() => handleNavClick("/dashboard/payouts")}
+              className={`flex items-center gap-2 p-2 ${
+                pathname === "/dashboard/payouts"
+                  ? "bg-[#F4D35E] rounded-3xl text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+              }`}
+            >
+              <Wallet /> Manage Payouts
+            </Link>
           </nav>
         </div>
 

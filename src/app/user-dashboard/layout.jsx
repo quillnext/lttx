@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { LayoutDashboard, LogOut, MessageSquareText, UserRound } from "lucide-react";
+import { LayoutDashboard, LogOut, MessageSquareText, UserRound, Wallet } from "lucide-react";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 export default function UserDashboardLayout({ children }) {
@@ -94,6 +94,19 @@ export default function UserDashboardLayout({ children }) {
             >
               <UserRound className="w-6 h-6" />
               <span className="hidden md:inline">Profile</span>
+            </Link>
+
+            <Link
+              href="/user-dashboard/wallet"
+              onClick={() => handleNavClick("/user-dashboard/wallet")}
+              className={`flex items-center gap-2 p-2 rounded-3xl ${
+                pathname === "/user-dashboard/wallet"
+                  ? "bg-[#F4D35E] text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black"
+              }`}
+            >
+              <Wallet className="w-6 h-6" />
+              <span className="hidden md:inline">Wallet</span>
             </Link>
           </nav>
         </div>

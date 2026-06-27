@@ -36,6 +36,22 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
   const [user, setUser] = useState(null);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  useEffect(() => {
+    if (isCentralUserAuthenticated && centralUser?.id) {
+      supabase
+        .from("wallets")
+        .select("balance")
+        .eq("profile_id", centralUser.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setWalletBalance(parseFloat(data.balance));
+          }
+        });
+    }
+  }, [centralUser, isCentralUserAuthenticated]);
 
   useEffect(() => {
     if (isCentralUserAuthenticated && centralUser) {
@@ -166,6 +182,15 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
 
     setLoading(true);
     try {
+      const questionPrice = 199; // Standard cost per question
+      if (isCentralUserAuthenticated && centralUser?.id) {
+        if (walletBalance < questionPrice) {
+          toast.error(`Insufficient wallet balance. You need Rs. ${questionPrice} but have Rs. ${walletBalance}. Please add money to your wallet.`);
+          setLoading(false);
+          return;
+        }
+      }
+
       // Snapshot the session data so experts can view it without accessing private Search history
       let sessionSnapshot = null;
       if (sessionId) {
@@ -204,26 +229,59 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
       });
 
       // Also save to Supabase questions table if it exists
+      let insertedQuestion = null;
       try {
-        const { error: supabaseError } = await supabase.from("questions").insert({
-          expert_id: expert.id,
-          expert_name: expert.fullName || "Unknown Expert",
-          expert_email: expert.email || "placeholder@xmytravel.com",
-          question,
-          user_name: name,
-          user_email: email,
-          user_phone: phone,
-          status: "pending",
-          is_public: false,
-          is_admin_prompt: false,
-          session_id: sessionId || null,
-          session_snapshot: sessionSnapshot || null,
-        });
+        const { data: insertedData, error: supabaseError } = await supabase
+          .from("questions")
+          .insert({
+            expert_id: expert.id,
+            expert_name: expert.fullName || "Unknown Expert",
+            expert_email: expert.email || "placeholder@xmytravel.com",
+            question,
+            user_name: name,
+            user_email: email,
+            user_phone: phone,
+            status: "pending",
+            is_public: false,
+            is_admin_prompt: false,
+            session_id: sessionId || null,
+            session_snapshot: sessionSnapshot || null,
+          })
+          .select("id")
+          .single();
+
         if (supabaseError) {
           console.warn("Could not save to Supabase questions table:", supabaseError.message);
+        } else {
+          insertedQuestion = insertedData;
         }
       } catch (err) {
         console.warn("Failed to insert to Supabase questions:", err.message);
+      }
+
+      // If user is authenticated and we have the inserted question, process payment
+      if (isCentralUserAuthenticated && centralUser?.id && insertedQuestion?.id) {
+        try {
+          const payRes = await fetch("/api/wallet/pay-question", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: centralUser.id,
+              expertId: expert.id,
+              questionPrice,
+              questionId: insertedQuestion.id,
+            }),
+          });
+          const payData = await payRes.json();
+          if (!payRes.ok) {
+            throw new Error(payData.error || "Payment processing failed.");
+          }
+        } catch (payErr) {
+          console.error("Wallet transaction failed:", payErr);
+          toast.error(`Payment failed: ${payErr.message}. Question not paid.`);
+          setLoading(false);
+          return;
+        }
       }
 
       if (!hasSubmitted && !user) {
