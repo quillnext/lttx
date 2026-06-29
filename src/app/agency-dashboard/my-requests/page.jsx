@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
 import { app } from "@/lib/firebase";
 import { supabase } from "@/lib/supabase";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import PrescriptionUserView from "@/app/components/PrescriptionUserView";
 import { History, Calendar, CheckCircle, Clock, CreditCard, DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -39,6 +40,7 @@ const fetchUserLeads = async (email) => {
 };
 
 export default function AgencyRequestsHistoryPage() {
+  const { user: supabaseUser } = useUserAuthStore();
   const [currentUser, setCurrentUser] = useState(null);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,14 +55,27 @@ export default function AgencyRequestsHistoryPage() {
 
   useEffect(() => {
     const auth = getAuth(app);
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setCurrentUser(user);
+    const unsubscribe = auth.onAuthStateChanged((fUser) => {
+      if (fUser) {
+        setCurrentUser(fUser);
+      } else if (supabaseUser) {
+        setCurrentUser(supabaseUser);
+      } else {
+        setCurrentUser(null);
+      }
     });
+
+    if (!getAuth(app).currentUser && supabaseUser) {
+      setCurrentUser(supabaseUser);
+    }
     return () => unsubscribe();
-  }, []);
+  }, [supabaseUser]);
 
   useEffect(() => {
-    if (!currentUser?.email) return;
+    if (!currentUser?.email) {
+      setLoading(false);
+      return;
+    }
 
     const fetchRequests = async () => {
       setLoading(true);
@@ -100,14 +115,14 @@ export default function AgencyRequestsHistoryPage() {
           const { eventType, new: newRow, old: oldRow } = payload;
 
           if (eventType === 'INSERT') {
-            if (newRow.user_email === currentUser.email) {
+            if (newRow.user_email?.toLowerCase() === currentUser.email?.toLowerCase()) {
               setRequests((prev) => {
                 if (prev.some((r) => r.id === newRow.id)) return prev;
                 return [newRow, ...prev];
               });
             }
           } else if (eventType === 'UPDATE') {
-            if (newRow.user_email === currentUser.email) {
+            if (newRow.user_email?.toLowerCase() === currentUser.email?.toLowerCase()) {
               setRequests((prev) =>
                 prev.map((r) => (r.id === newRow.id ? newRow : r))
               );

@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { getAuth } from "firebase/auth";
+import { app } from "@/lib/firebase";
 
 const ADDON_DATA = {
   "Itinerary Review": {
@@ -106,7 +108,7 @@ const Chips = ({ label, required, options, multi = false, selected, onChange, er
 );
 
 export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertData }) {
-  const { user } = useUserAuthStore();
+  const { user: supabaseUser } = useUserAuthStore();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -116,15 +118,80 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
   const [isSuccess, setIsSuccess] = useState(false);
   const [validationError, setValidationError] = useState("");
   const fileInputRef = useRef(null);
+  const [activeUser, setActiveUser] = useState(null);
+  const [loadingActiveUser, setLoadingActiveUser] = useState(true);
 
   useEffect(() => {
-    if (isOpen && !user) {
-      const qs = searchParams.toString();
-      const currentUrl = `${pathname}${qs ? `?${qs}` : ""}`;
-      router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
-      onClose();
+    const auth = getAuth(app);
+    const unsubscribe = auth.onAuthStateChanged(async (fUser) => {
+      if (fUser) {
+        try {
+          const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(fUser.uid)}&email=${encodeURIComponent(fUser.email || "")}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result.profile) {
+              setActiveUser({
+                name: result.profile.full_name || result.profile.fullName || fUser.displayName || "Agency/Expert",
+                email: fUser.email || result.profile.email || "",
+                phone: result.profile.phone || fUser.phoneNumber || "",
+                id: result.profile.id,
+              });
+              setLoadingActiveUser(false);
+              return;
+            }
+          }
+        } catch (e) {}
+        setActiveUser({
+          name: fUser.displayName || "Agency/Expert",
+          email: fUser.email || "",
+          phone: fUser.phoneNumber || "",
+        });
+      } else if (supabaseUser) {
+        try {
+          const uid = supabaseUser.id;
+          const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(supabaseUser.email || "")}`);
+          if (res.ok) {
+            const result = await res.json();
+            if (result.profile) {
+              setActiveUser({
+                name: result.profile.full_name || result.profile.fullName || supabaseUser.name || "Agency/Expert",
+                email: supabaseUser.email || result.profile.email || "",
+                phone: result.profile.phone || supabaseUser.phone || "",
+                id: result.profile.id,
+              });
+              setLoadingActiveUser(false);
+              return;
+            }
+          }
+        } catch (e) {}
+        setActiveUser({
+          name: supabaseUser.name || "Traveller",
+          email: supabaseUser.email || "",
+          phone: supabaseUser.phone || "",
+        });
+      } else {
+        setActiveUser(null);
+      }
+      setLoadingActiveUser(false);
+    });
+    return () => unsubscribe();
+  }, [supabaseUser]);
+
+  useEffect(() => {
+    if (isOpen && !loadingActiveUser) {
+      if (!activeUser) {
+        const isAgencyDashboard = pathname?.startsWith("/agency-dashboard");
+        if (isAgencyDashboard) {
+          router.push("/expert-login");
+        } else {
+          const qs = searchParams.toString();
+          const currentUrl = `${pathname}${qs ? `?${qs}` : ""}`;
+          router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+        }
+        onClose();
+      }
     }
-  }, [isOpen, user, router, onClose, pathname, searchParams]);
+  }, [isOpen, activeUser, loadingActiveUser, router, onClose, pathname, searchParams]);
 
   if (!isOpen || !addOnType) return null;
   const data = ADDON_DATA[addOnType];
@@ -186,7 +253,7 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
         name: "XmyTravel",
         description: data.name,
         order_id: order.id,
-        prefill: { name: user?.name || "", email: user?.email || "" },
+        prefill: { name: activeUser?.name || "", email: activeUser?.email || "" },
         notes: { addOnType, expertId: expertData?.id || "unknown" },
         theme: { color: "#36013F" },
         handler: async (response) => {
@@ -241,8 +308,8 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
         expert_id: expertData?.id || "unknown",
         expert_name: expertData?.fullName || "Unknown Expert",
         status: "pending",
-        user_name: user?.name || "Traveller",
-        user_email: user?.email || "",
+        user_name: activeUser?.name || "Traveller",
+        user_email: activeUser?.email || "",
         destination: formData.dest || formData.route || "",
         trip_dates: formData.travelDate || formData.travelMonth || "",
         source: "addon_modal",
@@ -250,16 +317,17 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
 
       if (error) throw error;
 
-      if (user?.email && expertData?.email) {
+      if (activeUser?.email) {
         fetch("/api/send-question-emails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            userName: user?.name || "Traveller",
-            userEmail: user.email,
-            userPhone: user?.phone || "",
+            expertId: expertData?.id,
+            userName: activeUser?.name || "Traveller",
+            userEmail: activeUser.email,
+            userPhone: activeUser?.phone || "",
             expertName: expertData?.fullName || "XMyTravel Expert",
-            expertEmail: expertData.email,
+            expertEmail: expertData?.email || "",
             expertPhone: expertData?.phone || "",
             serviceType: addOnType,
             question: questionText,
@@ -316,7 +384,7 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
                           <label className="block text-[12px] font-bold text-[#36013F] mb-1">Paste your itinerary <span className="text-red-500">*</span></label>
                           <textarea className={`w-full bg-gray-50 border rounded-xl p-3 text-sm mb-2 resize-none ${fieldErrors.itinerary ? "border-red-400" : "border-gray-200"}`} rows={4} placeholder="Day 1: Arrive Tokyo, check into hotel near Shinjuku...&#10;Day 2: ..." value={formData.itinerary || ""} onChange={e => update("itinerary", e.target.value)} />
                           {fieldErrors.itinerary && <p className="text-xs text-red-500 font-semibold -mt-1 mb-2">{fieldErrors.itinerary}</p>}
-                          <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-gray-300 rounded-xl text-[11px] text-gray-500 font-bold hover:border-[#36013F] transition-all"><Upload size={13} /> Upload file (optional)</button>
+                         
                         </div>
                         <Field label="Destination" required placeholder="Japan, Bali, Europe..." value={formData.dest} onChange={e => update("dest", e.target.value)} error={fieldErrors.dest} />
                         <Chips label="What should the expert focus on?" required multi options={["Too rushed", "Too expensive", "Poor route logic", "Missing experiences", "Hotel area doubts", "General review"]} selected={formData.focus} onChange={val => update("focus", val)} error={fieldErrors.focus} />

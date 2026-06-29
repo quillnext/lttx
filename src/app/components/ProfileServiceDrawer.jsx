@@ -132,7 +132,7 @@ const loadRazorpayScript = () =>
 export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
   const { user: supabaseUser, updateUser } = useUserAuthStore();
   const router = useRouter();
-  
+
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [activeUser, setActiveUser] = useState(null);
   const [loadingActiveUser, setLoadingActiveUser] = useState(true);
@@ -170,6 +170,26 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       } else {
         setFirebaseUser(null);
         if (supabaseUser) {
+          try {
+            const uid = supabaseUser.id;
+            const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(supabaseUser.email || "")}`);
+            if (res.ok) {
+              const result = await res.json();
+              if (result.profile) {
+                setActiveUser({
+                  name: result.profile.full_name || result.profile.fullName || supabaseUser.name || "Agency/Expert",
+                  email: supabaseUser.email || result.profile.email || "",
+                  phone: result.profile.phone || supabaseUser.phone || "",
+                  id: result.profile.id,
+                  isFirebase: false
+                });
+                setLoadingActiveUser(false);
+                return;
+              }
+            }
+          } catch (e) {
+            console.error("Error fetching supabase user profile:", e);
+          }
           setActiveUser({
             name: supabaseUser.name || "Traveller",
             email: supabaseUser.email || "",
@@ -624,25 +644,25 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
             phone: userPhone,
             payment: payment
               ? {
-                  status: "paid",
-                  amount: payment.amount,
-                  orderId: payment.response?.razorpay_order_id || payment.order?.id || null,
-                  paymentId: payment.response?.razorpay_payment_id || null,
-                }
+                status: "paid",
+                amount: payment.amount,
+                orderId: payment.response?.razorpay_order_id || payment.order?.id || null,
+                paymentId: payment.response?.razorpay_payment_id || null,
+              }
               : { status: "not_required" },
           },
           expert_id: expertData?.id || "unknown",
           expert_name: expertData?.fullName || "Unknown Expert",
           status: "pending",
-          user_name: activeUser?.name || "Traveller",
-          user_email: activeUser?.email || "",
+          user_name: activeUser?.name || firebaseUser?.displayName || supabaseUser?.name || "Traveller",
+          user_email: activeUser?.email || firebaseUser?.email || supabaseUser?.email || "",
           destination: formData.destination || formData.dest || "",
           trip_dates: (formData.startDate && formData.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData.dates || ""),
           source: 'profile_v2'
         }]);
 
       if (error) throw error;
-      
+
       // Update user auth store if they are logged in to persist contact details
       if (activeUser && !activeUser.isFirebase && formData.whatsapp) {
         updateUser({
@@ -655,16 +675,17 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       const finalName = activeUser?.name || "Traveller";
       const finalPhone = userPhone;
 
-      if (finalEmail && expertData?.email) {
+      if (finalEmail) {
         const emailRequest = fetch("/api/send-question-emails", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            expertId: expertData?.id,
             userName: finalName,
             userEmail: finalEmail,
             userPhone: finalPhone,
             expertName: expertData?.fullName || "XMyTravel Expert",
-            expertEmail: expertData.email,
+            expertEmail: expertData?.email || "",
             expertPhone: expertData?.phone || "",
             serviceType,
             question: questionText,

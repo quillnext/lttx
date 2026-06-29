@@ -17,7 +17,7 @@ export async function GET(request) {
       .order("created_at", { ascending: false });
 
     if (expertId) query = query.eq("expert_id", expertId);
-    if (userEmail) query = query.eq("user_email", userEmail);
+    if (userEmail) query = query.ilike("user_email", userEmail);
     if (status) query = query.eq("status", status);
 
     const { data, error, count } = await query;
