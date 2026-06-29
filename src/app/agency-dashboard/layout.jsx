@@ -70,11 +70,15 @@ export default function AgencyLayout({ children }) {
         // Check profile for forcePasswordChange and get proper profile ID
         let forcePasswordChange = false;
         let profileId = user.uid; // fallback
+        let profileType = "agency";
         try {
           const profileRef = doc(db, "Profiles", user.uid);
           const profileSnap = await getDoc(profileRef);
           if (profileSnap.exists()) {
             forcePasswordChange = profileSnap.data().forcePasswordChange;
+            if (profileSnap.data().profileType) {
+              profileType = profileSnap.data().profileType;
+            }
           }
           // Fetch from Supabase to get correct profile ID
           const { supabase } = await import("@/lib/supabase");
@@ -83,9 +87,17 @@ export default function AgencyLayout({ children }) {
           if (data) {
             forcePasswordChange = data.force_password_change;
             profileId = data.id;
+            if (data.profile_type) {
+              profileType = data.profile_type;
+            }
           }
         } catch (err) {
           console.error("Error checking profile:", err);
+        }
+
+        if (profileType === "expert") {
+          router.push("/expert-dashboard/messages");
+          return;
         }
 
         // Fetch pending service requests (leads) count from Supabase using correct profileId
