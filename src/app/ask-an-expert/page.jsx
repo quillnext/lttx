@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { FaSearch, FaPlane, FaTimes, FaMapMarkerAlt, FaStar, FaFilter, FaRupeeSign, FaSuitcase, FaPassport, FaCheckCircle, FaUserTie, FaBuilding, FaArrowRight, FaCommentDots, FaRegidCard } from "react-icons/fa";
+import { FaSearch, FaPlane, FaTimes, FaMapMarkerAlt, FaStar, FaFilter, FaRupeeSign, FaSuitcase, FaPassport, FaCheckCircle, FaUserTie, FaBuilding, FaArrowRight, FaCommentDots, FaRegidCard, FaChevronDown } from "react-icons/fa";
 import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import "react-image-lightbox/style.css";
@@ -19,6 +19,24 @@ const PAGE_SIZE = 30;
 const ProfileServiceDrawer = dynamic(() => import("@/app/components/ProfileServiceDrawer"), {
   ssr: false,
 });
+
+const ProfileAddOnModal = dynamic(() => import("@/app/components/ProfileAddOnModal"), {
+  ssr: false,
+});
+
+const MAIN_SERVICES = [
+  { key: "1:1 STRATEGIC CONSULTATION", name: "1:1 Strategic Consultation", price: "₹799" },
+  { key: "ASK A QUESTION", name: "Ask a travel question", price: "₹299" },
+  { key: "THE MASTER PLAN", name: "Start your Master Plan", price: "₹1099" },
+  { key: "CUSTOM LUXE PACKAGE", name: "Request a custom luxe package", price: "Quote Based" }
+];
+
+const ADD_ON_SERVICES = [
+  { key: "Itinerary Review", name: "Get itinerary reviewed", price: "₹199" },
+  { key: "Hotel/Area Check", name: "Check hotel area", price: "₹149" },
+  { key: "Flight Choice", name: "Flight choice help", price: "₹149" },
+  { key: "Packing Checklist", name: "Packing checklist", price: "₹99" }
+];
 
 const SearchLayout = dynamic(() => import("./SearchLayout"), {
   ssr: false,
@@ -92,6 +110,9 @@ export default function ExpertsDirectory() {
   const [locationFilter, setLocationFilter] = useState("");
   const [specializationFilter, setSpecializationFilter] = useState("");
   const [modalExpert, setModalExpert] = useState(null);
+  const [selectedService, setSelectedService] = useState(null);
+  const [selectedAddOn, setSelectedAddOn] = useState(null);
+  const [activeMenuExpertId, setActiveMenuExpertId] = useState(null);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState("");
   const [nextOffset, setNextOffset] = useState(0);
@@ -115,6 +136,32 @@ export default function ExpertsDirectory() {
       router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
     } else {
       setModalExpert(expert);
+      setSelectedService(expert.profileType === 'agency' ? 'CUSTOM LUXE PACKAGE' : 'ASK A QUESTION');
+    }
+  };
+
+  const handleOpenService = (expert, serviceKey) => {
+    if (!isAuthenticated) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("openExpert", expert.id);
+      params.set("openService", serviceKey);
+      const currentUrl = `/ask-an-expert?${params.toString()}`;
+      router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+    } else {
+      setModalExpert(expert);
+      setSelectedService(serviceKey);
+      setActiveMenuExpertId(null);
+    }
+  };
+
+  const handleOpenAddOn = (expert, addOnKey) => {
+    if (!isAuthenticated) {
+      const currentUrl = `/ask-an-expert`;
+      router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+    } else {
+      setModalExpert(expert);
+      setSelectedAddOn(addOnKey);
+      setActiveMenuExpertId(null);
     }
   };
 
@@ -124,6 +171,7 @@ export default function ExpertsDirectory() {
       const expert = experts.find(e => String(e.id) === String(expertIdToOpen));
       if (expert) {
         setModalExpert(expert);
+        setSelectedService(searchParams.get("openService") || 'ASK A QUESTION');
         const params = new URLSearchParams(searchParams.toString());
         params.delete("openExpert");
         params.delete("openService");
@@ -236,20 +284,17 @@ export default function ExpertsDirectory() {
         body: JSON.stringify({ query: queryText, action: 'initial' })
       });
 
-      // Handle serverless timeouts (504) or bad gateway (502)
       if (!response.ok) {
         let errorMessage = "Search failed";
         try {
           const err = await response.json();
           errorMessage = err.details || err.error || errorMessage;
         } catch (e) {
-          // If response is not JSON (e.g., Vercel's timeout HTML page)
           if (response.status === 504) errorMessage = "Search timed out. Showing all experts instead.";
           else errorMessage = `Server error (${response.status})`;
         }
         throw new Error(errorMessage);
       }
-
 
       const result = await response.json();
       const { matches, context, searchId: newSearchId } = result;
@@ -286,7 +331,7 @@ export default function ExpertsDirectory() {
       console.error("Search Error:", error.message);
       const isDbError = error.message?.includes("schema cache") || error.message?.includes("does not exist") || error.code === "42P01";
       if (!isDbError) toast.error("Search is temporarily unavailable. Showing all experts.");
-      fetchExperts(true); // Fallback to standard directory view
+      fetchExperts(true); 
     } finally {
       setIsAiSearching(false);
       setLoading(false);
@@ -431,14 +476,6 @@ export default function ExpertsDirectory() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-4 lg:px-2 mt-16">
-      {modalExpert && (
-        <ProfileServiceDrawer
-          isOpen={!!modalExpert}
-          onClose={() => setModalExpert(null)}
-          serviceType={modalExpert.profileType === 'agency' ? 'CUSTOM LUXE PACKAGE' : 'ASK A QUESTION'}
-          expertData={{ id: modalExpert.id, fullName: modalExpert.fullName, email: modalExpert.email, phone: modalExpert.phone }}
-        />
-      )}
       {isLightboxOpen && (
         <Lightbox
           mainSrc={selectedImage}
@@ -637,19 +674,19 @@ export default function ExpertsDirectory() {
                             </div>
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="flex gap-1.5 relative">
                             <Link href={expert.profileType === 'agency' ? `/agency/${expert.username}` : `/experts/${expert.username}`}>
-                              <button className="px-3 py-1.5 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-[#36013F] transition-colors">
+                              <button className="px-2.5 py-1.5 text-xs font-semibold text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 hover:text-[#36013F] transition-colors">
                                 View
                               </button>
                             </Link>
-                            <button
-                              onClick={() => handleAskClick(expert)}
-                              className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#36013F] to-[#5a1066] rounded-lg shadow-sm hover:shadow-md hover:to-[#36013F] transition-all flex items-center gap-1.5"
-                            >
-                              {expert.profileType === 'agency' ? 'Quote' : 'Ask'}
-                              <FaArrowRight className="w-2 h-2 opacity-80" />
-                            </button>
+                            
+                              <button
+                                onClick={() => handleAskClick(expert)}
+                                className="px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#36013F] to-[#5a1066] rounded-lg shadow-sm hover:shadow-md hover:to-[#36013F] transition-all flex items-center gap-1"
+                              >
+                                Ask Query
+                              </button>
                           </div>
                         </div>
                       </div>
@@ -672,6 +709,42 @@ export default function ExpertsDirectory() {
           </>
         )}
       </div>
+
+      {/* Main Service Drawer for Booking */}
+      {modalExpert && selectedService && (
+        <ProfileServiceDrawer
+          isOpen={true}
+          onClose={() => {
+            setModalExpert(null);
+            setSelectedService(null);
+          }}
+          serviceType={selectedService}
+          expertData={{
+            id: modalExpert.id,
+            fullName: modalExpert.fullName,
+            email: modalExpert.email,
+            phone: modalExpert.phone,
+          }}
+        />
+      )}
+
+      {/* Add-On Modal for Micro Services */}
+      {modalExpert && selectedAddOn && (
+        <ProfileAddOnModal
+          isOpen={true}
+          onClose={() => {
+            setModalExpert(null);
+            setSelectedAddOn(null);
+          }}
+          addOnType={selectedAddOn}
+          expertData={{
+            id: modalExpert.id,
+            fullName: modalExpert.fullName,
+            email: modalExpert.email,
+            phone: modalExpert.phone,
+          }}
+        />
+      )}
     </div>
   );
 }

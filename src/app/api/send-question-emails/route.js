@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { buildEmailFooter } from "@/app/utils/emailComponents";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import {
   sendWhatsAppServiceRequestToExpert,
   sendWhatsAppServiceRequestToUser,
@@ -150,18 +151,64 @@ const emailTemplate = ({ userName, expertName, question, userEmail, userPhone, y
 export async function POST(request) {
   try {
     const {
+      expertId,
       userEmail,
       userName,
-      expertEmail,
-      expertName,
+      expertEmail: reqExpertEmail,
+      expertName: reqExpertName,
       question,
       userPhone,
-      expertPhone,
+      expertPhone: reqExpertPhone,
       serviceType,
       keywords = [],
       referredByAgencyName,
       isHandedOver
     } = await request.json();
+
+    let expertEmail = reqExpertEmail || "";
+    let expertPhone = reqExpertPhone || "";
+    let expertName = reqExpertName || "XMyTravel Expert";
+
+    if (expertId && (!expertEmail || !expertPhone)) {
+      try {
+        const supabase = createSupabaseAdminClient();
+        let prof = null;
+        const { data: profId } = await supabase
+          .from("profiles")
+          .select("email, phone, full_name")
+          .eq("id", expertId)
+          .maybeSingle();
+        prof = profId;
+
+        if (!prof) {
+          const { data: profUserId } = await supabase
+            .from("profiles")
+            .select("email, phone, full_name")
+            .eq("user_id", expertId)
+            .maybeSingle();
+          prof = profUserId;
+        }
+
+        if (!prof && reqExpertEmail) {
+          const { data: profEmail } = await supabase
+            .from("profiles")
+            .select("email, phone, full_name")
+            .ilike("email", reqExpertEmail.trim())
+            .maybeSingle();
+          prof = profEmail;
+        }
+
+        if (prof) {
+          if (!expertEmail && prof.email) expertEmail = prof.email;
+          if (!expertPhone && prof.phone) expertPhone = prof.phone;
+          if ((!reqExpertName || reqExpertName === "XMyTravel Expert") && prof.full_name) {
+            expertName = prof.full_name;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not fetch expert profile in send-question-emails:", e);
+      }
+    }
 
     const isPlaceholder = isHandedOver === false;
 

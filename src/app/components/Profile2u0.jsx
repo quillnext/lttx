@@ -61,7 +61,7 @@ const CustomStyles = () => (
   `}</style>
 );
 
-export default function Profile2u0({ profile, sortedExperience, onBookService }) {
+export default function Profile2u0({ profile, sortedExperience, onBookService, hideNavbar = false }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -142,86 +142,88 @@ export default function Profile2u0({ profile, sortedExperience, onBookService })
       <CustomStyles />
 
       {/* REFINED FLOATING ICON HEADER - CLONED FROM DEMO */}
-      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] w-[95%] max-w-[1400px] pointer-events-none">
-        <motion.div
-          initial={{ y: 100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-[#36013F]/95 backdrop-blur-2xl border border-white/10 rounded-full py-2.5 px-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between gap-4 pointer-events-auto"
-        >
-          <div className="flex items-center gap-3 pr-4 border-r border-white/10 shrink-0">
-            <img src="/logolttx.svg" alt="Xmytravel" className="w-[150px] h-auto object-contain" />
-          </div>
-
-          <div className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToSection(item.id)}
-                className="group flex items-center gap-2 px-3 py-2 rounded-full hover:bg-white/10 transition-all duration-300 transform hover:scale-105"
-              >
-                <SafeIcon icon={item.icon} size={18} className="text-white group-hover:text-[#FDC700] transition-colors" />
-                <span className="hidden xl:inline text-[9px] font-black text-white/70 group-hover:text-white uppercase tracking-widest transition-colors">
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="flex md:hidden flex-1 items-center justify-between gap-4">
-            <button
-              onClick={() => scrollToSection('services')}
-              className="flex-1 bg-[#FDC700] text-[#36013F] text-[10px] font-black py-3 rounded-full uppercase tracking-widest active:scale-95 transition-all shadow-lg text-center"
-            >
-              Book Now
-            </button>
-            <div className="relative">
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className={`w-11 h-11 flex items-center justify-center rounded-full transition-all ${isMenuOpen ? 'bg-white/20 text-[#FDC700]' : 'bg-white/10 text-white'}`}
-              >
-                <Menu size={20} />
-              </button>
-              <AnimatePresence>
-                {isMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    className="absolute right-0 top-full mt-2 w-56 bg-[#36013F] backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] p-2 z-[1001]"
-                  >
-                    <div className="grid grid-cols-1 gap-1">
-                      {navItems.map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            scrollToSection(item.id);
-                            setIsMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-white/10 rounded-xl transition-all text-left"
-                        >
-                          <SafeIcon icon={item.icon} size={18} className="text-[#FDC700]" />
-                          <span className="text-[10px] font-black text-white uppercase tracking-widest">{item.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+      {!hideNavbar && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[1000] w-[95%] max-w-[1400px] pointer-events-none">
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-[#36013F]/95 backdrop-blur-2xl border border-white/10 rounded-full py-2.5 px-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between gap-4 pointer-events-auto"
+          >
+            <div className="flex items-center gap-3 pr-4 border-r border-white/10 shrink-0">
+              <img src="/logolttx.svg" alt="Xmytravel" className="w-[150px] h-auto object-contain" />
             </div>
-          </div>
 
-          <div className="hidden md:block pl-4 border-l border-white/10 shrink-0">
-            <button
-              onClick={() => scrollToSection('services')}
-              className="bg-[#FDC700] text-[#36013F] text-[10px] font-black px-7 py-3 rounded-full uppercase tracking-widest hover:bg-white transition-all shadow-[0_10px_20px_rgba(253,199,0,0.2)] whitespace-nowrap"
-            >
-              Book Consult
-            </button>
-          </div>
-        </motion.div>
-      </div>
+            <div className="hidden md:flex flex-1 items-center justify-center gap-1 lg:gap-2">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToSection(item.id)}
+                  className="group flex items-center gap-2 px-3 py-2 rounded-full hover:bg-white/10 transition-all duration-300 transform hover:scale-105"
+                >
+                  <SafeIcon icon={item.icon} size={18} className="text-white group-hover:text-[#FDC700] transition-colors" />
+                  <span className="hidden xl:inline text-[9px] font-black text-white/70 group-hover:text-white uppercase tracking-widest transition-colors">
+                    {item.label}
+                  </span>
+                </button>
+              ))}
+            </div>
 
-      <main className="max-w-[1500px] mt-28 mx-auto px-4 md:px-8 pb-0">
+            <div className="flex md:hidden flex-1 items-center justify-between gap-4">
+              <button
+                onClick={() => scrollToSection('services')}
+                className="flex-1 bg-[#FDC700] text-[#36013F] text-[10px] font-black py-3 rounded-full uppercase tracking-widest active:scale-95 transition-all shadow-lg text-center"
+              >
+                Book Now
+              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className={`w-11 h-11 flex items-center justify-center rounded-full transition-all ${isMenuOpen ? 'bg-white/20 text-[#FDC700]' : 'bg-white/10 text-white'}`}
+                >
+                  <Menu size={20} />
+                </button>
+                <AnimatePresence>
+                  {isMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                      className="absolute right-0 top-full mt-2 w-56 bg-[#36013F] backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_-20px_50px_rgba(0,0,0,0.5)] p-2 z-[1001]"
+                    >
+                      <div className="grid grid-cols-1 gap-1">
+                        {navItems.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => {
+                              scrollToSection(item.id);
+                              setIsMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-4 px-4 py-3.5 hover:bg-white/10 rounded-xl transition-all text-left"
+                          >
+                            <SafeIcon icon={item.icon} size={18} className="text-[#FDC700]" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">{item.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            <div className="hidden md:block pl-4 border-l border-white/10 shrink-0">
+              <button
+                onClick={() => scrollToSection('services')}
+                className="bg-[#FDC700] text-[#36013F] text-[10px] font-black px-7 py-3 rounded-full uppercase tracking-widest hover:bg-white transition-all shadow-[0_10px_20px_rgba(253,199,0,0.2)] whitespace-nowrap"
+              >
+                Book Consult
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      <main className={`max-w-[1500px] ${hideNavbar ? 'mt-6' : 'mt-28'} mx-auto px-4 md:px-8 pb-0`}>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
           {/* --- SIDEBAR --- */}
@@ -587,11 +589,11 @@ export default function Profile2u0({ profile, sortedExperience, onBookService })
           </div>
         </div>
         <Footer />
-        <ProfileServiceDrawer 
-          isOpen={!!activeService} 
-          onClose={() => setActiveService(null)} 
-          serviceType={activeService} 
-          expertData={{ id: profile.id, fullName: profile.fullName, email: profile.email, phone: profile.phone }} 
+        <ProfileServiceDrawer
+          isOpen={!!activeService}
+          onClose={() => setActiveService(null)}
+          serviceType={activeService}
+          expertData={{ id: profile.id, fullName: profile.fullName, email: profile.email, phone: profile.phone }}
         />
         <ProfileAddOnModal isOpen={!!activeAddOn} onClose={() => setActiveAddOn(null)} addOnType={activeAddOn} expertData={{ id: profile.id, fullName: profile.fullName, email: profile.email, phone: profile.phone }} />
       </main>
