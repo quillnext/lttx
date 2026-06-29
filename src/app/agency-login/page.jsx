@@ -12,7 +12,7 @@ import Footer from "../pages/Footer";
 
 const auth = getAuth(app);
 
-export default function UserLoginPage() {
+export default function AgencyLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
@@ -26,10 +26,10 @@ export default function UserLoginPage() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("User logged in successfully");
+      console.log("Agency user logged in successfully");
       const user = userCredential.user;
 
-      let userProfileType = "expert";
+      let userProfileType = "agency";
 
       try {
         const profileRef = doc(db, "Profiles", user.uid);
@@ -50,14 +50,14 @@ export default function UserLoginPage() {
         console.error("Error checking profile type:", profileErr);
       }
 
-      if (userProfileType === "agency") {
+      if (userProfileType === "expert") {
         await auth.signOut();
-        setError("This account is registered as an Agency. Please use the Agency Login.");
+        setError("This account is registered as an Expert. Please use the Expert Login.");
         setLoading(false);
         return;
       }
 
-      router.push("/expert-dashboard/messages");
+      router.push("/agency-dashboard/messages");
     }
     catch (err) {
       if (
@@ -89,7 +89,7 @@ export default function UserLoginPage() {
                   />
           </div>
         <h1 className="text-2xl font-bold text-center text-[#36013F] mb-4">
-          Expert Login
+          Agency Login
         </h1>
         
         <form onSubmit={handleLogin} className="space-y-4">
@@ -133,9 +133,9 @@ export default function UserLoginPage() {
           </button>
         </form>
        <p className="mt-4 text-center text-sm text-gray-600">
-          Are you an Agency?{" "}
-          <Link href="/agency-login" className="text-[#36013F] font-bold hover:underline">
-            Agency Login here
+          Are you an Expert?{" "}
+          <Link href="/expert-login" className="text-[#36013F] font-bold hover:underline">
+            Expert Login here
           </Link>
           <br />
          <Link href="/complete-profile" className="text-[#36013F] hover:underline">
