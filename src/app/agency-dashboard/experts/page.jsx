@@ -230,7 +230,7 @@ export default function AgencyBrowseExperts() {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen">
+    <div className="p-2 sm:p-4 md:p-8 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
 
         {/* Top Title Section matching ask-an-expert */}
@@ -382,25 +382,25 @@ export default function AgencyBrowseExperts() {
                       </div>
 
                       {/* Footer: Price & Action Buttons */}
-                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex items-end justify-between gap-2 relative">
+                      <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex flex-wrap items-center justify-between gap-2 relative">
                         <div>
-                          <p className="text-[9px] text-gray-400 uppercase tracking-wide">Consultation</p>
+                          <p className="text-[7px] md:text-[9px] text-gray-400  tracking-wide">Consultation</p>
                           <div className="flex items-center text-sm font-bold text-[#36013F]">
                             ₹{formatPricing(expert.pricing)}
                           </div>
                         </div>
 
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-1 sm:gap-1.5">
                           <button
                             onClick={() => setViewingProfileExpert(expert)}
-                            className="px-2.5 py-1.5 text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-[#36013F] transition-colors flex items-center gap-1"
+                            className="px-1.5 sm:px-2.5 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-100 hover:text-[#36013F] transition-colors flex items-center gap-1"
                           >
                             <Eye className="w-3 h-3" /> View
                           </button>
 
                           <button
                             onClick={() => handleAskClick(expert)}
-                            className="px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#36013F] to-[#5a1066] rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-1"
+                            className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-bold text-white bg-gradient-to-r from-[#36013F] to-[#5a1066] rounded-lg shadow-sm hover:shadow-md transition-all flex items-center gap-1"
                           >
                             Ask Query
                           </button>
@@ -418,7 +418,7 @@ export default function AgencyBrowseExperts() {
       {/* Full Expert Profile Modal inside Dashboard */}
       {viewingProfileExpert && (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-y-auto relative shadow-2xl border border-gray-200">
+          <div className="bg-white rounded-3xl w-full max-w-7xl max-h-[92vh] overflow-y-auto relative shadow-2xl border border-gray-200">
             <div className="sticky top-0 right-0 z-50 flex justify-end p-4 bg-gradient-to-b from-white via-white/80 to-transparent pointer-events-none">
               <button
                 onClick={() => setViewingProfileExpert(null)}
