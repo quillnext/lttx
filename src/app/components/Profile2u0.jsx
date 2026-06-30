@@ -234,17 +234,17 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
               </div>
 
               <div className="px-5 pb-6">
-                <div className="relative -mt-16 mb-4 flex justify-between items-end">
-                  <div className="p-1 bg-white rounded-full inline-block shadow-lg">
+                <div className="relative -mt-16 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3">
+                  <div className="p-1 bg-white rounded-full inline-block shadow-lg relative">
                     <Image src={profile.photo || "/default.jpg"}
                       width={128} height={128}
                       className="w-32 h-32 rounded-full object-cover border-4 border-white"
                       alt={profile.fullName} />
                     {profile.isOnline && (
-                      <div className="absolute bottom-2 left-26 w-6 h-6 bg-green-500 border-4 border-white rounded-full shadow-sm animate-pulse"></div>
+                      <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-4 border-white rounded-full shadow-sm animate-pulse"></div>
                     )}
                   </div>
-                  <div className="flex flex-col items-end gap-2 text-right">
+                  <div className="flex flex-col items-start sm:items-end gap-2 text-left sm:text-right">
                     <span className="bg-[#36013F] text-[#FDC700] text-[8px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest shadow-sm flex items-center gap-1.5 border border-[#FDC700]/30 shadow-inner">
                       <SafeIcon icon={ShieldCheck} size={10} /> Verified Elite
                     </span>
@@ -266,7 +266,7 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
                 </div>
 
                 {/* AUTHORITY BADGES */}
-                <div className="mt-6 grid grid-cols-4 gap-3">
+                <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {(() => {
                     const journey = profile.professionalJourney || [];
                     let yearsExp = "0+";
