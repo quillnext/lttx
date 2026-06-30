@@ -2,26 +2,29 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import { app, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
-
-const auth = getAuth(app);
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [sessionUser, setSessionUser] = useState(null);
   const router = useRouter();
 
   useEffect(() => {
-    const user = auth.currentUser;
-    if (user && user.email) {
-      setEmail(user.email);
-    }
+    const getSessionUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setSessionUser(user);
+        if (user.email) {
+          setEmail(user.email);
+        }
+      }
+    };
+    getSessionUser();
   }, []);
 
   const handleForgotPassword = async (e) => {
@@ -46,26 +49,16 @@ export default function ForgotPassword() {
 
       setSuccess("Password reset email sent! Please check your inbox (and spam/junk folder).");
       setTimeout(async () => {
-        if (auth.currentUser) {
+        if (sessionUser) {
           try {
-            const profileRef = doc(db, "Profiles", auth.currentUser.uid);
-            const profileSnap = await getDoc(profileRef);
-            if (profileSnap.exists()) {
-              if (profileSnap.data().profileType === "agency") {
-                router.push("/agency-dashboard");
-                return;
-              }
-            } else {
-              const { supabase } = await import("@/lib/supabase");
-              const { data, error } = await supabase
-                .from("profiles")
-                .select("profile_type")
-                .eq("id", auth.currentUser.uid)
-                .single();
-              if (data && !error && data.profile_type === "agency") {
-                router.push("/agency-dashboard");
-                return;
-              }
+            const { data, error } = await supabase
+              .from("profiles")
+              .select("profile_type")
+              .eq("id", sessionUser.id)
+              .single();
+            if (data && !error && data.profile_type === "agency") {
+              router.push("/agency-dashboard");
+              return;
             }
           } catch (err) {
             console.error("Error checking profile:", err);
@@ -126,30 +119,20 @@ export default function ForgotPassword() {
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-gray-600">
-          {auth.currentUser ? (
+          {sessionUser ? (
             <>
               Back to{" "}
               <button
                 onClick={async () => {
                   try {
-                    const profileRef = doc(db, "Profiles", auth.currentUser.uid);
-                    const profileSnap = await getDoc(profileRef);
-                    if (profileSnap.exists()) {
-                      if (profileSnap.data().profileType === "agency") {
-                        router.push("/agency-dashboard");
-                        return;
-                      }
-                    } else {
-                      const { supabase } = await import("@/lib/supabase");
-                      const { data, error } = await supabase
-                        .from("profiles")
-                        .select("profile_type")
-                        .eq("id", auth.currentUser.uid)
-                        .single();
-                      if (data && !error && data.profile_type === "agency") {
-                        router.push("/agency-dashboard");
-                        return;
-                      }
+                    const { data, error } = await supabase
+                      .from("profiles")
+                      .select("profile_type")
+                      .eq("id", sessionUser.id)
+                      .single();
+                    if (data && !error && data.profile_type === "agency") {
+                      router.push("/agency-dashboard");
+                      return;
                     }
                   } catch (err) {
                     console.error("Error checking profile:", err);

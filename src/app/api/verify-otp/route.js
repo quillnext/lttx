@@ -1,6 +1,6 @@
 
 import { NextResponse } from "next/server";
-import { adminDb } from "../../../lib/firebaseAdmin"; 
+import { createSupabaseAdminClient } from "../../../lib/supabaseAdmin"; 
 
 export async function POST(request) {
   try {
@@ -9,18 +9,24 @@ export async function POST(request) {
       return NextResponse.json({ verified: false, error: "Missing email or OTP" }, { status: 400 });
     }
 
-    const doc = await adminDb.collection("otps").doc(email).get();
-    if (!doc.exists) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const supabase = createSupabaseAdminClient();
+    const { data: doc, error: fetchError } = await supabase
+      .from("otps")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (fetchError || !doc) {
       return NextResponse.json({ verified: false, error: "OTP not found or expired" }, { status: 400 });
     }
 
-    const data = doc.data();
-    if (data.otp !== otp || data.expiry < Date.now()) {
+    if (doc.otp !== otp || doc.expiry < Date.now()) {
       return NextResponse.json({ verified: false, error: "Invalid or expired OTP" }, { status: 400 });
     }
 
-   
-    await adminDb.collection("otps").doc(email).delete();
+    await supabase.from("otps").delete().eq("email", normalizedEmail);
 
     return NextResponse.json({ verified: true }, { status: 200 });
   } catch (error) {

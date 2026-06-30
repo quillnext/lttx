@@ -1,7 +1,7 @@
 
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
-import { adminDb, serverTimestamp } from "../../../lib/firebaseAdmin";
+import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { buildSimpleFooter } from "@/app/utils/emailComponents";
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
@@ -79,12 +79,20 @@ export async function POST(request) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
 
-    // Store OTP in Firestore
-    await adminDb.collection("otps").doc(email).set({
-      otp,
-      expiry,
-      createdAt: serverTimestamp(),
-    });
+    // Store OTP in Supabase otps table
+    const supabase = createSupabaseAdminClient();
+    const { error: upsertError } = await supabase
+      .from("otps")
+      .upsert({
+        email: email.trim().toLowerCase(),
+        otp,
+        expiry,
+      }, { onConflict: "email" });
+
+    if (upsertError) {
+      console.error("Supabase OTP storage error:", upsertError);
+      throw new Error("Failed to store OTP");
+    }
 
     // Send OTP email
     await transporter.sendMail({

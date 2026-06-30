@@ -1,7 +1,16 @@
 {
   "compilerOptions": {
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "firebase/app": ["./src/lib/shims/firebase-app.js"],
+      "firebase/auth": ["./src/lib/shims/firebase-auth.js"],
+      "firebase/firestore": ["./src/lib/shims/firebase-firestore.js"],
+      "firebase/storage": ["./src/lib/shims/firebase-storage.js"],
+      "firebase-admin/app": ["./src/lib/shims/firebase-admin.js"],
+      "firebase-admin/auth": ["./src/lib/shims/firebase-admin.js"],
+      "firebase-admin/firestore": ["./src/lib/shims/firebase-admin.js"],
+      "firebase-admin": ["./src/lib/shims/firebase-admin.js"],
+      "react-firebase-hooks/auth": ["./src/lib/shims/react-firebase-hooks-auth.js"]
     }
   }
 }

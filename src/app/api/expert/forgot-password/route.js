@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebaseAdmin";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { sendEmail } from "@/lib/email";
 
@@ -67,53 +66,34 @@ export async function POST(request) {
 
     const supabase = createSupabaseAdminClient();
     let fullName = "";
-    let firebaseUid = null;
 
     // 1. Look up the expert's profile in Supabase by email
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, full_name, user_id, email")
+      .select("id, full_name, email")
       .ilike("email", email.trim())
       .maybeSingle();
 
     fullName = profile?.full_name || "";
 
-    // 2. Check if Firebase Auth user already exists
-    try {
-      const existingUser = await adminAuth.getUserByEmail(email);
-      firebaseUid = existingUser.uid;
-    } catch (firebaseErr) {
-      if (firebaseErr.code !== "auth/user-not-found") {
-        throw firebaseErr;
-      }
-      // User not in Firebase — create them now
-      // Generate a strong random temporary password
-      const tempPassword =
-        Math.random().toString(36).slice(2) +
-        Math.random().toString(36).slice(2).toUpperCase() +
-        "!1";
+    // 2. Generate Supabase Auth password reset link
+    const redirectUrl = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'https://xmytravel.com'}/expert-reset-password`;
+    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+      type: "recovery",
+      email: email.trim().toLowerCase(),
+      options: {
+        redirectTo: redirectUrl,
+      },
+    });
 
-      const newUser = await adminAuth.createUser({
-        email,
-        password: tempPassword,
-        displayName: fullName || undefined,
-        emailVerified: false,
-      });
-      firebaseUid = newUser.uid;
-
-      // 3. Update profiles.user_id to the Firebase UID so dashboard lookups work
-      if (profile?.id) {
-        await supabase
-          .from("profiles")
-          .update({ user_id: firebaseUid })
-          .eq("id", profile.id);
-      }
+    if (linkErr) {
+      console.error("Supabase generateLink error:", linkErr);
+      return NextResponse.json({ error: "Account not found or password reset not supported for this email." }, { status: 400 });
     }
 
-    // 4. Generate Firebase password reset link (works even for brand-new users)
-    const resetLink = await adminAuth.generatePasswordResetLink(email);
+    const resetLink = linkData.properties.action_link;
 
-    // 5. Send branded password reset email
+    // 3. Send branded password reset email
     await sendEmail({
       to: email,
       subject: "Reset your XMyTravel expert password",

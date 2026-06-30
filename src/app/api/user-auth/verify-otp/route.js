@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebaseAdmin";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
@@ -27,19 +26,22 @@ export async function POST(request) {
       return NextResponse.json({ error: "OTP is required" }, { status: 400 });
     }
 
-    const otpDoc = await adminDb.collection("otps").doc(normalizedEmail).get();
-    if (!otpDoc.exists) {
+    const supabase = createSupabaseAdminClient();
+    const { data: otpDoc, error: fetchError } = await supabase
+      .from("otps")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .maybeSingle();
+
+    if (fetchError || !otpDoc) {
       return NextResponse.json({ error: "OTP not found or expired" }, { status: 400 });
     }
 
-    const otpData = otpDoc.data();
-    if (otpData.otp !== otp.trim() || otpData.expiry < Date.now()) {
+    if (otpDoc.otp !== otp.trim() || otpDoc.expiry < Date.now()) {
       return NextResponse.json({ error: "Invalid or expired OTP" }, { status: 400 });
     }
 
-    await adminDb.collection("otps").doc(normalizedEmail).delete();
-
-    const supabase = createSupabaseAdminClient();
+    await supabase.from("otps").delete().eq("email", normalizedEmail);
     const { data, error } = await supabase
       .from("profiles")
       .upsert(

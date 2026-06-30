@@ -2,15 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
-import { app, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "@/lib/supabase";
+import { getProfileByUidOrEmail } from "@/lib/supabaseProfile";
 import Link from "next/link";
 import Image from "next/image";
 import Navbar from "../components/Navbar";
 import Footer from "../pages/Footer";
-
-const auth = getAuth(app);
 
 export default function UserLoginPage() {
   const [email, setEmail] = useState("");
@@ -25,25 +22,21 @@ export default function UserLoginPage() {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log("User logged in successfully");
-      const user = userCredential.user;
+      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (authErr) throw authErr;
+      const user = authData.user;
 
       let userProfileType = "expert";
 
       try {
-        const profileRef = doc(db, "Profiles", user.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (profileSnap.exists()) {
-          if (profileSnap.data().profileType) {
-            userProfileType = profileSnap.data().profileType;
-          }
-        }
-        // Fallback or complement with Supabase
-        const { supabase } = await import("@/lib/supabase");
-        const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
-        const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
-        if (data && data.profile_type) {
+        const data = await getProfileByUidOrEmail(supabase, user.id, user.email);
+        if (data && data.profileType) {
+          userProfileType = data.profileType;
+        } else if (data && data.profile_type) {
           userProfileType = data.profile_type;
         }
       } catch (profileErr) {
@@ -51,7 +44,7 @@ export default function UserLoginPage() {
       }
 
       if (userProfileType === "agency") {
-        await auth.signOut();
+        await supabase.auth.signOut();
         setError("This account is registered as an Agency. Please use the Agency Login.");
         setLoading(false);
         return;
@@ -60,16 +53,8 @@ export default function UserLoginPage() {
       router.push("/expert-dashboard/messages");
     }
     catch (err) {
-      if (
-        err.code === "auth/user-not-found" ||
-        err.code === "auth/wrong-password"
-      ) {
-        setError("Invalid email or password");
-      } else if (err.code === "auth/invalid-credential") {
-        setError("Please enter a valid email address");
-      } else {
-        setError("Something went wrong. Please try again later.");
-      }
+      console.error("Login error:", err);
+      setError(err.message || "Invalid email or password");
       setLoading(false);
     }
   };

@@ -1,36 +1,8 @@
-// src/lib/firebaseAdmin.js
-import admin from "firebase-admin";
+import adminMock, { getAuth } from "./shims/firebase-admin";
 
-let serviceAccount;
-try {
-  if (!process.env.FIREBASE_ADMIN_SDK) {
-    throw new Error("FIREBASE_ADMIN_SDK environment variable is not set");
-  }
-  serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK);
-} catch (error) {
-  console.error("Error loading Firebase Admin SDK credentials:", error.message);
-  throw new Error("Failed to load Firebase Admin SDK credentials");
-}
+const adminAuth = getAuth();
+const adminDb = adminMock.firestore();
+const serverTimestamp = () => Date.now();
 
-if (!admin.apps.length) {
-  try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: "https://xmytravel-ed995.firebaseio.com", // Included for consistency
-    });
-  } catch (error) {
-    console.error("Error initializing Firebase Admin SDK:", error.message);
-    throw new Error("Failed to initialize Firebase Admin SDK");
-  }
-}
-
-const adminAuth = admin.auth();
-const adminDb = admin.firestore();
-const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
-
-// Validate adminDb
-if (!(adminDb instanceof admin.firestore.Firestore)) {
-  console.error("adminDb is not a valid Firestore instance:", adminDb);
-  throw new Error("adminDb is not a valid Firestore instance");
-}
 export { adminAuth, adminDb, serverTimestamp };
+export default adminMock;
