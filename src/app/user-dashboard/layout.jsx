@@ -18,9 +18,11 @@ export default function UserDashboardLayout({ children }) {
     if (!loading && !isAuthenticated) {
       const queryString = searchParams.toString();
       const currentUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
-      router.replace(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+      router.replace(`/login?role=user&returnTo=${encodeURIComponent(currentUrl)}`);
+    } else if (isAuthenticated && user && user.role !== "user" && user.role !== "admin") {
+      router.replace(`/login?role=${user.role}`);
     }
-  }, [loading, isAuthenticated, router, pathname, searchParams]);
+  }, [loading, isAuthenticated, user, router, pathname, searchParams]);
 
   useEffect(() => {
     setNavLoading(false);
@@ -28,7 +30,7 @@ export default function UserDashboardLayout({ children }) {
 
   const handleLogout = () => {
     logout();
-    router.replace("/user-login");
+    router.replace("/login?role=user");
   };
 
   const handleNavClick = (href) => {

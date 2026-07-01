@@ -24,6 +24,31 @@ export async function POST(request) {
     }
 
     const supabase = createSupabaseAdminClient();
+    const targetEmail = email.trim().toLowerCase();
+    const targetPhone = phone.trim().startsWith("+") ? phone.trim() : `+${phone.trim()}`;
+
+    // Verify duplicate email
+    const { data: emailProfile } = await supabase
+      .from("profiles")
+      .select("id, email, phone")
+      .eq("email", targetEmail)
+      .maybeSingle();
+
+    if (emailProfile && emailProfile.id !== uid) {
+      return NextResponse.json({ error: "Email address is already linked to another profile." }, { status: 400 });
+    }
+
+    // Verify duplicate phone
+    const { data: phoneProfile } = await supabase
+      .from("profiles")
+      .select("id, email, phone")
+      .eq("phone", targetPhone)
+      .maybeSingle();
+
+    if (phoneProfile && phoneProfile.id !== uid) {
+      return NextResponse.json({ error: "Mobile number is already linked to another profile." }, { status: 400 });
+    }
+
     const password = generatePassword();
 
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({

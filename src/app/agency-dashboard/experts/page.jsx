@@ -1,12 +1,13 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { Search, Compass, MapPin, CheckCircle, ArrowRight, X, Sparkles, Filter, RupeeSign, Eye, ChevronDown } from "lucide-react";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+
+
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { fetchPublicExperts } from "@/lib/ask-an-expert/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -384,7 +385,7 @@ export default function AgencyBrowseExperts() {
                       {/* Footer: Price & Action Buttons */}
                       <div className="mt-3 pt-3 border-t border-dashed border-gray-200 flex items-end justify-between gap-2 relative">
                         <div>
-                          <p className="text-[9px] text-gray-400 uppercase tracking-wide">Consultation</p>
+                          <p className="text-[7px] md:text text-gray-400  tracking-wide">Consultation</p>
                           <div className="flex items-center text-sm font-bold text-[#36013F]">
                             ₹{formatPricing(expert.pricing)}
                           </div>
@@ -418,7 +419,7 @@ export default function AgencyBrowseExperts() {
       {/* Full Expert Profile Modal inside Dashboard */}
       {viewingProfileExpert && (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-y-auto relative shadow-2xl border border-gray-200">
+          <div className="bg-white rounded-3xl w-full max-w-7xl max-h-[92vh] overflow-y-auto relative shadow-2xl border border-gray-200">
             <div className="sticky top-0 right-0 z-50 flex justify-end p-4 bg-gradient-to-b from-white via-white/80 to-transparent pointer-events-none">
               <button
                 onClick={() => setViewingProfileExpert(null)}

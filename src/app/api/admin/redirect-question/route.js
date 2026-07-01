@@ -1,7 +1,7 @@
-import { adminDb } from "@/lib/firebaseAdmin";
+
 import { sendEmail } from "@/lib/email";
 import { NextResponse } from "next/server";
-import admin from "firebase-admin";
+
 
 export async function POST(request) {
     try {

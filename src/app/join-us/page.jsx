@@ -1,17 +1,20 @@
-
-
 "use client";
 
+import { supabase } from "@/lib/supabase";
+
+
+
+
 import { useState } from "react";
-import { getFirestore, collection, addDoc, Timestamp, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import Footer from "../pages/Footer";
 
-const db = getFirestore(app);
+
 
 export default function JoinLTTXForm() {
   const [formData, setFormData] = useState({

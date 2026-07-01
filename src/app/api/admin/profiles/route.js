@@ -49,6 +49,8 @@ const mapPartialProfileUpdates = (updates = {}) => {
     userId: "user_id",
     forcePasswordChange: "force_password_change",
     approvalTimestamp: "approval_timestamp",
+    approvalNotes: "approval_notes",
+    approvedBy: "approved_by",
   };
 
   return Object.fromEntries(

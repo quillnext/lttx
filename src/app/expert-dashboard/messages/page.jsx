@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getAuth } from "firebase/auth";
-import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
+
 import { Check, ChevronDown, ChevronUp, CircleCheckBig, Loader, Sparkles, X } from "lucide-react";
 import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 import CaseSheetView from "@/app/components/CaseSheetView";
@@ -14,7 +14,7 @@ import { mapSupabaseProfile } from "@/lib/supabaseProfile";
 import QuestionAnswerBuilder from "@/app/components/QuestionAnswerBuilder";
 
 const auth = getAuth(app);
-const db = getFirestore(app);
+
 
 const parsePrescription = (reply) => {
   if (!reply || typeof reply !== "string") return null;
@@ -36,13 +36,13 @@ const getReplyPreview = (reply) => {
 
 const Block = ({ label, color = "gray", children }) => {
   const colors = {
-    gray:   "bg-gray-50 border-gray-200 text-gray-500",
-    blue:   "bg-blue-50 border-blue-200 text-blue-600",
-    green:  "bg-green-50 border-green-200 text-green-700",
-    amber:  "bg-amber-50 border-amber-200 text-amber-700",
+    gray: "bg-gray-50 border-gray-200 text-gray-500",
+    blue: "bg-blue-50 border-blue-200 text-blue-600",
+    green: "bg-green-50 border-green-200 text-green-700",
+    amber: "bg-amber-50 border-amber-200 text-amber-700",
     purple: "bg-purple-50 border-purple-200 text-purple-700",
-    red:    "bg-red-50 border-red-200 text-red-700",
-    dark:   "bg-[#36013F] border-[#36013F] text-white",
+    red: "bg-red-50 border-red-200 text-red-700",
+    dark: "bg-[#36013F] border-[#36013F] text-white",
   };
   return (
     <div className={`p-3 rounded-xl border ${colors[color]} mb-2`}>
@@ -235,6 +235,7 @@ export default function Messages() {
   const [activeTab, setActiveTab] = useState("questions");
   const [leads, setLeads] = useState([]);
   const [expertProfile, setExpertProfile] = useState(null);
+  const [showAiSuggestion, setShowAiSuggestion] = useState(false);
 
   const profileIdRef = React.useRef(null);
 
@@ -809,13 +810,13 @@ export default function Messages() {
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <h1 className="text-3xl font-black text-[#36013F]">💬 Messages & Requests</h1>
         <div className="flex items-center bg-gray-100 p-1 rounded-xl">
-          <button 
+          <button
             onClick={() => { setActiveTab("questions"); setCurrentPage(1); }}
             className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "questions" ? "bg-white text-[#36013F] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
             Questions
           </button>
-          <button 
+          <button
             onClick={() => { setActiveTab("leads"); setCurrentPage(1); }}
             className={`px-6 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === "leads" ? "bg-white text-[#36013F] shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
           >
@@ -857,7 +858,7 @@ export default function Messages() {
         </div>
       ) : currentItems.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-3xl border border-dashed">
-           <p className="text-gray-400 font-medium">
+          <p className="text-gray-400 font-medium">
             {searchTerm ? "No matching results found." : `No ${activeTab === "questions" ? "questions" : "requests"} available yet.`}
           </p>
         </div>
@@ -898,8 +899,7 @@ export default function Messages() {
                       )}
                     </td>
                     <td className="p-3 border">
-                      <span className={`font-medium px-3 py-1 text-xs rounded-lg inline-flex items-center gap-2 ${
-                        q.status === "answered"
+                      <span className={`font-medium px-3 py-1 text-xs rounded-lg inline-flex items-center gap-2 ${q.status === "answered"
                           ? "bg-green-100 text-green-800"
                           : q.status === "accepted"
                             ? "bg-blue-100 text-blue-800"
@@ -908,7 +908,7 @@ export default function Messages() {
                               : q.status === "escalated" || q.status === "admin_prompt"
                                 ? "bg-red-100 text-red-800"
                                 : "bg-secondary text-[#36013F]"
-                      }`}>
+                        }`}>
                         {q.status === "answered" ? <CircleCheckBig size={14} /> : <Loader className="spin-animation" size={14} />}
                         {getStatusLabel(q.status)}
                       </span>
@@ -994,7 +994,7 @@ export default function Messages() {
                               </div>
                             )}
                           </div>
-                          
+
                           <div className="w-full md:w-1/2">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                               {q.status === "answered" ? "Final Prescription" : "Status Note"}
@@ -1110,7 +1110,7 @@ export default function Messages() {
                   <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-2xl">
                     <div className="flex items-center gap-2 mb-2">
                       <Sparkles className="text-yellow-600" size={16} />
-                      <strong className="text-sm font-bold text-yellow-800 uppercase tracking-wider">Admin Suggestion</strong>
+                      <strong className="text-sm font-bold text-yellow-800 uppercase tracking-wider">Admin Suggestion & Prompt</strong>
                     </div>
                     <p className="text-xs text-yellow-900 mb-4 leading-relaxed italic">
                       "{replyModal.suggestedAnswer}"
@@ -1124,6 +1124,38 @@ export default function Messages() {
                       {replyLoading ? <Loader className="animate-spin" size={14} /> : <CircleCheckBig size={14} />}
                       Use Admin Suggestion
                     </button>
+                  </div>
+                )}
+
+                {!isAdminPrompt(replyModal) && replyModal.suggestedAnswer && (
+                  <div className="mb-6 p-4 bg-purple-50 border border-purple-200 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setShowAiSuggestion(!showAiSuggestion)}
+                      className="w-full flex items-center justify-between font-bold text-[#36013F] text-xs uppercase tracking-wider focus:outline-none"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-purple-600" />
+                        AI Draft Suggestion
+                      </span>
+                      <span>{showAiSuggestion ? "Hide" : "Show"}</span>
+                    </button>
+                    {showAiSuggestion && (
+                      <div className="mt-4 animate-in fade-in duration-300">
+                        <p className="text-xs text-gray-700 leading-relaxed italic p-3 bg-white border rounded-xl mb-3">
+                          "{replyModal.suggestedAnswer}"
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleAgreeSuggested(replyModal)}
+                          disabled={replyLoading}
+                          className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
+                        >
+                          {replyLoading ? <Loader className="animate-spin" size={14} /> : <CircleCheckBig size={14} />}
+                          Use AI Draft
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

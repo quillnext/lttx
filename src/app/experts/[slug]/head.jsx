@@ -1,10 +1,11 @@
+import { supabase } from "@/lib/supabase";
 
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 
 export default async function Head({ params }) {
   const { slug } = await params;
-  const db = getFirestore(app);
+  
   const q = query(collection(db, "Profiles"), where("username", "==", slug));
 
   let profileData = null;

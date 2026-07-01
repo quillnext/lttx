@@ -1,13 +1,16 @@
-
 "use client";
 
+import { supabase } from "@/lib/supabase";
+
+
+
 import { useState, useEffect, useMemo } from "react";
-import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, getDoc } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 import { Loader2, CalendarClock, Search, Calendar, Clock, Link2 } from "lucide-react";
 import ManageAvailability from "./ManageAvailability";
 
-const db = getFirestore(app);
+
 
 // --- HELPER COMPONENTS ---
 

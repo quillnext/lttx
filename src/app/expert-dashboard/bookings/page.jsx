@@ -1,14 +1,17 @@
-
 "use client";
 
+import { supabase } from "@/lib/supabase";
+
+
+
 import { useState, useEffect } from "react";
-import { getAuth } from "firebase/auth";
-import { getFirestore, collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
+
 import { CalendarCheck, User, Clock, CheckCircle, CalendarX } from "lucide-react";
 
 const auth = getAuth(app);
-const db = getFirestore(app);
+
 
 export default function BookingsPage() {
     const [user, setUser] = useState(null);

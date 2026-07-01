@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
+
+
 import EditProfileForm from "@/app/components/EditProfileForm";
 import { supabase } from "@/lib/supabase";
 import { mapSupabaseProfile, getProfileByUidOrEmail, mapProfileFormToSupabase } from "@/lib/supabaseProfile";

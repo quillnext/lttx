@@ -1,9 +1,12 @@
-// app/expert-dashboard/change-password/page.js
 "use client";
 
+import { supabase } from "@/lib/supabase";
+// app/expert-dashboard/change-password/page.js
+
+
 import { useState } from "react";
-import { getAuth, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
-import { app } from "@/lib/firebase";
+
+
 
 const auth = getAuth(app);
 

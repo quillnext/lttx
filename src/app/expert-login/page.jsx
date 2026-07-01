@@ -1,143 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { getProfileByUidOrEmail } from "@/lib/supabaseProfile";
-import Link from "next/link";
-import Image from "next/image";
-import Navbar from "../components/Navbar";
-import Footer from "../pages/Footer";
 
-export default function UserLoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+export default function ExpertLoginRedirect() {
   const router = useRouter();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (authErr) throw authErr;
-      const user = authData.user;
-
-      let userProfileType = "expert";
-
-      try {
-        const data = await getProfileByUidOrEmail(supabase, user.id, user.email);
-        if (data && data.profileType) {
-          userProfileType = data.profileType;
-        } else if (data && data.profile_type) {
-          userProfileType = data.profile_type;
-        }
-      } catch (profileErr) {
-        console.error("Error checking profile type:", profileErr);
-      }
-
-      if (userProfileType === "agency") {
-        await supabase.auth.signOut();
-        setError("This account is registered as an Agency. Please use the Agency Login.");
-        setLoading(false);
-        return;
-      }
-
-      router.push("/expert-dashboard/messages");
-    }
-    catch (err) {
-      console.error("Login error:", err);
-      setError(err.message || "Invalid email or password");
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    router.replace("/login?role=expert");
+  }, [router]);
 
   return (
-  <>
-    <div className="flex justify-center items-center h-screen bg-[#F4D35E] px-4">
-      <Navbar/>
-      <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border-t-8 border-[#36013F]">
-          <div className="flex justify-center mb-6">
-            <Image
-                    src="/dashboardlogo.svg"
-                    alt="Xmytravel Logo"
-                    width={160}
-                    height={40}
-                    priority
-                  />
-          </div>
-        <h1 className="text-2xl font-bold text-center text-[#36013F] mb-4">
-          Expert Login
-        </h1>
-        
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="border border-gray-300 p-3 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-              placeholder="Enter your email"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="border border-gray-300 p-3 w-full rounded-xl focus:outline-none focus:ring-2 focus:ring-[#36013F]"
-              placeholder="Enter your password"
-              required
-            />
-          </div>
-          {error && <p className="text-red-500 text-sm font-medium">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full bg-[#36013F] hover:bg-[#4a1a5f] text-white py-3 rounded-xl font-semibold transition ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {loading ? "Logging in..." : "Log In"}
-          </button>
-        </form>
-       <p className="mt-4 text-center text-sm text-gray-600">
-          Are you an Agency?{" "}
-          <Link href="/agency-login" className="text-[#36013F] font-bold hover:underline">
-            Agency Login here
-          </Link>
-          <br />
-         <Link href="/complete-profile" className="text-[#36013F] hover:underline">
-           New to Xmytravel? Sign up here
-         </Link>
-         <br />
-          Forgot your password?{" "}
-          <Link href="/expert-forgot-password" className="text-[#36013F] hover:underline">
-            Reset it here
-          </Link>
-        </p>
-      </div>
-    
+    <div className="min-h-screen bg-[#36013F] flex items-center justify-center text-white italic">
+      Redirecting to login portal...
     </div>
-     <div className="-mt-30">
-       <Footer/>
-     </div>
-  </>
   );
 }

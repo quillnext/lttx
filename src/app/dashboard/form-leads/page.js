@@ -1,16 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
-import { app } from "@/lib/firebase";
-
-const db = getFirestore(app);
+import { supabase } from "@/lib/supabase";
 
 export default function LeadsDashboardPage() {
   const [leads, setLeads] = useState([]);
@@ -21,24 +12,37 @@ export default function LeadsDashboardPage() {
 
   useEffect(() => {
     const fetchLeads = async () => {
-      const snapshot = await getDocs(collection(db, "JoinQueries"));
-      const list = snapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        const rawDate = data.timestamp?.toDate?.() ?? new Date();
+      try {
+        const { data, error } = await supabase
+          .from("join_queries")
+          .select("*")
+          .order("created_at", { ascending: false });
 
-        return {
-          id: docSnap.id,
-          ...data,
-          rawTimestamp: rawDate,
-          timestamp: rawDate.toLocaleDateString("en-GB") +
-            " " +
-            rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-        };
-      });
+        if (error) throw error;
 
-      const sorted = list.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-      setLeads(sorted);
-      setLoading(false);
+        const list = (data || []).map((row) => {
+          const rawDate = new Date(row.created_at || Date.now());
+
+          return {
+            id: row.id,
+            name: row.name,
+            email: row.email,
+            phone: row.phone,
+            purpose: row.purpose,
+            message: row.message,
+            rawTimestamp: rawDate,
+            timestamp: rawDate.toLocaleDateString("en-GB") +
+              " " +
+              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+          };
+        });
+
+        setLeads(list);
+      } catch (err) {
+        console.error("Error fetching leads:", err.message);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchLeads();
@@ -48,14 +52,21 @@ export default function LeadsDashboardPage() {
     const confirm = window.confirm("Are you sure you want to delete this lead?");
     if (!confirm) return;
 
-    await deleteDoc(doc(db, "JoinQueries", id));
-    setLeads((prev) => prev.filter((lead) => lead.id !== id));
+    try {
+      const { error } = await supabase
+        .from("join_queries")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      setLeads((prev) => prev.filter((lead) => lead.id !== id));
+    } catch (err) {
+      console.error("Error deleting lead:", err.message);
+    }
   };
 
   const filteredLeads = leads.filter((lead) =>
     lead.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredLeads.slice(indexOfFirstItem, indexOfLastItem);

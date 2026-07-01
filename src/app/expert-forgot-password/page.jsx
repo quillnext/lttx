@@ -2,30 +2,23 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [sessionUser, setSessionUser] = useState(null);
   const router = useRouter();
+  const { user } = useUserAuthStore();
 
   useEffect(() => {
-    const getSessionUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setSessionUser(user);
-        if (user.email) {
-          setEmail(user.email);
-        }
-      }
-    };
-    getSessionUser();
-  }, []);
+    if (user && user.email) {
+      setEmail(user.email);
+    }
+  }, [user]);
 
   const handleForgotPassword = async (e) => {
     e.preventDefault();
@@ -48,24 +41,15 @@ export default function ForgotPassword() {
       }
 
       setSuccess("Password reset email sent! Please check your inbox (and spam/junk folder).");
-      setTimeout(async () => {
-        if (sessionUser) {
-          try {
-            const { data, error } = await supabase
-              .from("profiles")
-              .select("profile_type")
-              .eq("id", sessionUser.id)
-              .single();
-            if (data && !error && data.profile_type === "agency") {
-              router.push("/agency-dashboard");
-              return;
-            }
-          } catch (err) {
-            console.error("Error checking profile:", err);
+      setTimeout(() => {
+        if (user) {
+          if (user.role === "agency") {
+            router.push("/agency-dashboard");
+          } else {
+            router.push("/expert-dashboard");
           }
-          router.push("/expert-dashboard");
         } else {
-          router.push("/expert-login");
+          router.push("/login?role=expert");
         }
       }, 3000);
     } catch (err) {
@@ -94,65 +78,40 @@ export default function ForgotPassword() {
         <form onSubmit={handleForgotPassword} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
+              Email Address
             </label>
             <input
               type="email"
               id="email"
+              required
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-[#36013F] focus:border-[#36013F] sm:text-sm text-gray-900"
+              placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 p-2 w-full border rounded-md focus:ring-[#36013F] focus:border-[#36013F]"
-              placeholder="Enter your email"
-              required
+              disabled={loading}
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
-          {success && <p className="text-green-500 text-sm">{success}</p>}
+
+          {error && <p className="text-red-500 text-xs mt-2">{error}</p>}
+          {success && <p className="text-green-600 text-xs mt-2">{success}</p>}
+
           <button
             type="submit"
             disabled={loading}
-            className={`w-full bg-[#36013F] text-white p-2 rounded-md hover:bg-[#4a0150] transition ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#36013F] hover:bg-[#4a0152] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#36013F] disabled:opacity-50"
           >
             {loading ? "Sending..." : "Send Reset Email"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          {sessionUser ? (
-            <>
-              Back to{" "}
-              <button
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase
-                      .from("profiles")
-                      .select("profile_type")
-                      .eq("id", sessionUser.id)
-                      .single();
-                    if (data && !error && data.profile_type === "agency") {
-                      router.push("/agency-dashboard");
-                      return;
-                    }
-                  } catch (err) {
-                    console.error("Error checking profile:", err);
-                  }
-                  router.push("/expert-dashboard");
-                }}
-                className="text-[#36013F] hover:underline bg-transparent border-none p-0 cursor-pointer font-medium"
-              >
-                Dashboard
-              </button>
-            </>
-          ) : (
-            <>
-              Back to{" "}
-              <Link href="/expert-login" className="text-[#36013F] hover:underline">
-                Login
-              </Link>
-            </>
-          )}
-        </p>
+
+        <div className="mt-4 text-center">
+          <Link
+            href="/login?role=expert"
+            className="text-xs font-semibold text-gray-500 hover:text-[#36013F] hover:underline"
+          >
+            Back to Login
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
 import React, { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, query, where, onSnapshot, doc, updateDoc, increment } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 import Link from "next/link";
 import Image from "next/image";
 import { FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
@@ -12,7 +13,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../pages/Footer";
 import slugify from "slugify";
 
-const db = getFirestore(app);
+
 
 const truncateByChars = (text, maxLength) => {
   if (!text) return "";

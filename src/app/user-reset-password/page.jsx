@@ -1,9 +1,10 @@
 "use client";
 
+import { supabase } from "@/lib/supabase";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from "firebase/auth";
-import { app } from "@/lib/firebase";
+
+
 import Image from "next/image";
 import Link from "next/link";
 

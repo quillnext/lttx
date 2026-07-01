@@ -70,29 +70,59 @@ const otpEmailTemplate = ({ userName, otp, year }) => `
 
 export async function POST(request) {
   try {
-    const { email, userName } = await request.json();
+    const { email, userName, phone, role } = await request.json();
     if (!email || !/\S+@\S+\.\S+/.test(email)) {
       return NextResponse.json({ error: "Invalid email" }, { status: 400 });
+    }
+
+    const supabaseAdmin = createSupabaseAdminClient();
+    const targetEmail = email.trim().toLowerCase();
+
+    // Verify duplicate email
+    const { data: emailProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, email, phone, role")
+      .eq("email", targetEmail)
+      .maybeSingle();
+
+    if (phone && emailProfile && emailProfile.phone && emailProfile.phone !== phone.trim()) {
+      return NextResponse.json({ error: "Email address is already linked with another phone number." }, { status: 400 });
+    }
+
+    // Verify duplicate phone if provided
+    if (phone) {
+      const targetPhone = phone.trim();
+      const { data: phoneProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("id, email, phone, role")
+        .eq("phone", targetPhone)
+        .maybeSingle();
+
+      if (phoneProfile && phoneProfile.email.toLowerCase() !== targetEmail) {
+        return NextResponse.json({ error: "Mobile number is already linked with another email address." }, { status: 400 });
+      }
+      
+      const existingProfile = emailProfile || phoneProfile;
+      if (role && existingProfile && existingProfile.role !== role) {
+        return NextResponse.json({ error: `This account is already registered as an ${existingProfile.role}. You cannot login/register as a ${role}.` }, { status: 400 });
+      }
     }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
 
-    // Store OTP in Supabase otps table
-    const supabase = createSupabaseAdminClient();
-    const { error: upsertError } = await supabase
+    // Store OTP in Supabase via admin client
+    const { error: otpError } = await supabaseAdmin
       .from("otps")
       .upsert({
-        email: email.trim().toLowerCase(),
+        email,
         otp,
         expiry,
-      }, { onConflict: "email" });
+        created_at: new Date().toISOString(),
+      });
 
-    if (upsertError) {
-      console.error("Supabase OTP storage error:", upsertError);
-      throw new Error("Failed to store OTP");
-    }
+    if (otpError) throw otpError;
 
     // Send OTP email
     await transporter.sendMail({

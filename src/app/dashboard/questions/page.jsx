@@ -1,13 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc, query, where, documentId } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import { ChevronDown, ChevronUp, CircleCheckBig, Loader, ChevronLeft, ChevronRight } from "lucide-react";
 import SessionDetailsModal from "@/app/components/SessionDetailsModal";
 import { supabase } from "@/lib/supabase";
-
-const db = getFirestore(app);
 
 export default function AdminQuestions() {
   const [questions, setQuestions] = useState([]);
@@ -23,23 +19,6 @@ export default function AdminQuestions() {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "Questions"));
-        const questionList = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = new Date(data.createdAt);
-
-          return {
-            id: docSnap.id,
-            isFirebase: true,
-            ...data,
-            rawTimestamp: rawDate,
-            timestamp:
-              rawDate.toLocaleDateString("en-GB") +
-              " " +
-              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          };
-        });
-
         let supabaseQuestions = [];
         try {
           const res = await fetch("/api/questions");
@@ -76,8 +55,7 @@ export default function AdminQuestions() {
           console.warn("Failed to fetch questions from Supabase:", err);
         }
 
-        const combined = [...questionList, ...supabaseQuestions];
-        const sorted = combined.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
+        const sorted = supabaseQuestions.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
         setQuestions(sorted);
       } catch (error) {
         console.error("Error fetching questions:", error.message);
@@ -116,24 +94,20 @@ export default function AdminQuestions() {
     }
   };
 
-  const handleDelete = async (id, isFirebase) => {
+  const handleDelete = async (id) => {
     const confirm = window.confirm("Are you sure you want to delete this question?");
     if (!confirm) return;
 
     try {
-      if (isFirebase) {
-        await deleteDoc(doc(db, "Questions", id));
-      } else {
-        const res = await fetch(`/api/questions?id=${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete from Supabase");
-      }
+      const res = await fetch(`/api/questions?id=${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete from Supabase");
       setQuestions((prev) => prev.filter((question) => question.id !== id));
     } catch (error) {
       console.error("Error deleting question:", error.message);
     }
   };
 
-  const handleTogglePublic = async (id, currentIsPublic, isFirebase) => {
+  const handleTogglePublic = async (id, currentIsPublic) => {
     setToggling((prev) => ({ ...prev, [id]: true }));
     try {
       setQuestions((prev) =>
@@ -141,17 +115,12 @@ export default function AdminQuestions() {
           question.id === id ? { ...question, isPublic: !currentIsPublic } : question
         )
       );
-      if (isFirebase) {
-        const questionRef = doc(db, "Questions", id);
-        await updateDoc(questionRef, { isPublic: !currentIsPublic });
-      } else {
-        const res = await fetch("/api/questions", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, updates: { is_public: !currentIsPublic } }),
-        });
-        if (!res.ok) throw new Error("Failed to update public status in Supabase");
-      }
+      const res = await fetch("/api/questions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, updates: { is_public: !currentIsPublic } }),
+      });
+      if (!res.ok) throw new Error("Failed to update public status in Supabase");
       console.log(`Toggled isPublic for question ${id} to ${!currentIsPublic}`);
     } catch (error) {
       setQuestions((prev) =>
@@ -216,12 +185,19 @@ export default function AdminQuestions() {
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
-    // Fetch experts for the dropdown
+    // Fetch experts for the dropdown from Supabase
     const fetchExperts = async () => {
       try {
-        const q = query(collection(db, "Profiles"), where("profileType", "==", "expert"));
-        const snapshot = await getDocs(q);
-        const expertList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, email")
+          .eq("role", "expert");
+        if (error) throw error;
+        const expertList = (data || []).map(d => ({
+          id: d.id,
+          fullName: d.full_name,
+          email: d.email,
+        }));
         setExperts(expertList);
       } catch (err) {
         console.error("Error fetching experts:", err);
@@ -276,7 +252,7 @@ export default function AdminQuestions() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           questionId: redirectModal.id,
-          isFirebase: redirectModal.isFirebase,
+          isFirebase: false,
           newExpertId: expertObj.id,
           newExpertName: expertObj.fullName,
           newExpertEmail: expertObj.email,
@@ -288,7 +264,6 @@ export default function AdminQuestions() {
 
       if (res.ok) {
         alert("Question redirected successfully!");
-        // Update local state
         setQuestions(prev => prev.map(q =>
           q.id === redirectModal.id
             ? { ...q, expertId: expertObj.id, expertName: expertObj.fullName, expertEmail: expertObj.email, reminderCount: 0, isRedirected: true }
@@ -400,7 +375,10 @@ export default function AdminQuestions() {
                   <React.Fragment key={q.id}>
                     <tr className="hover:bg-gray-50 transition">
                       <td className="p-3 border font-medium">{q.timestamp}</td>
-                      <td className="p-3 border font-medium">{q.userName}</td>
+                      <td className="p-3 border font-medium">
+                        {q.userName}
+                        {q.isAdminPrompt && <span className="block text-[10px] text-[#36013F] font-black bg-[#F4D35E] px-2 py-0.5 rounded-lg w-fit mt-1 uppercase">Admin Prompt</span>}
+                      </td>
                       <td className="p-3 border">{q.userEmail}</td>
                       <td className="p-3 border">{q.userPhone}</td>
                       <td className="p-3 border">
@@ -498,8 +476,10 @@ export default function AdminQuestions() {
                             </div>
                             <div className="w-[70%]">
                               <p><strong>Answer:</strong> {hasReply ? q.reply : "No reply yet"}</p>
-                              {q.isAdminPrompt && !hasReply && q.suggestedAnswer && (
-                                <p className="text-sm text-gray-500 mt-2"><strong>Suggested Answer:</strong> {q.suggestedAnswer}</p>
+                              {q.suggestedAnswer && (
+                                <p className="text-sm text-gray-500 mt-2 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                                  <strong>AI Suggestion / Baseline:</strong> {q.suggestedAnswer}
+                                </p>
                               )}
                             </div>
                           </div>

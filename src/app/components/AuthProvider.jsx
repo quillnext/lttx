@@ -9,8 +9,14 @@ export default function AuthProvider({ children }) {
 
   useEffect(() => {
     const init = async () => {
-      await initializeAuth();
-      setIsInitializing(false);
+      const timeout = new Promise((resolve) => setTimeout(resolve, 2500));
+      try {
+        await Promise.race([initializeAuth(), timeout]);
+      } catch (err) {
+        console.error("Auth initialization failed:", err);
+      } finally {
+        setIsInitializing(false);
+      }
     };
 
     init();

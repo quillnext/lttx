@@ -14,71 +14,98 @@ export const useUserAuthStore = create(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      loading: true,
+      loading: false,
       error: "",
       ...initialState,
 
-      // Initialize Auth
       initializeAuth: async () => {
-        set({ loading: true });
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+          if (session?.user) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("*")
+              .eq("id", session.user.id)
+              .maybeSingle();
 
-        if (session?.user) {
-          const mappedUser = {
-            ...session.user,
-            name: session.user.user_metadata?.name || "",
-            phone: session.user.user_metadata?.phone || "",
-          };
+            const mappedUser = {
+              ...session.user,
+              name: profile?.full_name || session.user.user_metadata?.name || "",
+              phone: profile?.phone || session.user.user_metadata?.phone || "",
+              role: profile?.role || "user",
+              status: profile?.status || "approved",
+            };
 
-          set({
-            user: mappedUser,
-            isAuthenticated: true,
-            loading: false,
+            set({
+              user: mappedUser,
+              isAuthenticated: true,
+              loading: false,
+            });
+          } else {
+            set({
+              user: null,
+              isAuthenticated: false,
+              loading: false,
+            });
+          }
+
+          supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("id", session.user.id)
+                .maybeSingle();
+
+              const mappedUser = {
+                ...session.user,
+                name: profile?.full_name || session.user.user_metadata?.name || "",
+                phone: profile?.phone || session.user.user_metadata?.phone || "",
+                role: profile?.role || "user",
+                status: profile?.status || "approved",
+              };
+
+              set({
+                user: mappedUser,
+                isAuthenticated: true,
+                loading: false,
+              });
+            } else {
+              set({
+                user: null,
+                isAuthenticated: false,
+                loading: false,
+              });
+            }
           });
-        } else {
+        } catch (err) {
+          console.error("Error during initializeAuth:", err);
           set({
             user: null,
             isAuthenticated: false,
             loading: false,
           });
         }
-
-        supabase.auth.onAuthStateChange((event, session) => {
-          const mappedUser = session?.user
-            ? {
-                ...session.user,
-                name: session.user.user_metadata?.name || "",
-                phone: session.user.user_metadata?.phone || "",
-              }
-            : null;
-
-          set({
-            user: mappedUser,
-            isAuthenticated: !!session,
-            loading: false,
-          });
-        });
       },
 
       // 1. SEND OTP
-      sendOtp: async ({ email, name, phone }) => {
+      sendOtp: async ({ email, name, phone, role = "user" }) => {
         set({ loading: true, error: "" });
 
         const cleanEmail = email.trim().toLowerCase();
 
         try {
-          const { error } = await supabase.auth.signInWithOtp({
-            email: cleanEmail,
-            options: {
-              shouldCreateUser: true,
-              data: { name, phone },
-            },
+          // Perform server validation check before sending OTP to verify duplicate emails/phone numbers
+          const valRes = await fetch("/api/send-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: cleanEmail, userName: name, phone, role }),
           });
-
-          if (error) throw error;
+          const valData = await valRes.json();
+          if (!valRes.ok) throw new Error(valData.error || "Failed to validate profile details.");
 
           set({
             loading: false,
@@ -92,7 +119,7 @@ export const useUserAuthStore = create(
       },
 
       // SEND WHATSAPP OTP ACTION
-      sendWhatsAppOtpAction: async ({ email, name, phone }) => {
+      sendWhatsAppOtpAction: async ({ email, name, phone, role = "user" }) => {
         set({ loading: true, error: "" });
 
         try {
@@ -101,7 +128,7 @@ export const useUserAuthStore = create(
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ email, name, phone }),
+            body: JSON.stringify({ email, name, phone, role }),
           });
 
           const data = await res.json();
@@ -123,37 +150,149 @@ export const useUserAuthStore = create(
       },
 
       // 2. VERIFY OTP + LOGIN
-      verifyOtpAndLogin: async ({ email, otp, name, phone, type = "email" }) => {
+      verifyOtpAndLogin: async ({ email, otp, name, phone, type = "email", role = "user" }) => {
         set({ loading: true, error: "" });
 
         try {
           const cleanEmail = email.trim().toLowerCase();
 
-          const { data, error } = await supabase.auth.verifyOtp({
+          let verifyToken = otp;
+          let verifyType = type;
+
+          if (type === "whatsapp_custom") {
+            const verifyRes = await fetch("/api/user-auth/verify-otp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, otp, name, phone, role }),
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error || "Failed to verify OTP");
+            verifyToken = verifyData.supabaseToken;
+            verifyType = verifyData.verificationType;
+          }
+
+          const verifyPromise = supabase.auth.verifyOtp({
             email: cleanEmail,
-            token: otp,
-            type,
+            token: verifyToken,
+            type: verifyType,
+          });
+
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Connection to verification server timed out. Please disable ad-blockers/shields and try again.")), 10000)
+          );
+
+          const { data, error } = await Promise.race([verifyPromise, timeoutPromise]);
+
+          if (error) throw error;
+
+          const user = data.user;
+
+          // Establish session cookie for Next.js middleware
+          const sessionRes = await fetch("/api/login", { method: "POST" });
+          if (!sessionRes.ok) throw new Error("Failed to establish session cookie.");
+
+          // Retrieve or create profile in profiles table
+          let { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (!profile) {
+            const { data: newProfile, error: profileErr } = await supabase
+              .from("profiles")
+              .insert({
+                id: user.id,
+                email: cleanEmail,
+                full_name: name,
+                phone,
+                role: role,
+                status: role === "user" ? "approved" : "pending",
+              })
+              .select()
+              .single();
+            if (profileErr) throw profileErr;
+            profile = newProfile;
+          } else if ((!profile.phone || profile.phone !== phone) && phone) {
+            const { data: updatedProfile, error: profileErr } = await supabase
+              .from("profiles")
+              .update({ phone })
+              .eq("id", user.id)
+              .select()
+              .single();
+            if (!profileErr && updatedProfile) {
+              profile = updatedProfile;
+            }
+          }
+
+          set({
+            user: {
+              ...user,
+              name: profile.full_name,
+              phone: profile.phone,
+              role: profile.role,
+              status: profile.status,
+            },
+            isAuthenticated: true,
+            loading: false,
+            error: "",
+            ...initialState,
+          });
+
+          return user;
+        } catch (error) {
+          set({ loading: false, error: error.message });
+          throw error;
+        }
+      },
+
+      // loginWithPassword
+      loginWithPassword: async ({ email, password, role }) => {
+        set({ loading: true, error: "" });
+        try {
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password,
           });
 
           if (error) throw error;
 
           const user = data.user;
 
-          // SAVE extra user data
-          await supabase.from("profiles").upsert({
-            id: user.id,
-            email: cleanEmail,
-            name,
-            phone,
-          });
+          // Establish session cookie for Next.js middleware
+          const sessionRes = await fetch("/api/login", { method: "POST" });
+          if (!sessionRes.ok) throw new Error("Failed to establish session cookie.");
 
-          // Wait for session to be established via onAuthStateChange or just update immediately
+          // Retrieve profile to verify role
+          const { data: profile, error: profileErr } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+
+          if (profileErr) throw profileErr;
+
+          if (!profile) {
+            await supabase.auth.signOut();
+            throw new Error("User profile not found.");
+          }
+
+          if (profile.role !== role) {
+            await supabase.auth.signOut();
+            throw new Error(`This account is not registered as an ${role === "expert" ? "Expert" : "Agency"}.`);
+          }
+
           set({
-            user: { ...user, name, phone },
+            user: {
+              ...user,
+              name: profile.full_name,
+              phone: profile.phone,
+              role: profile.role,
+              status: profile.status,
+            },
             isAuthenticated: true,
             loading: false,
             error: "",
-            ...initialState,
           });
 
           return user;
@@ -171,7 +310,7 @@ export const useUserAuthStore = create(
         try {
           if (current.id) {
             const profileUpdates = { id: current.id, email: current.email };
-            if (updates.name !== undefined) profileUpdates.name = updates.name;
+            if (updates.name !== undefined) profileUpdates.full_name = updates.name;
             if (updates.phone !== undefined) profileUpdates.phone = updates.phone;
             
             await supabase.from("profiles").upsert(profileUpdates);

@@ -1,20 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  deleteDoc,
-  doc,
-  updateDoc,
-} from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
 import { MailPlus } from "lucide-react";
-
-const db = getFirestore(app);
+import { supabase } from "@/lib/supabase";
 
 export default function ContactUsMessages() {
   const [messages, setMessages] = useState([]);
@@ -29,36 +19,42 @@ export default function ContactUsMessages() {
   const [replySuccess, setReplySuccess] = useState("");
   const router = useRouter();
 
+  const fetchContactMessages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("contact_queries")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const messagesData = (data || []).map((row) => {
+        const rawDate = new Date(row.created_at || Date.now());
+
+        return {
+          id: row.id,
+          name: row.name,
+          email: row.email,
+          phone: row.phone,
+          subject: row.subject,
+          message: row.message,
+          status: row.status,
+          rawTimestamp: rawDate,
+          timestamp: rawDate.toLocaleDateString("en-GB") +
+            " " +
+            rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+        };
+      });
+
+      setMessages(messagesData);
+    } catch (err) {
+      console.error("Error fetching contact messages:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchContactMessages = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "ContactQueries"));
-        const messagesData = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = data.timestamp?.toDate?.() ?? new Date();
-
-          return {
-            id: docSnap.id,
-            ...data,
-            rawTimestamp: rawDate,
-            timestamp: rawDate.toLocaleDateString("en-GB") +
-              " " +
-              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          };
-        });
-
-        const sorted = messagesData.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-        setMessages(sorted);
-      } catch (err) {
-        console.error("Error fetching contact messages:", err);
-        if (err.code === "permission-denied") {
-          router.push("/admin-login");
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchContactMessages();
   }, [router]);
 
@@ -67,7 +63,11 @@ export default function ContactUsMessages() {
     if (!confirm) return;
 
     try {
-      await deleteDoc(doc(db, "ContactQueries", id));
+      const { error } = await supabase
+        .from("contact_queries")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
       setMessages((prev) => prev.filter((message) => message.id !== id));
     } catch (err) {
       console.error("Error deleting message:", err);
@@ -107,26 +107,15 @@ export default function ContactUsMessages() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to send reply");
 
-      // Update Firestore document with status "replied"
-      await updateDoc(doc(db, "ContactQueries", selectedMessage.id), {
-        status: "replied",
-      });
+      // Update Supabase document with status "replied"
+      const { error: updateErr } = await supabase
+        .from("contact_queries")
+        .update({ status: "replied", updated_at: new Date().toISOString() })
+        .eq("id", selectedMessage.id);
+      if (updateErr) throw updateErr;
 
       // Refresh messages to reflect the updated status
-      const querySnapshot = await getDocs(collection(db, "ContactQueries"));
-      const messagesData = querySnapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        const rawDate = data.timestamp?.toDate?.() ?? new Date();
-        return {
-          id: docSnap.id,
-          ...data,
-          rawTimestamp: rawDate,
-          timestamp: rawDate.toLocaleDateString("en-GB") +
-            " " +
-            rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-        };
-      });
-      setMessages(messagesData.sort((a, b) => b.rawTimestamp - a.rawTimestamp));
+      await fetchContactMessages();
 
       setReplySuccess("Reply sent successfully!");
       setSelectedMessage(null);

@@ -1,11 +1,11 @@
 export const dynamic = "force-dynamic";
 
-import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 import slugify from "slugify";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 
-const db = getFirestore(app);
+
 const baseUrl = "https://www.xmytravel.com";
 
 // Helper function keys for slug generation (ensure consistency with AAQ page)

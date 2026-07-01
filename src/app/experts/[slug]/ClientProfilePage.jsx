@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/lib/supabase";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { getFirestore, collection, query, where, getDocs, getCountFromServer, limit, Timestamp } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 
 const ProfileLoadingShell = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-100 italic text-gray-500">
@@ -18,7 +17,6 @@ const Profile2u0 = dynamic(() => import("@/app/components/Profile2u0"), {
   ssr: false,
   loading: ProfileLoadingShell,
 });
-const db = getFirestore(app);
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -76,13 +74,14 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
       startOfMonth.setHours(0, 0, 0, 0);
       
       try {
-        const q = query(
-          collection(db, "Bookings"),
-          where("expertId", "==", expertId),
-          where("createdAt", ">=", Timestamp.fromDate(startOfMonth))
-        );
-        const snap = await getCountFromServer(q);
-        setScarcityCount(snap.data().count + 5);
+        const { count, error } = await supabase
+          .from("service_requests")
+          .select("*", { count: "exact", head: true })
+          .eq("expert_id", expertId)
+          .gte("created_at", startOfMonth.toISOString());
+        
+        if (error) throw error;
+        setScarcityCount((count || 0) + 5);
       } catch (err) {
         console.error("Scarcity fetch error:", err);
         setScarcityCount(5);
@@ -96,19 +95,22 @@ export default function ClientProfilePage({ profile, sortedExperience, weeklySch
       }
       setLoadingQuestions(true);
       try {
-        const q = query(
-          collection(db, "Questions"),
-          where("expertId", "==", expertId),
-          where("status", "==", "answered"),
-          limit(6)
-        );
-        const querySnapshot = await getDocs(q);
-        const questionList = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = data.createdAt?.toDate?.() ?? new Date(data.createdAt);
+        const { data, error } = await supabase
+          .from("questions")
+          .select("*")
+          .eq("expert_id", expertId)
+          .eq("status", "answered")
+          .limit(6);
+        
+        if (error) throw error;
+        
+        const questionList = (data || []).map((item) => {
+          const rawDate = new Date(item.created_at);
           return {
-            id: docSnap.id,
-            ...data,
+            id: item.id,
+            question: item.question,
+            reply: item.reply,
+            userName: item.user_name,
             timestamp: rawDate.toLocaleDateString("en-GB")
           };
         });

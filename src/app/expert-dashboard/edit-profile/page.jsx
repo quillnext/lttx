@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
 import EditProfileForm from "@/app/components/EditProfileForm";
 import { supabase } from "@/lib/supabase";
 import { mapSupabaseProfile, getProfileByUidOrEmail, mapProfileFormToSupabase } from "@/lib/supabaseProfile";
-
-const auth = getAuth(app);
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 export default function UserEditProfile() {
+  const { user } = useUserAuthStore();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -29,14 +27,13 @@ export default function UserEditProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const user = auth.currentUser;
       if (!user) {
-        router.push("/expert-login");
+        router.push("/login");
         return;
       }
 
       try {
-        const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
+        const data = await getProfileByUidOrEmail(supabase, user.id, user.email);
 
         if (data) {
           const mapped = mapSupabaseProfile(data);
@@ -68,7 +65,7 @@ export default function UserEditProfile() {
             officePhotos: safeArray(mapped.officePhotos),
           });
         } else {
-          console.error("Profile not found for user in Supabase:", user.uid);
+          console.error("Profile not found for user in Supabase:", user.id);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -76,12 +73,11 @@ export default function UserEditProfile() {
       setLoading(false);
     };
     fetchProfile();
-  }, [router]);
- 
+  }, [user, router]);
+
   const handleSave = async (updatedData) => {
-    const user = auth.currentUser;
     if (!user) {
-      router.push("/expert-login");
+      router.push("/login");
       return;
     }
 
@@ -160,7 +156,7 @@ export default function UserEditProfile() {
       const supabasePayload = mapProfileFormToSupabase(formattedDataForSupabaseMapping);
       supabasePayload.updated_at = new Date().toISOString();
 
-      const profileId = updatedData.id || user.uid;
+      const profileId = updatedData.id || user.id;
       
       const response = await fetch("/api/profile/by-uid", {
         method: "POST",

@@ -8,10 +8,7 @@ import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
 import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList } from "lucide-react";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
-
-const db = getFirestore(app);
+import { supabase } from "@/lib/supabase";
 
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
@@ -27,13 +24,16 @@ export default function AdminLayout({ children }) {
     }
   };
 
-  // Fetch pending questions count
+  // Fetch pending questions count from Supabase
   useEffect(() => {
     const fetchPendingQuestions = async () => {
       try {
-        const questionsQuery = query(collection(db, "Questions"), where("status", "==", "pending"));
-        const querySnapshot = await getDocs(questionsQuery);
-        setPendingQuestionsCount(querySnapshot.size);
+        const { count, error } = await supabase
+          .from("questions")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending");
+        if (error) throw error;
+        setPendingQuestionsCount(count || 0);
       } catch (error) {
         console.error("Error fetching pending questions count:", error.message);
       }

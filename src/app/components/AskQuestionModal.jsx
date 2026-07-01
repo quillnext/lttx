@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, addDoc, getFirestore, getDoc, doc } from "firebase/firestore";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
-import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { ToastContainer, toast } from "react-toastify";
@@ -14,9 +11,6 @@ import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { supabase } from "@/lib/supabase";
-
-const db = getFirestore(app);
-const auth = getAuth(app);
 
 export default function AskQuestionModal({ expert, onClose, sessionId }) {
   const { user: centralUser, isAuthenticated: isCentralUserAuthenticated } = useUserAuthStore();
@@ -33,7 +27,6 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
-  const [user, setUser] = useState(null);
   const [isOtpSent, setIsOtpSent] = useState(false);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
@@ -56,19 +49,6 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
       setHasSubmitted(true);
       setIsEmailVerified(true);
     }
-
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        setName(currentUser.displayName || "");
-        setEmail(currentUser.email || "");
-        setPhone(currentUser.phoneNumber || "");
-        setHasSubmitted(true);
-        setIsEmailVerified(true);
-      }
-    });
-
-    return () => unsubscribe();
   }, [centralUser, isCentralUserAuthenticated]);
 
   useEffect(() => {
@@ -90,7 +70,7 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
   const validateForm = () => {
     const newErrors = {};
     if (!question.trim()) newErrors.question = "Question is required.";
-    if (!(hasSubmitted || user)) {
+    if (!(hasSubmitted || centralUser)) {
       if (!name.trim()) newErrors.name = "Name is required.";
       if (!email.trim()) newErrors.email = "Email is required.";
       else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = "Invalid email format.";
@@ -187,46 +167,44 @@ export default function AskQuestionModal({ expert, onClose, sessionId }) {
         }
       }
 
-      await addDoc(collection(db, "Questions"), {
-        expertId: expert.id,
-        expertName: expert.fullName || "Unknown Expert",
-        expertEmail: expert.email || "placeholder@xmytravel.com",
-        question,
-        userName: name,
-        userEmail: email,
-        userPhone: phone,
-        status: "pending",
-        isPublic: false,
-        createdAt: new Date().toISOString(),
-        sessionId: sessionId || null,
-        sessionSnapshot: sessionSnapshot || null, // Snapshot of the search context
-        reply: null,
-      });
-
-      // Also save to Supabase questions table if it exists
+      // Generate AI suggestion before inserting
+      let suggestedAnswer = null;
       try {
-        const { error: supabaseError } = await supabase.from("questions").insert({
-          expert_id: expert.id,
-          expert_name: expert.fullName || "Unknown Expert",
-          expert_email: expert.email || "placeholder@xmytravel.com",
-          question,
-          user_name: name,
-          user_email: email,
-          user_phone: phone,
-          status: "pending",
-          is_public: false,
-          is_admin_prompt: false,
-          session_id: sessionId || null,
-          session_snapshot: sessionSnapshot || null,
+        const aiRes = await fetch("/api/generate-question-answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question, userContext: sessionSnapshot ? JSON.stringify(sessionSnapshot) : null })
         });
-        if (supabaseError) {
-          console.warn("Could not save to Supabase questions table:", supabaseError.message);
+        if (aiRes.ok) {
+          const aiData = await aiRes.json();
+          suggestedAnswer = aiData.answer;
         }
-      } catch (err) {
-        console.warn("Failed to insert to Supabase questions:", err.message);
+      } catch (aiErr) {
+        console.warn("Failed to generate AI suggestion:", aiErr);
       }
 
-      if (!hasSubmitted && !user) {
+      // Save primarily to Supabase questions table
+      const { error: supabaseError } = await supabase.from("questions").insert({
+        expert_id: expert.id,
+        expert_name: expert.fullName || "Unknown Expert",
+        expert_email: expert.email || "placeholder@xmytravel.com",
+        question,
+        user_name: name,
+        user_email: email,
+        user_phone: phone,
+        status: "pending",
+        is_public: false,
+        is_admin_prompt: false,
+        suggested_answer: suggestedAnswer,
+        session_id: sessionId || null,
+        session_snapshot: sessionSnapshot || null,
+      });
+
+      if (supabaseError) {
+        throw new Error(supabaseError.message);
+      }
+
+      if (!hasSubmitted && !centralUser) {
         localStorage.setItem("userFormData", JSON.stringify({ name, email, phone, purpose: "General Query" }));
         setHasSubmitted(true);
       }

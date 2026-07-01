@@ -6,8 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { getAuth } from "firebase/auth";
-import { app } from "@/lib/firebase";
 
 const ADDON_DATA = {
   "Itinerary Review": {
@@ -122,31 +120,9 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
   const [loadingActiveUser, setLoadingActiveUser] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = auth.onAuthStateChanged(async (fUser) => {
-      if (fUser) {
-        try {
-          const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(fUser.uid)}&email=${encodeURIComponent(fUser.email || "")}`);
-          if (res.ok) {
-            const result = await res.json();
-            if (result.profile) {
-              setActiveUser({
-                name: result.profile.full_name || result.profile.fullName || fUser.displayName || "Agency/Expert",
-                email: fUser.email || result.profile.email || "",
-                phone: result.profile.phone || fUser.phoneNumber || "",
-                id: result.profile.id,
-              });
-              setLoadingActiveUser(false);
-              return;
-            }
-          }
-        } catch (e) {}
-        setActiveUser({
-          name: fUser.displayName || "Agency/Expert",
-          email: fUser.email || "",
-          phone: fUser.phoneNumber || "",
-        });
-      } else if (supabaseUser) {
+    const fetchProfile = async () => {
+      setLoadingActiveUser(true);
+      if (supabaseUser) {
         try {
           const uid = supabaseUser.id;
           const res = await fetch(`/api/profile/by-uid?uid=${encodeURIComponent(uid)}&email=${encodeURIComponent(supabaseUser.email || "")}`);
@@ -173,8 +149,9 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
         setActiveUser(null);
       }
       setLoadingActiveUser(false);
-    });
-    return () => unsubscribe();
+    };
+
+    fetchProfile();
   }, [supabaseUser]);
 
   useEffect(() => {

@@ -3,8 +3,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { getFirestore, collection, getDocs, query, where, onSnapshot } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { FaSearch, FaChevronDown } from "react-icons/fa";
@@ -15,8 +13,7 @@ import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import Footer from "./pages/Footer";
 import QuestionSearchPage from "@/app/components/QuestionSearchPage";
-
-const db = getFirestore(app);
+import { supabase } from "@/lib/supabase";
 
 const truncateByChars = (text, maxLength) => {
   if (!text) return "";
@@ -216,18 +213,29 @@ export default function Home() {
   };
 
   useEffect(() => {
-    let unsubscribe = null;
     const fetchQuestionsAndUsernames = async () => {
       setLoadingFaq(true);
       try {
-        const q = query(collection(db, "Questions"), where("isPublic", "==", true), where("status", "==", "answered"));
-        const querySnapshot = await getDocs(q);
-        const questionList = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = new Date(data.createdAt || Date.now());
+        const { data: questionRows, error: questionErr } = await supabase
+          .from("questions")
+          .select("*")
+          .eq("is_public", true)
+          .eq("status", "answered");
+
+        if (questionErr) throw questionErr;
+
+        const questionList = (questionRows || []).map((row) => {
+          const rawDate = new Date(row.created_at || Date.now());
           return {
-            id: docSnap.id,
-            ...data,
+            id: row.id,
+            expertId: row.expert_id,
+            expertName: row.expert_name,
+            expertEmail: row.expert_email,
+            question: row.question,
+            reply: row.reply,
+            status: row.status,
+            isPublic: row.is_public,
+            createdAt: row.created_at,
             timestamp: rawDate.toLocaleDateString("en-GB") + " " + rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
             rawTimestamp: rawDate.getTime(),
           };
@@ -238,28 +246,37 @@ export default function Home() {
           map[q.expertName] = (map[q.expertName] || 0) + 1;
           return map;
         }, {});
+
         const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
-        const profilePromises = uniqueExpertNames.map(async (expertName) => {
-          const qProfile = query(collection(db, "Profiles"), where("fullName", "==", expertName));
-          const profileSnapshot = await getDocs(qProfile);
-          let username = null,
-            profilePhoto = null,
-            tagline = null;
-          profileSnapshot.forEach((doc) => {
-            username = doc.data().username;
-            profilePhoto = doc.data().profilePhoto || doc.data().photo;
-            tagline = doc.data().tagline || "No tagline available";
-          });
-          return { expertName, username, profilePhoto, tagline, answerCount: answerCountMap[expertName] || 0 };
-        });
-        const profileResults = await Promise.all(profilePromises);
-        const newExpertProfileMap = profileResults.reduce((map, result) => {
-          if (result.expertName) {
-            map[result.expertName] = { username: result.username, profilePhoto: result.profilePhoto || "/default.jpg", tagline: result.tagline };
+        const { data: profileRows, error: profileErr } = await supabase
+          .from("profiles")
+          .select("full_name, username, photo_url, tagline")
+          .in("full_name", uniqueExpertNames);
+
+        if (profileErr) throw profileErr;
+
+        const newExpertProfileMap = (profileRows || []).reduce((map, profile) => {
+          if (profile.full_name) {
+            map[profile.full_name] = {
+              username: profile.username,
+              profilePhoto: profile.photo_url || "/default.jpg",
+              tagline: profile.tagline || "No tagline available",
+            };
           }
           return map;
         }, {});
         
+        const profileResults = uniqueExpertNames.map((name) => {
+          const prof = newExpertProfileMap[name] || {};
+          return {
+            expertName: name,
+            username: prof.username || null,
+            profilePhoto: prof.profilePhoto || "/default.jpg",
+            tagline: prof.tagline || "No tagline available",
+            answerCount: answerCountMap[name] || 0,
+          };
+        });
+
         const topExpertsList = profileResults
           .sort((a, b) => b.answerCount - a.answerCount)
           .slice(0, 10)
@@ -270,7 +287,7 @@ export default function Home() {
         setTopExperts(topExpertsList);
       } catch (error) {
         console.error("Error fetching data:", error.message);
-        toast.error("Failed to load FAQ content.");
+        toast.toast?.error("Failed to load FAQ content.");
       } finally {
         setLoadingFaq(false);
       }
@@ -279,35 +296,21 @@ export default function Home() {
     if (showFaq) {
       fetchQuestionsAndUsernames();
 
-      const q = query(
-        collection(db, "Questions"),
-        where("isPublic", "==", true),
-        where("status", "==", "answered")
-      );
-      unsubscribe = onSnapshot(q, (snapshot) => {
-        const questionList = snapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = new Date(data.createdAt || Date.now());
-          return {
-            id: docSnap.id,
-            ...data,
-            timestamp:
-              rawDate.toLocaleDateString("en-GB") +
-              " " +
-              rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-            rawTimestamp: rawDate.getTime(),
-          };
-        });
-        const grouped = groupQuestions(questionList);
-        setGroupedQuestions(grouped);
-      }, (error) => {
-        console.error("Error with real-time listener:", error.message);
-      });
-    }
+      const channel = supabase
+        .channel("public:questions")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "questions", filter: "is_public=eq.true" },
+          () => {
+            fetchQuestionsAndUsernames();
+          }
+        )
+        .subscribe();
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [showFaq]);
 
   const filteredGroups = searchTermFaq

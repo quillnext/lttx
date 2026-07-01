@@ -6,15 +6,21 @@ export function middleware(request) {
   const { pathname, searchParams } = request.nextUrl;
 
   // Dashboard authentication logic
-  const isLegacyDashboard = pathname.startsWith('/dashboard');
-  const isAdminPanel = pathname.startsWith('/dashboard');
+  const isAdminDashboard = pathname.startsWith('/dashboard');
+  const isExpertDashboard = pathname.startsWith('/expert-dashboard');
+  const isAgencyDashboard = pathname.startsWith('/agency-dashboard');
+  const isUserDashboard = pathname.startsWith('/user-dashboard');
+  
   const auth = request.cookies.get('adminAuth')?.value;
 
-  // Redirect legacy or new panel if not authenticated via session cookie
-  // Note: For Firebase Role Auth, we additionally check inside the layout, 
-  // but we keep the cookie check for an initial fast gate.
-  if ((isLegacyDashboard || isAdminPanel) && auth !== 'authenticated') {
+  if (isAdminDashboard && auth !== 'authenticated') {
     return NextResponse.redirect(new URL('/admin-login', request.url));
+  }
+
+  // We can let the layout files do specific role checks, but if session cookie isn't set, we redirect to login
+  if ((isExpertDashboard || isAgencyDashboard || isUserDashboard) && auth !== 'authenticated') {
+    const role = isExpertDashboard ? 'expert' : isAgencyDashboard ? 'agency' : 'user';
+    return NextResponse.redirect(new URL(`/login?role=${role}`, request.url));
   }
 
   // FAQ URL cleaning logic
@@ -41,5 +47,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/aaq/:path*'],
+  matcher: ['/dashboard/:path*', '/expert-dashboard/:path*', '/agency-dashboard/:path*', '/user-dashboard/:path*', '/aaq/:path*'],
 };

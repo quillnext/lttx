@@ -1,16 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getFirestore, collection, addDoc, Timestamp, getDocs, getDoc, doc } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { useRouter } from "next/navigation";
 import { FaCheckCircle, FaSpinner, FaPaperPlane, FaLock } from 'react-icons/fa';
 
 import { supabase } from "@/lib/supabase";
-
-const db = getFirestore(app);
 
 export default function JoinLTTXForm({ onSuccess, isModal = false, sessionId, includeMessageField = true }) {
   const [formData, setFormData] = useState({
@@ -149,14 +145,20 @@ export default function JoinLTTXForm({ onSuccess, isModal = false, sessionId, in
         }
       }
 
-      // Save form data to Firestore
-      await addDoc(collection(db, "JoinQueries"), {
-        ...formData,
-        timestamp: Timestamp.now(),
-        verified: true,
-        sessionId: sessionId || null,
-        sessionSnapshot: sessionSnapshot || null // Snapshot of the search context
-      });
+      // Save form data to Supabase join_queries
+      const { error: insertErr } = await supabase
+        .from("join_queries")
+        .insert({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          purpose: formData.purpose,
+          message: formData.message,
+          session_id: sessionId || null,
+          session_snapshot: sessionSnapshot || null
+        });
+
+      if (insertErr) throw insertErr;
 
       // Send form data to API
       await fetch("/api/send-expert-form", {

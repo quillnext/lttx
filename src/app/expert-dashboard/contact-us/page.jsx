@@ -1,13 +1,16 @@
-
-
 "use client";
 
+import { supabase } from "@/lib/supabase";
+
+
+
+
 import { useState, useEffect } from "react";
-import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
-import { app, auth } from "@/lib/firebase";
+
+
 import { useRouter } from "next/navigation";
 
-const db = getFirestore(app);
+
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({

@@ -1,70 +1,90 @@
-// app/dashboard/deleted/page.js
 "use client";
 
-import { useEffect, useState } from "react";
-import { getFirestore, collection, getDocs, deleteDoc, setDoc, doc,Timestamp  } from "firebase/firestore";
-import { app } from "@/lib/firebase";
-import EditProfileForm from "@/app/components/EditProfileForm";
+// app/dashboard/deleted/page.js
 
-const db = getFirestore(app);
+
+import { useEffect, useState } from "react";
+import EditProfileForm from "@/app/components/EditProfileForm";
+import { supabase } from "@/lib/supabase";
 
 export default function DeletedProfilesPage() {
   const [deletedProfiles, setDeletedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewProfile, setPreviewProfile] = useState(null);
 
-const fetchDeletedProfiles = async () => {
-  const querySnapshot = await getDocs(collection(db, "DeletedProfiles"));
-  const profiles = querySnapshot.docs.map((doc) => {
-    const data = doc.data();
-    const rawTimestamp = data.timestamp?.toDate?.() || new Date(data.timestamp ?? Date.now());
+  const fetchDeletedProfiles = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("profile_requests")
+        .select("*")
+        .eq("status", "rejected")
+        .order("created_at", { ascending: false });
 
-    return {
-      id: doc.id,
-      ...data,
-      rawTimestamp,
-      timestamp: rawTimestamp.toLocaleDateString("en-GB"), // format for UI
-    };
-  });
+      if (error) throw error;
 
-  // Sort by rawTimestamp descending
-  const sorted = profiles.sort((a, b) => b.rawTimestamp - a.rawTimestamp);
-  setDeletedProfiles(sorted);
-  setLoading(false);
-};
-
-
+      const profiles = (data || []).map((row) => {
+        const rawDate = new Date(row.created_at || Date.now());
+        return {
+          id: row.id,
+          fullName: row.full_name,
+          email: row.email,
+          phone: row.phone,
+          location: row.location,
+          tagline: row.tagline,
+          about: row.about,
+          pricing: row.pricing,
+          status: row.status,
+          username: row.username,
+          experience: row.experience,
+          expertise: row.expertise,
+          certifications: row.certifications,
+          photo: row.photo_url,
+          rawTimestamp: rawDate,
+          timestamp: rawDate.toLocaleDateString("en-GB"),
+        };
+      });
+      setDeletedProfiles(profiles);
+    } catch (err) {
+      console.error("Error fetching rejected profiles:", err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchDeletedProfiles();
   }, []);
 
-const handleRestore = async (profile) => {
-  const profileToRestore = { ...profile };
+  const handleRestore = async (profile) => {
+    try {
+      const { error } = await supabase
+        .from("profile_requests")
+        .update({ status: "pending", updated_at: new Date().toISOString() })
+        .eq("id", profile.id);
+      if (error) throw error;
+      fetchDeletedProfiles();
+    } catch (err) {
+      console.error("Error restoring profile:", err.message);
+    }
+  };
 
-  // Recreate timestamp if needed
-  if (!(profile.rawTimestamp instanceof Date)) {
-    profileToRestore.timestamp = Timestamp.now(); // fallback
-  } else {
-    profileToRestore.timestamp = Timestamp.fromDate(profile.rawTimestamp);
-  }
-
-  await setDoc(doc(db, "ProfileRequests", profile.id), profileToRestore);
-  await deleteDoc(doc(db, "DeletedProfiles", profile.id));
-  fetchDeletedProfiles();
-};
   const handlePermanentDelete = async (id) => {
-  const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
-  if (!confirm) return;
+    const confirm = window.confirm("Are you sure you want to permanently delete this profile?");
+    if (!confirm) return;
 
-  try {
-    await deleteDoc(doc(db, "DeletedProfiles", id));
-    setDeletedProfiles((prev) => prev.filter((p) => p.id !== id));
-  } catch (error) {
-    console.error("Error deleting permanently:", error);
-    alert("Failed to delete profile.");
-  }
-};
+    try {
+      const { error } = await supabase
+        .from("profile_requests")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      setDeletedProfiles((prev) => prev.filter((p) => p.id !== id));
+    } catch (error) {
+      console.error("Error permanently deleting profile:", error.message);
+      alert("Failed to delete profile.");
+    }
+  };
 
 
   return (

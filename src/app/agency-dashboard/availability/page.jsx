@@ -1,16 +1,17 @@
+"use client";
 
-// "use client";
+// 
 
 // import { useState, useEffect, useCallback } from "react";
-// import { getAuth } from "firebase/auth";
-// import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, writeBatch } from "firebase/firestore";
-// import { app } from "@/lib/firebase";
+// 
+// 
+// 
 // import DatePicker from "react-datepicker";
 // import "react-datepicker/dist/react-datepicker.css";
 // import { Calendar, Clock, Check, Ban, Briefcase, PlusCircle, Save, Repeat, Loader2, Power, PowerOff } from "lucide-react";
 
 // const auth = getAuth(app);
-// const db = getFirestore(app);
+// 
 
 // const allTimeSlots = Array.from({ length: 22 }, (_, i) => {
 //     const hour = Math.floor(i / 2) + 9;
@@ -287,18 +288,18 @@
 //     );
 // }
 
-"use client";
+
 
 import { useState, useEffect, useCallback } from "react";
-import { getAuth } from "firebase/auth";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
+
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Calendar, Clock, Check, Ban, Briefcase, PlusCircle, Save, Loader2, Power, PowerOff } from "lucide-react";
 
 const auth = getAuth(app);
-const db = getFirestore(app);
+
 
 const allTimeSlots = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 9;

@@ -125,6 +125,7 @@ export async function POST(req) {
     const finalProfileData = {
       ...requestProfile,
       id: authUserId || requestProfile.id,
+      name: requestProfile.full_name || requestProfile.name || "",
       status: "approved",
       is_public: true,
       is_handed_over: true,

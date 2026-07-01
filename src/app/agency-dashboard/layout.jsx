@@ -5,23 +5,24 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
-import { getAuth, signOut } from "firebase/auth";
-import { app, db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+
+
+
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
+import { supabase } from "@/lib/supabase";
 import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Compass, History } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-const auth = getAuth(app);
-
 export default function AgencyLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, isAuthenticated, loading: authLoading, logout } = useUserAuthStore();
   const [loading, setLoading] = useState(true);
   const [navLoading, setNavLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isClient, setIsClient] = useState(false);
-  const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); // Track pending questions count
+  const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); 
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
   const isMounted = useRef(true);
 
@@ -46,63 +47,38 @@ export default function AgencyLayout({ children }) {
 
   // Check authentication state, fetch pending questions, and handle redirects
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (!isMounted.current) return;
+    if (authLoading) return;
 
-      if (!user) {
-        router.push("/expert-login");
-        setLoading(false);
-        return;
-      }
+    if (!isAuthenticated || !user) {
+      router.push("/login?role=agency");
+      setLoading(false);
+      return;
+    }
 
+    setLoading(false);
+
+    const loadDashboardData = async () => {
       try {
-        // Fetch pending questions count
-        const questionsQuery = query(
-          collection(db, "Questions"),
-          where("expertId", "==", user.uid),
-          where("status", "==", "pending")
-        );
-        const querySnapshot = await getDocs(questionsQuery);
-        if (isMounted.current) {
-          setPendingQuestionsCount(querySnapshot.size);
+        // Fetch pending questions count from Supabase
+        const { count: questionsCount, error: questionsErr } = await supabase
+          .from("questions")
+          .select("*", { count: "exact", head: true })
+          .eq("expert_id", user.id)
+          .eq("status", "pending");
+
+        if (!questionsErr && isMounted.current) {
+          setPendingQuestionsCount(questionsCount || 0);
         }
 
-        // Check profile for forcePasswordChange and get proper profile ID
-        let forcePasswordChange = false;
-        let profileId = user.uid; // fallback
-        let profileType = "agency";
-        try {
-          const profileRef = doc(db, "Profiles", user.uid);
-          const profileSnap = await getDoc(profileRef);
-          if (profileSnap.exists()) {
-            forcePasswordChange = profileSnap.data().forcePasswordChange;
-            if (profileSnap.data().profileType) {
-              profileType = profileSnap.data().profileType;
-            }
-          }
-          // Fetch from Supabase to get correct profile ID
-          const { supabase } = await import("@/lib/supabase");
-          const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
-          const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
-          if (data) {
-            forcePasswordChange = data.force_password_change;
-            profileId = data.id;
-            if (data.profile_type) {
-              profileType = data.profile_type;
-            }
-          }
-        } catch (err) {
-          console.error("Error checking profile:", err);
-        }
-
-        if (profileType === "expert") {
-          router.push("/expert-dashboard/messages");
+        // Check profile type (role)
+        if (user.role !== "agency" && user.role !== "admin") {
+          router.push(`/login?role=${user.role}`);
           return;
         }
 
-        // Fetch pending service requests (leads) count from Supabase using correct profileId
+        // Fetch pending service requests (leads) count
         try {
-          const leadsRes = await fetch(`/api/leads?count=true&status=pending&expertId=${encodeURIComponent(profileId)}`);
+          const leadsRes = await fetch(`/api/leads?count=true&status=pending&expertId=${encodeURIComponent(user.id)}`);
           const leadsResult = await leadsRes.json();
           if (isMounted.current) {
             setPendingLeadsCount(leadsResult.count ?? 0);
@@ -112,13 +88,19 @@ export default function AgencyLayout({ children }) {
         }
 
         // Redirect /agency-dashboard to /agency-dashboard/messages
-        
         if (pathname === "/agency-dashboard") {
           router.push("/agency-dashboard/messages");
           return;
         }
 
-        if (forcePasswordChange) {
+        // Check forcePasswordChange flag from user profiles table
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("force_password_change")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile?.force_password_change) {
           const allowedPaths = [
             "/agency-dashboard/edit-profile",
             "/agency-dashboard/messages",
@@ -141,10 +123,10 @@ export default function AgencyLayout({ children }) {
           setLoading(false);
         }
       }
-    });
+    };
 
-    return () => unsubscribe();
-  }, [router, pathname]);
+    loadDashboardData();
+  }, [user, isAuthenticated, authLoading, pathname, router]);
 
   useEffect(() => {
     setNavLoading(false);
@@ -154,17 +136,17 @@ export default function AgencyLayout({ children }) {
     setIsLoggingOut(true);
     setNavLoading(true);
     try {
-      await signOut(auth);
-      router.push("/expert-login");
+      await logout();
+      router.push("/login?role=agency");
     } catch (error) {
       console.error("Error signing out:", error.message);
-      router.push("/expert-login");
+      router.push("/login?role=agency");
     } finally {
       if (isMounted.current) {
         setIsLoggingOut(false);
         setNavLoading(false);
       }
-    };
+    }
   };
 
   // Always render the loading UI on the server and during initial client render

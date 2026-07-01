@@ -1,18 +1,14 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { getFirestore, collection, getDocs, query, where } from "firebase/firestore";
-import { app } from "@/lib/firebase";
 import Link from "next/link";
 import Image from "next/image";
 import { FaChevronDown, FaTrophy } from "react-icons/fa";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import AskQuestionModal from "@/app/components/AskQuestionModal";
-
-const db = getFirestore(app);
+import { supabase } from "@/lib/supabase";
 
 const truncateByChars = (text, maxLength) => {
   if (!text) return "";
@@ -26,7 +22,7 @@ export default function QuestionSearchPage() {
   const [questions, setQuestions] = useState([]);
   const [topExperts, setTopExperts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState(decodeURIComponent(searchTermFromUrl)); 
+  const [searchTerm, setSearchTerm] = useState(decodeURIComponent(searchTermFromUrl));
   const [expertProfileMap, setExpertProfileMap] = useState({});
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState("");
@@ -39,30 +35,35 @@ export default function QuestionSearchPage() {
     setIsLightboxOpen(true);
   };
 
-
   useEffect(() => {
     setSearchTerm(decodeURIComponent(searchTermFromUrl));
   }, [searchTermFromUrl]);
 
- 
   useEffect(() => {
     const fetchQuestionsAndUsernames = async () => {
       console.log("Fetching data for search term:", searchTermFromUrl);
       setLoading(true);
       try {
-        const q = query(
-          collection(db, "Questions"),
-          where("isPublic", "==", true),
-          where("status", "==", "answered")
-        );
-        const querySnapshot = await getDocs(q);
-        console.log("Query Snapshot Size:", querySnapshot.size);
-        const questionList = querySnapshot.docs.map((docSnap) => {
-          const data = docSnap.data();
-          const rawDate = new Date(data.createdAt || Date.now());
+        const { data: questionRows, error: questionErr } = await supabase
+          .from("questions")
+          .select("*")
+          .eq("is_public", true)
+          .eq("status", "answered");
+
+        if (questionErr) throw questionErr;
+
+        const questionList = (questionRows || []).map((row) => {
+          const rawDate = new Date(row.created_at || Date.now());
           return {
-            id: docSnap.id,
-            ...data,
+            id: row.id,
+            expertId: row.expert_id,
+            expertName: row.expert_name,
+            expertEmail: row.expert_email,
+            question: row.question,
+            reply: row.reply,
+            status: row.status,
+            isPublic: row.is_public,
+            createdAt: row.created_at,
             timestamp:
               rawDate.toLocaleDateString("en-GB") +
               " " +
@@ -79,31 +80,34 @@ export default function QuestionSearchPage() {
         }, {});
 
         const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
-        const profilePromises = uniqueExpertNames.map(async (expertName) => {
-          const q = query(collection(db, "Profiles"), where("fullName", "==", expertName));
-          const profileSnapshot = await getDocs(q);
-          let username = null;
-          let profilePhoto = null;
-          let tagline = null;
-          profileSnapshot.forEach((doc) => {
-            username = doc.data().username;
-            profilePhoto = doc.data().profilePhoto || doc.data().photo;
-            tagline = doc.data().tagline || "No tagline available";
-          });
-          return { expertName, username, profilePhoto, tagline, answerCount: answerCountMap[expertName] || 0 };
-        });
+        const { data: profileRows, error: profileErr } = await supabase
+          .from("profiles")
+          .select("full_name, username, photo_url, tagline")
+          .in("full_name", uniqueExpertNames);
 
-        const profileResults = await Promise.all(profilePromises);
-        const newExpertProfileMap = profileResults.reduce((map, result) => {
-          if (result.expertName) {
-            map[result.expertName] = {
-              username: result.username,
-              profilePhoto: result.profilePhoto || "/default.jpg",
-              tagline: result.tagline,
+        if (profileErr) throw profileErr;
+
+        const newExpertProfileMap = (profileRows || []).reduce((map, profile) => {
+          if (profile.full_name) {
+            map[profile.full_name] = {
+              username: profile.username,
+              profilePhoto: profile.photo_url || "/default.jpg",
+              tagline: profile.tagline || "No tagline available",
             };
           }
           return map;
         }, {});
+
+        const profileResults = uniqueExpertNames.map((name) => {
+          const prof = newExpertProfileMap[name] || {};
+          return {
+            expertName: name,
+            username: prof.username || null,
+            profilePhoto: prof.profilePhoto || "/default.jpg",
+            tagline: prof.tagline || "No tagline available",
+            answerCount: answerCountMap[name] || 0,
+          };
+        });
 
         const topExpertsList = profileResults
           .sort((a, b) => b.answerCount - a.answerCount)

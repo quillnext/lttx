@@ -1,5 +1,5 @@
-import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 import ClientProfilePage from "../../experts/[slug]/ClientProfilePage"; // Adjust path as needed
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
@@ -32,7 +32,7 @@ const getProfileBySlug = cache(async (slug) => {
 
   // 2. Try Firestore as fallback
   try {
-    const db = getFirestore(app);
+    
     const q = query(collection(db, "Profiles"), where("username", "==", normalizedSlug));
     const querySnapshot = await getDocs(q);
     if (!querySnapshot.empty) {
@@ -99,7 +99,7 @@ export async function generateMetadata({ params }) {
 // ✅ MAIN PAGE FUNCTION
 export default async function AgencyProfilePage({ params }) {
   const { slug } = await params;
-  const db = getFirestore(app);
+  
   let profile = null;
   let weeklySchedule = {};
 

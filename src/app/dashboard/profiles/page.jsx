@@ -45,8 +45,17 @@ export default function ProfilesTab() {
   const [selectedProfiles, setSelectedProfiles] = useState(new Set());
   
   const [detailModal, setDetailModal] = useState(null); 
+  const [approvalNotes, setApprovalNotes] = useState("");
   const [actionLoading, setActionLoading] = useState({});
   const router = useRouter();
+
+  useEffect(() => {
+    if (detailModal) {
+      setApprovalNotes(detailModal.approvalNotes || "");
+    } else {
+      setApprovalNotes("");
+    }
+  }, [detailModal]);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -148,6 +157,38 @@ export default function ProfilesTab() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to update profile");
       setProfiles((prev) => prev.map((p) => (p.id === id ? { ...p, isPublic: !currentStatus } : p)));
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    try {
+      const response = await fetch("/api/admin/profiles", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          id, 
+          updates: { 
+            status: newStatus,
+            approvalNotes: approvalNotes,
+            approvalTimestamp: new Date().toISOString()
+          } 
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to update profile status");
+      setProfiles((prev) => prev.map((p) => (p.id === id ? { 
+        ...p, 
+        status: newStatus,
+        approvalNotes: approvalNotes,
+        approvalTimestamp: new Date().toISOString()
+      } : p)));
+      setDetailModal(null);
+      alert(`Profile ${newStatus} successfully.`);
+    } catch (err) {
+      alert(err.message);
     } finally {
       setActionLoading(prev => ({ ...prev, [id]: false }));
     }
@@ -303,6 +344,7 @@ export default function ProfilesTab() {
                 <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Name & Role</th>
                 <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Email</th>
                 <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Location</th>
+                <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Status</th>
                 <th className="px-6 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Visibility</th>
                 <th className="px-6 py-5 text-right text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Action</th>
               </tr>
@@ -346,6 +388,15 @@ export default function ProfilesTab() {
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-xs font-bold text-gray-700 truncate">{p.location || "Global"}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl uppercase border ${
+                        p.status === 'approved' ? 'bg-green-50 text-green-700 border-green-200' :
+                        p.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
+                        'bg-yellow-50 text-yellow-700 border-yellow-200'
+                      }`}>
+                        {p.status || 'pending'}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <button 
@@ -624,6 +675,37 @@ export default function ProfilesTab() {
                   </div>
                </section>
             </div>
+
+            {/* Modal Footer (Approval Section) */}
+            <div className="p-8 border-t border-gray-100 bg-gray-50 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
+              <div className="flex-1 w-full">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">Approval / Rejection Notes</label>
+                <input
+                  type="text"
+                  className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#36013F] outline-none font-medium text-gray-800"
+                  placeholder="Add notes for this decision..."
+                  value={approvalNotes}
+                  onChange={(e) => setApprovalNotes(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-3 w-full md:w-auto shrink-0">
+                <button
+                  onClick={() => handleUpdateStatus(detailModal.id, 'rejected')}
+                  disabled={actionLoading[detailModal.id]}
+                  className="px-6 py-3 bg-red-100 text-red-700 font-bold rounded-xl text-sm hover:bg-red-200 transition"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={() => handleUpdateStatus(detailModal.id, 'approved')}
+                  disabled={actionLoading[detailModal.id]}
+                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition flex items-center gap-2 shadow-lg shadow-green-600/20"
+                >
+                  <UserCheck size={16} /> Approve
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

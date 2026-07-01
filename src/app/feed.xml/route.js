@@ -1,12 +1,13 @@
+import { supabase } from "@/lib/supabase";
 // src/app/feed.xml/route.js
 
 export const dynamic = "force-dynamic";
 
-import { getFirestore, collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
-import { app } from "@/lib/firebase";
+
+
 import slugify from "slugify";
 
-const db = getFirestore(app);
+
 const baseUrl = "https://www.xmytravel.com";
 
 const toSlug = (text) => {
