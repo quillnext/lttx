@@ -130,10 +130,10 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
     { id: "add-ons", icon: Zap, label: "Add-ons", visible: true },
     { id: "reviews", icon: Star, label: "Reviews", visible: recommendations.length > 0 },
     { id: "about", icon: User, label: "About", visible: !!(profile.bio || profile.about) },
-    { id: "experience", icon: History, label: "Journey", visible: journey.length > 0 },
+    { id: "experience", icon: History, label: "Journey", visible: profile.profileType !== "agency" && journey.length > 0 },
     { id: "dna", icon: Dna, label: "DNA", visible: !!profile.experienceDNA },
     { id: "aaqs", icon: MessageSquare, label: "Intelligence Feed", visible: profile.aaqs && profile.aaqs.length > 0 },
-    { id: "faqs", icon: HelpCircle, label: "Expert Intelligence", visible: profile.faqs && profile.faqs.length > 0 },
+    { id: "faqs", icon: HelpCircle, label: profile.profileType === "agency" ? "Agency Intelligence" : "Expert Intelligence", visible: profile.faqs && profile.faqs.length > 0 },
     { id: "policies", icon: Shield, label: "Policies", visible: true },
   ].filter(item => item.visible);
 
@@ -259,8 +259,8 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
                     {profile.fullName}
                     <SafeIcon icon={BadgeCheck} size={20} className="text-blue-500 fill-blue-500/10" />
                   </h1>
-                  <p className="text-lg font-bold text-[#36013F] leading-tight">{profile.tagline || 'Travel Expert'}</p>
-                  <p className="text-sm font-medium text-gray-700">{profile.role || 'XmyTravel Expert'}</p>
+                  <p className="text-lg font-bold text-[#36013F] leading-tight">{profile.tagline || (profile.profileType === 'agency' ? 'Travel Agency' : 'Travel Expert')}</p>
+                  <p className="text-sm font-medium text-gray-700">{profile.role || (profile.profileType === 'agency' ? 'XmyTravel Agency' : 'XmyTravel Expert')}</p>
                   <p className="text-[14px] text-gray-500 mt-2 font-medium leading-relaxed">{profile.bio || profile.about?.substring(0, 120)}</p>
                   <p className="text-[12px] text-gray-500 mt-2 flex items-center gap-1 font-medium"><SafeIcon icon={MapPin} size={12} /> {profile.location || 'Global'}</p>
                 </div>
@@ -447,7 +447,7 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
             )}
 
             {/* EXPERIENCE */}
-            {journey.length > 0 && (
+            {profile.profileType !== 'agency' && journey.length > 0 && (
               <section id="experience" className="bg-white rounded-xl p-8 lg:p-10 card-border shadow-sm scroll-mt-32 text-left">
                 <h2 className="text-xl font-bold mb-8">Professional Journey</h2>
                 <div className="space-y-8">
@@ -534,7 +534,7 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-2">
                                   <SafeIcon icon={Sparkles} size={10} className="text-[#FDC700]" />
-                                  <span className="text-[9px] font-black text-[#36013F] uppercase tracking-widest">Expert Advisory</span>
+                                  <span className="text-[9px] font-black text-[#36013F] uppercase tracking-widest">{profile.profileType === 'agency' ? "Agency Advisory" : "Expert Advisory"}</span>
                                 </div>
                               </div>
                             </div>
@@ -558,7 +558,7 @@ export default function Profile2u0({ profile, sortedExperience, onBookService, h
             {/* FAQS */}
             {profile.faqs && profile.faqs.length > 0 && (
               <section id="faqs" className="bg-white rounded-xl p-8 lg:p-10 card-border shadow-sm scroll-mt-32 text-left">
-                <h2 className="text-xl font-bold mb-8">Expert Intelligence</h2>
+                <h2 className="text-xl font-bold mb-8">{profile.profileType === 'agency' ? "Agency Intelligence" : "Expert Intelligence"}</h2>
                 <div className="space-y-4">
                   {(showAllFAQs ? profile.faqs : profile.faqs.slice(0, 5)).map((faq, idx) => (
                     <div key={idx} className="border-b last:border-0 pb-4 pt-1">
