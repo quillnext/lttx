@@ -56,6 +56,7 @@ create table if not exists public.profile_requests (
   referral_code text,
   generated_referral_code text unique,
   profile_type text not null default 'expert',
+  role text,
   license_number text,
   certificates jsonb not null default '[]'::jsonb,
   office_photos jsonb not null default '[]'::jsonb,
@@ -77,6 +78,7 @@ create index if not exists profile_requests_referral_code_idx on public.profile_
 
 alter table public.profile_requests
 add column if not exists status text,
+add column if not exists role text,
 add column if not exists is_handed_over boolean not null default false,
 add column if not exists user_id text,
 add column if not exists force_password_change boolean not null default false,
@@ -106,3 +108,20 @@ alter table public.recent_searches enable row level security;
 create index if not exists recent_searches_query_idx on public.recent_searches (query);
 create index if not exists recent_searches_timestamp_idx on public.recent_searches (timestamp desc);
 create index if not exists recent_searches_slug_idx on public.recent_searches (slug);
+
+-- Create custom daily availability table
+create table if not exists public.expert_availability (
+  id uuid primary key default gen_random_uuid(),
+  expert_id text not null,
+  date date not null,
+  slots jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  unique (expert_id, date)
+);
+
+alter table public.expert_availability enable row level security;
+drop policy if exists "Allow public access to expert_availability" on public.expert_availability;
+create policy "Allow public access to expert_availability"
+on public.expert_availability for all
+using (true)
+with check (true);

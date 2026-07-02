@@ -51,6 +51,7 @@ const mapPartialProfileUpdates = (updates = {}) => {
     approvalTimestamp: "approval_timestamp",
     approvalNotes: "approval_notes",
     approvedBy: "approved_by",
+    role: "role",
   };
 
   return Object.fromEntries(

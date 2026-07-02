@@ -30,6 +30,7 @@ const toCamelProfile = (row = {}) => ({
   website: row.website || "",
   employeeCount: row.employee_count || row.employeeCount || "",
   profileType: row.profile_type || row.profileType || "expert",
+  role: row.role || "",
   isPublic: row.is_public ?? row.isPublic ?? false,
   isOnline: row.is_online ?? row.isOnline ?? false,
   isHandedOver: row.is_handed_over ?? row.isHandedOver ?? false,
@@ -52,6 +53,7 @@ export function mapSupabaseProfile(row) {
 }
 
 export function mapProfileFormToSupabase(formData = {}) {
+  const profileType = formData.profileType || "expert";
   return {
     username: formData.username || "",
     full_name: formData.fullName || "",
@@ -75,7 +77,8 @@ export function mapProfileFormToSupabase(formData = {}) {
       : [],
     referred: formData.referred || "No",
     referral_code: formData.referred === "Yes" ? formData.referralCode || null : null,
-    profile_type: formData.profileType || "expert",
+    profile_type: profileType,
+    role: formData.role ? formData.role : (profileType === "agency" ? "agency" : "expert"),
     license_number: formData.licenseNumber || "",
     certificates: Array.isArray(formData.certificates) ? formData.certificates : [],
     office_photos: Array.isArray(formData.officePhotos) ? formData.officePhotos : [],

@@ -55,21 +55,11 @@ export default function AgencyBrowseExperts() {
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = auth.onAuthStateChanged((fUser) => {
-      if (fUser) {
-        setCurrentUser(fUser);
-      } else if (supabaseUser) {
-        setCurrentUser(supabaseUser);
-      } else {
-        setCurrentUser(null);
-      }
-    });
-
-    if (!getAuth(app).currentUser && supabaseUser) {
+    if (supabaseUser) {
       setCurrentUser(supabaseUser);
+    } else {
+      setCurrentUser(null);
     }
-    return () => unsubscribe();
   }, [supabaseUser]);
 
   const toSentenceCase = (input) => {

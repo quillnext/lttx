@@ -108,11 +108,17 @@ function ExpertAvailabilityManager({ expert }) {
     const [activeTab, setActiveTab] = useState("custom");
     const [isOnline, setIsOnline] = useState(true);
     const [weeklySchedule, setWeeklySchedule] = useState({});
-
     useEffect(() => {
         setIsOnline(expert.isOnline !== false);
-        const recurringRef = doc(db, "ExpertRecurringAvailability", expert.value);
-        getDoc(recurringRef).then(docSnap => setWeeklySchedule(docSnap.exists() ? (docSnap.data().schedule || defaultSchedule) : defaultSchedule));
+        const fetchWeekly = async () => {
+            const { data } = await supabase
+                .from("expert_recurring_availability")
+                .select("schedule")
+                .eq("expert_id", expert.value)
+                .maybeSingle();
+            setWeeklySchedule(data?.schedule || defaultSchedule);
+        };
+        fetchWeekly();
     }, [expert]);
     
     const formatDate = (date) => date.toISOString().split('T')[0];
@@ -121,19 +127,46 @@ function ExpertAvailabilityManager({ expert }) {
         setLoading(true);
         const dateStr = formatDate(date);
         try {
-            const availabilityRef = doc(db, "ExpertAvailability", `${expert.value}_${dateStr}`);
-            const availabilitySnap = await getDoc(availabilityRef);
-            const availableSlots = availabilitySnap.exists() ? availabilitySnap.data().slots || [] : [];
-            const bookingsQuery = query(collection(db, "Bookings"), where("expertId", "==", expert.value), where("bookingDate", "==", dateStr));
-            const bookingsSnap = await getDocs(bookingsQuery);
-            const bookedSlots = bookingsSnap.docs.map(d => d.data().bookingTime);
-            setDailySchedule(allTimeSlots.map(time => ({ time, status: bookedSlots.includes(time) ? 'booked' : availableSlots.some(s => s.startTime === time) ? 'available' : 'unavailable' })));
+            // Fetch custom availability override
+            const { data: customData } = await supabase
+                .from("expert_availability")
+                .select("slots")
+                .eq("expert_id", expert.value)
+                .eq("date", dateStr)
+                .maybeSingle();
+
+            let availableSlots = [];
+            if (customData) {
+                availableSlots = (customData.slots || []).map(s => typeof s === 'string' ? s : s.startTime);
+            } else {
+                const weekdaysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+                const dayOfWeek = weekdaysMap[date.getDay()];
+                availableSlots = weeklySchedule[dayOfWeek] || [];
+            }
+
+            // Fetch booked slots from leads table
+            const { data: bookingsData } = await supabase
+                .from("leads")
+                .select("form_data")
+                .eq("expert_id", expert.value)
+                .eq("service_type", "1:1 STRATEGIC CONSULTATION")
+                .not("status", "eq", "cancelled");
+
+            const bookedSlots = (bookingsData || [])
+                .map(item => item.form_data)
+                .filter(fd => fd && fd.bookingDate === dateStr && fd.bookingTime)
+                .map(fd => fd.bookingTime);
+
+            setDailySchedule(allTimeSlots.map(time => ({
+                time,
+                status: bookedSlots.includes(time) ? 'booked' : availableSlots.includes(time) ? 'available' : 'unavailable'
+            })));
         } catch (error) {
             console.error("Error fetching daily schedule:", error);
         } finally {
             setLoading(false);
         }
-    }, [expert.value]);
+    }, [expert.value, weeklySchedule]);
 
     useEffect(() => {
         if (activeTab === "custom") fetchDailySchedule(selectedDate);
@@ -144,10 +177,18 @@ function ExpertAvailabilityManager({ expert }) {
         setSaving(true);
         setMessage("");
         const dateStr = formatDate(selectedDate);
-        const docRef = doc(db, "ExpertAvailability", `${expert.value}_${dateStr}`);
-        const slotsToSave = dailySchedule.filter(s => s.status === 'available').map(({ time }) => ({ startTime: time, status: 'available' }));
+        const slotsToSave = dailySchedule.filter(s => s.status === 'available').map(({ time }) => time);
         try {
-            await setDoc(docRef, { expertId: expert.value, date: dateStr, slots: slotsToSave }, { merge: true });
+            const { error } = await supabase
+                .from("expert_availability")
+                .upsert({
+                    expert_id: expert.value,
+                    date: dateStr,
+                    slots: slotsToSave,
+                    updated_at: new Date().toISOString()
+                });
+
+            if (error) throw error;
             setMessage("Availability saved successfully!");
         } catch (error) {
             setMessage("Failed to save availability.");
@@ -160,20 +201,29 @@ function ExpertAvailabilityManager({ expert }) {
     const handleOnlineToggle = async () => {
         const newStatus = !isOnline;
         setIsOnline(newStatus);
-        const profileRef = doc(db, "Profiles", expert.value);
         try {
-            await updateDoc(profileRef, { isOnline: newStatus });
+            const response = await fetch("/api/profile/by-uid", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ profileId: expert.value, payload: { is_online: newStatus } }),
+            });
+            if (!response.ok) throw new Error("Failed to update status");
         } catch (error) {
             setIsOnline(!newStatus);
         }
     };
     
     const handleWeeklyScheduleSave = async (newSchedule) => {
-        const docRef = doc(db, "ExpertRecurringAvailability", expert.value);
-        await setDoc(docRef, { schedule: newSchedule, expertId: expert.value }, { merge: true });
+        const { error } = await supabase
+            .from("expert_recurring_availability")
+            .upsert({
+                expert_id: expert.value,
+                schedule: newSchedule,
+                updated_at: new Date().toISOString()
+            });
+        if (error) throw error;
         setWeeklySchedule(newSchedule);
     };
-
     return (
         <div className="bg-white p-6 rounded-2xl shadow-sm border mt-4">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">

@@ -291,15 +291,10 @@
 
 
 import { useState, useEffect, useCallback } from "react";
-
-
-
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Calendar, Clock, Check, Ban, Briefcase, PlusCircle, Save, Loader2, Power, PowerOff } from "lucide-react";
-
-const auth = getAuth(app);
-
+import { supabase } from "@/lib/supabase";
 
 const allTimeSlots = Array.from({ length: 22 }, (_, i) => {
   const hour = Math.floor(i / 2) + 9;
@@ -320,7 +315,7 @@ const defaultSchedule = {
   Sun: ["14:00", "17:30"],
 };
 
-const WeeklyHoursSetter = ({ user, weeklySchedule, setWeeklySchedule }) => {
+const WeeklyHoursSetter = ({ user, supabaseProfileId, weeklySchedule, setWeeklySchedule }) => {
   const [selectedSlots, setSelectedSlots] = useState([]);
   const [selectedDays, setSelectedDays] = useState({
     Mon: false,
@@ -345,7 +340,8 @@ const WeeklyHoursSetter = ({ user, weeklySchedule, setWeeklySchedule }) => {
   };
 
   const handleApplySchedule = async () => {
-    if (!user || Object.values(selectedDays).every((d) => !d)) {
+    const expertId = supabaseProfileId || user?.uid;
+    if (!expertId || Object.values(selectedDays).every((d) => !d)) {
       setMessage("Please select at least one day to apply the schedule.");
       setTimeout(() => setMessage(""), 3000);
       return;
@@ -359,8 +355,17 @@ const WeeklyHoursSetter = ({ user, weeklySchedule, setWeeklySchedule }) => {
           updatedSchedule[day] = selectedSlots.sort();
         }
       }
-      const docRef = doc(db, "ExpertRecurringAvailability", user.uid);
-      await setDoc(docRef, { schedule: updatedSchedule, expertId: user.uid }, { merge: true });
+      
+      const { error } = await supabase
+        .from("expert_recurring_availability")
+        .upsert({
+          expert_id: expertId,
+          schedule: updatedSchedule,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
       setWeeklySchedule(updatedSchedule); // Update parent state
       setMessage("Weekly hours updated successfully!");
     } catch (error) {
@@ -456,19 +461,28 @@ export default function AvailabilityPage() {
   const [weeklySchedule, setWeeklySchedule] = useState({});
 
   // Temporary function to initialize default schedule for new users
-  const initializeDefaultSchedule = async (userId) => {
-    const recurringRef = doc(db, "ExpertRecurringAvailability", userId);
+  const initializeDefaultSchedule = async (expertProfileId) => {
     try {
-      const docSnap = await getDoc(recurringRef);
-      if (!docSnap.exists()) {
-        await setDoc(recurringRef, {
-          schedule: defaultSchedule,
-          expertId: userId,
-        }, { merge: true });
-        console.log("Default schedule initialized for user:", userId);
-        setWeeklySchedule(defaultSchedule); // Update state to reflect default schedule
+      const { data, error } = await supabase
+        .from("expert_recurring_availability")
+        .select("schedule")
+        .eq("expert_id", expertProfileId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data?.schedule) {
+        const { error: insertError } = await supabase
+          .from("expert_recurring_availability")
+          .upsert({
+            expert_id: expertProfileId,
+            schedule: defaultSchedule,
+            updated_at: new Date().toISOString()
+          });
+        if (insertError) throw insertError;
+        setWeeklySchedule(defaultSchedule);
       } else {
-        setWeeklySchedule(docSnap.data().schedule || {});
+        setWeeklySchedule(data.schedule || {});
       }
     } catch (error) {
       console.error("Error initializing default schedule:", error);
@@ -476,61 +490,75 @@ export default function AvailabilityPage() {
   };
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user;
       if (currentUser) {
-        setUser(currentUser);
-        // Initialize profile and schedule
-        const profileRef = doc(db, "Profiles", currentUser.uid);
-        getDoc(profileRef).then(async (docSnap) => {
-          if (docSnap.exists()) {
-            setIsOnline(docSnap.data().isOnline !== false); // Default to true if undefined
+        setUser({ ...currentUser, uid: currentUser.id });
+        try {
+          const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
+          const data = await getProfileByUidOrEmail(supabase, currentUser.id, currentUser.email);
+          if (data) {
+            setIsOnline(data.is_online !== false);
+            setSupabaseProfileId(data.id);
+            initializeDefaultSchedule(data.id);
           } else {
-            // Fallback to Supabase
-            try {
-              const { supabase } = await import("@/lib/supabase");
-              const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
-              const data = await getProfileByUidOrEmail(supabase, currentUser.uid, currentUser.email);
-              if (data) {
-                setIsOnline(data.is_online !== false);
-                setSupabaseProfileId(data.id);
-              }
-            } catch (err) {
-              console.error("Supabase load error:", err);
-            }
+            initializeDefaultSchedule(currentUser.id);
           }
-        });
-
-        // Initialize or fetch recurring schedule
-        initializeDefaultSchedule(currentUser.uid);
+        } catch (err) {
+          console.error("Supabase load error:", err);
+          initializeDefaultSchedule(currentUser.id);
+        }
+      } else {
+        setUser(null);
       }
     });
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const formatDate = (date) => date.toISOString().split("T")[0];
-
   const fetchDailySchedule = useCallback(
     async (date) => {
-      if (!user) return;
+      const expertId = supabaseProfileId || user?.uid;
+      if (!expertId) return;
       setLoading(true);
       const dateStr = formatDate(date);
 
       try {
-        const availabilityRef = doc(db, "ExpertAvailability", `${user.uid}_${dateStr}`);
-        const availabilitySnap = await getDoc(availabilityRef);
-        const availableSlots = availabilitySnap.exists() ? availabilitySnap.data().slots || [] : [];
+        let availableSlots = [];
 
-        const bookingsQuery = query(
-          collection(db, "Bookings"),
-          where("expertId", "==", user.uid),
-          where("bookingDate", "==", dateStr)
-        );
-        const bookingsSnap = await getDocs(bookingsQuery);
-        const bookedSlots = bookingsSnap.docs.map((d) => d.data().bookingTime);
+        // 1. Fetch custom availability from expert_availability table
+        const { data: customData } = await supabase
+          .from("expert_availability")
+          .select("slots")
+          .eq("expert_id", expertId)
+          .eq("date", dateStr)
+          .maybeSingle();
+
+        if (customData) {
+          availableSlots = (customData.slots || []).map(s => typeof s === 'string' ? s : s.startTime);
+        } else {
+          // 2. Fallback to weekly recurring schedule
+          const weekdaysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+          const dayOfWeek = weekdaysMap[date.getDay()];
+          availableSlots = weeklySchedule[dayOfWeek] || [];
+        }
+
+        // 3. Fetch booked slots from leads table
+        const { data: bookingsData } = await supabase
+          .from("leads")
+          .select("form_data")
+          .eq("expert_id", expertId)
+          .eq("service_type", "1:1 STRATEGIC CONSULTATION")
+          .not("status", "eq", "cancelled");
+
+        const bookedSlots = (bookingsData || [])
+          .map(item => item.form_data)
+          .filter(fd => fd && fd.bookingDate === dateStr && fd.bookingTime)
+          .map(fd => fd.bookingTime);
 
         const combinedSchedule = allTimeSlots.map((time) => {
           if (bookedSlots.includes(time)) return { time, status: "booked" };
-          if (availableSlots.some((s) => s.startTime === time)) return { time, status: "available" };
+          if (availableSlots.includes(time)) return { time, status: "available" };
           return { time, status: "unavailable" };
         });
 
@@ -541,7 +569,7 @@ export default function AvailabilityPage() {
         setLoading(false);
       }
     },
-    [user]
+    [user, supabaseProfileId, weeklySchedule]
   );
 
   useEffect(() => {
@@ -561,19 +589,27 @@ export default function AvailabilityPage() {
   };
 
   const handleSaveAvailability = async () => {
-    if (!user) return;
+    const expertId = supabaseProfileId || user?.uid;
+    if (!expertId) return;
     setSaving(true);
     setMessage("");
 
     const dateStr = formatDate(selectedDate);
-    const docRef = doc(db, "ExpertAvailability", `${user.uid}_${dateStr}`);
-
     const slotsToSave = dailySchedule
       .filter((s) => s.status === "available")
-      .map(({ time }) => ({ startTime: time, status: "available" }));
+      .map(({ time }) => time);
 
     try {
-      await setDoc(docRef, { expertId: user.uid, date: dateStr, slots: slotsToSave }, { merge: true });
+      const { error } = await supabase
+        .from("expert_availability")
+        .upsert({
+          expert_id: expertId,
+          date: dateStr,
+          slots: slotsToSave,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
       setMessage("Availability saved successfully!");
     } catch (error) {
       console.error("Error saving availability:", error);
@@ -583,28 +619,26 @@ export default function AvailabilityPage() {
       setTimeout(() => setMessage(""), 3000);
     }
   };
-
   const handleOnlineToggle = async () => {
     if (!user) return;
     const newStatus = !isOnline;
     setIsOnline(newStatus);
     
-    // 1. Try Firestore
     try {
-      const profileRef = doc(db, "Profiles", user.uid);
-      const docSnap = await getDoc(profileRef);
-      if (docSnap.exists()) {
-        await updateDoc(profileRef, { isOnline: newStatus });
+      if (typeof db !== "undefined" && typeof doc !== "undefined" && typeof updateDoc !== "undefined") {
+        const profileRef = doc(db, "Profiles", user.uid);
+        const docSnap = await getDoc(profileRef);
+        if (docSnap.exists()) {
+          await updateDoc(profileRef, { isOnline: newStatus });
+        }
       }
     } catch (error) {
       console.error("Failed to update online status in Firestore:", error);
     }
 
-    // 2. Try Supabase
     try {
       let profileId = supabaseProfileId;
       if (!profileId) {
-        const { supabase } = await import("@/lib/supabase");
         const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
         const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
         profileId = data?.id || user.uid;
@@ -743,7 +777,7 @@ export default function AvailabilityPage() {
               </div>
             </div>
           ) : (
-            <WeeklyHoursSetter user={user} weeklySchedule={weeklySchedule} setWeeklySchedule={setWeeklySchedule} />
+            <WeeklyHoursSetter user={user} supabaseProfileId={supabaseProfileId} weeklySchedule={weeklySchedule} setWeeklySchedule={setWeeklySchedule} />
           )}
         </div>
       </div>

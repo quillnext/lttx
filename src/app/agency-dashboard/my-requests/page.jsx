@@ -54,21 +54,11 @@ export default function AgencyRequestsHistoryPage() {
   };
 
   useEffect(() => {
-    const auth = getAuth(app);
-    const unsubscribe = auth.onAuthStateChanged((fUser) => {
-      if (fUser) {
-        setCurrentUser(fUser);
-      } else if (supabaseUser) {
-        setCurrentUser(supabaseUser);
-      } else {
-        setCurrentUser(null);
-      }
-    });
-
-    if (!getAuth(app).currentUser && supabaseUser) {
+    if (supabaseUser) {
       setCurrentUser(supabaseUser);
+    } else {
+      setCurrentUser(null);
     }
-    return () => unsubscribe();
   }, [supabaseUser]);
 
   useEffect(() => {

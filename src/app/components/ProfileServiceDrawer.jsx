@@ -182,6 +182,97 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   const [uploadState, setUploadState] = useState({ uploading: false, fileName: "", fileUrl: "", error: "" });
   const fileInputRef = useRef(null);
 
+  // Slot Availability States
+  const [weeklySchedule, setWeeklySchedule] = useState({});
+  const [customAvailability, setCustomAvailability] = useState([]);
+  const [bookedSlots, setBookedSlots] = useState([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && serviceType === "1:1 STRATEGIC CONSULTATION" && expertData?.id) {
+      const fetchAvailabilityData = async () => {
+        setLoadingAvailability(true);
+        try {
+          // 1. Fetch recurring weekly schedule
+          const { data: recData } = await supabase
+            .from("expert_recurring_availability")
+            .select("schedule")
+            .eq("expert_id", expertData.id)
+            .maybeSingle();
+          if (recData?.schedule) {
+            setWeeklySchedule(recData.schedule);
+          } else {
+            // Default weekly schedule fallback
+            const defaultWeek = {
+              Mon: ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"],
+              Tue: ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"],
+              Wed: ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"],
+              Thu: ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"],
+              Fri: ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00"],
+              Sat: ["10:00", "11:00", "12:00", "14:00"],
+              Sun: ["14:00", "15:00"]
+            };
+            setWeeklySchedule(defaultWeek);
+          }
+
+          // 2. Fetch custom daily availability (next 30 days)
+          const todayStr = new Date().toISOString().split("T")[0];
+          const { data: custData } = await supabase
+            .from("expert_availability")
+            .select("date, slots")
+            .eq("expert_id", expertData.id)
+            .gte("date", todayStr);
+          setCustomAvailability(custData || []);
+
+          // 3. Fetch booked slots from leads
+          const { data: bookedData } = await supabase
+            .from("leads")
+            .select("form_data")
+            .eq("expert_id", expertData.id)
+            .eq("service_type", "1:1 STRATEGIC CONSULTATION")
+            .not("status", "eq", "cancelled"); // Ignore cancelled bookings
+          
+          const booked = (bookedData || [])
+            .map(item => item.form_data)
+            .filter(fd => fd && fd.bookingDate && fd.bookingTime)
+            .map(fd => `${fd.bookingDate}_${fd.bookingTime}`);
+          setBookedSlots(booked);
+        } catch (err) {
+          console.error("Error loading expert availability:", err);
+        } finally {
+          setLoadingAvailability(false);
+        }
+      };
+
+      fetchAvailabilityData();
+    }
+  }, [isOpen, serviceType, expertData?.id]);
+
+  const getAvailableSlots = (dateStr) => {
+    if (!dateStr) return [];
+    const weekdaysMap = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    // Get weekday string (e.g. "Mon")
+    const d = new Date(dateStr);
+    const dayOfWeek = weekdaysMap[d.getDay()];
+
+    // 1. Check custom availability override first
+    const custom = customAvailability.find(c => c.date === dateStr);
+    let slots = [];
+    if (custom) {
+      slots = (custom.slots || []).map(s => typeof s === 'string' ? s : s.startTime);
+    } else {
+      // 2. Fallback to weekly schedule
+      slots = weeklySchedule[dayOfWeek] || [];
+    }
+
+    // 3. Filter out already booked slots
+    return slots.filter(slot => {
+      const slotStr = `${dateStr}_${slot}`;
+      return !bookedSlots.includes(slotStr);
+    });
+  };
+
+
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -271,6 +362,8 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       }
       if (!formData.booked) e.booked = "Please select your booking status";
       if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+      if (!formData.bookingDate) e.bookingDate = "Please select a date for your consultation";
+      if (!formData.bookingTime) e.bookingTime = "Please select a time slot for your consultation";
     }
 
     if (serviceType === "ASK A QUESTION") {
@@ -376,6 +469,62 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
                 )}
               </div>
             )}
+            {/* 1:1 Consultation Slot Selector */}
+            <div className="mb-5 border border-[#36013F]/20 p-4 rounded-2xl bg-white shadow-sm">
+              <label className="block text-sm font-bold text-[#36013F] mb-3 flex items-center gap-2">
+                <Clock size={16} /> Choose Consultation Slot <span className="text-red-500">*</span>
+              </label>
+              
+              <div className="mb-4">
+                <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Select Date</label>
+                <input
+                  type="date"
+                  className={`w-full bg-gray-50 border rounded-xl p-3 text-sm focus:ring-2 focus:ring-[#FDC700] outline-none ${fieldErrors.bookingDate ? "border-red-400" : "border-gray-200"}`}
+                  min={today}
+                  value={formData.bookingDate || ""}
+                  onChange={(e) => {
+                    updateForm("bookingDate", e.target.value);
+                    updateForm("bookingTime", ""); // Reset time when date changes
+                  }}
+                />
+                {fieldErrors.bookingDate && <p className="text-xs text-red-500 font-semibold mt-1">{fieldErrors.bookingDate}</p>}
+              </div>
+
+              {formData.bookingDate && (
+                <div>
+                  <label className="block text-[11px] font-semibold text-gray-500 uppercase mb-2">Select Time</label>
+                  {loadingAvailability ? (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Loader className="animate-spin" size={14} /> Loading slots...
+                    </div>
+                  ) : (
+                    <>
+                      {getAvailableSlots(formData.bookingDate).length > 0 ? (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {getAvailableSlots(formData.bookingDate).map(slot => (
+                            <button
+                              key={slot}
+                              type="button"
+                              onClick={() => updateForm("bookingTime", slot)}
+                              className={`p-2.5 rounded-xl text-xs font-bold border transition-all ${
+                                formData.bookingTime === slot
+                                  ? "bg-[#36013F] text-white border-[#36013F]"
+                                  : "bg-white text-gray-700 border-gray-200 hover:border-[#36013F]"
+                              }`}
+                            >
+                              {slot}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-amber-600 font-semibold">No slots available for this date. Please select another date.</p>
+                      )}
+                    </>
+                  )}
+                  {fieldErrors.bookingTime && <p className="text-xs text-red-500 font-semibold mt-1">{fieldErrors.bookingTime}</p>}
+                </div>
+              )}
+            </div>
 
             {renderPhoneField()}
           </>

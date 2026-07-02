@@ -145,6 +145,25 @@ drop policy if exists "Allow public delete from profile-assets" on storage.objec
 create policy "Allow public delete from profile-assets"
 on storage.objects for delete
 using (bucket_id = 'profile-assets');
+-- Create leads table
+create table if not exists public.leads (
+  id uuid primary key default gen_random_uuid(),
+  service_type text,
+  form_data jsonb,
+  expert_id text,
+  expert_name text,
+  status text,
+  user_name text,
+  user_email text,
+  user_phone text,
+  destination text,
+  trip_dates text,
+  source text,
+  reply text,
+  replied_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 
-
-
+-- Enable RLS on leads
+alter table public.leads enable row level security;

@@ -8,8 +8,6 @@ import { useState } from "react";
 
 
 
-const auth = getAuth(app);
-
 export default function ChangePasswordPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -33,16 +31,18 @@ export default function ChangePasswordPage() {
     }
 
     try {
-      const user = auth.currentUser;
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
-      await reauthenticateWithCredential(user, credential);
-      await updatePassword(user, newPassword);
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
       setMessage("Password updated successfully!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      setError("Failed to update password. Please check your current password.");
+      setError(err.message || "Failed to update password.");
     }
   };
 

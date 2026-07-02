@@ -8,7 +8,6 @@ import EditProfileForm from "@/app/components/EditProfileForm";
 import { supabase } from "@/lib/supabase";
 import { mapSupabaseProfile, getProfileByUidOrEmail, mapProfileFormToSupabase } from "@/lib/supabaseProfile";
 
-const auth = getAuth(app);
 
 export default function UserEditProfile() {
   const [profileData, setProfileData] = useState(null);
@@ -29,14 +28,14 @@ export default function UserEditProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const user = auth.currentUser;
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/expert-login");
+        router.push("/login?role=agency");
         return;
       }
 
       try {
-        const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
+        const data = await getProfileByUidOrEmail(supabase, user.id, user.email);
 
         if (data) {
           const mapped = mapSupabaseProfile(data);
@@ -68,7 +67,7 @@ export default function UserEditProfile() {
             officePhotos: safeArray(mapped.officePhotos),
           });
         } else {
-          console.error("Profile not found for user in Supabase:", user.uid);
+          console.error("Profile not found for user in Supabase:", user.id);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);

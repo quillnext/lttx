@@ -159,7 +159,7 @@ export const useUserAuthStore = create(
           let verifyToken = otp;
           let verifyType = type;
 
-          if (type === "whatsapp_custom") {
+          if (type === "whatsapp_custom" || type === "email") {
             const verifyRes = await fetch("/api/user-auth/verify-otp", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -225,21 +225,23 @@ export const useUserAuthStore = create(
             }
           }
 
+          const enrichedUser = {
+            ...user,
+            name: profile.full_name,
+            phone: profile.phone,
+            role: profile.role,
+            status: profile.status,
+          };
+
           set({
-            user: {
-              ...user,
-              name: profile.full_name,
-              phone: profile.phone,
-              role: profile.role,
-              status: profile.status,
-            },
+            user: enrichedUser,
             isAuthenticated: true,
             loading: false,
             error: "",
             ...initialState,
           });
 
-          return user;
+          return enrichedUser;
         } catch (error) {
           set({ loading: false, error: error.message });
           throw error;
@@ -277,25 +279,27 @@ export const useUserAuthStore = create(
             throw new Error("User profile not found.");
           }
 
-          if (profile.role !== role) {
+          if (profile.role !== role && profile.role !== "admin") {
             await supabase.auth.signOut();
             throw new Error(`This account is not registered as an ${role === "expert" ? "Expert" : "Agency"}.`);
           }
 
+          const enrichedUser = {
+            ...user,
+            name: profile.full_name,
+            phone: profile.phone,
+            role: profile.role,
+            status: profile.status,
+          };
+
           set({
-            user: {
-              ...user,
-              name: profile.full_name,
-              phone: profile.phone,
-              role: profile.role,
-              status: profile.status,
-            },
+            user: enrichedUser,
             isAuthenticated: true,
             loading: false,
             error: "",
           });
 
-          return user;
+          return enrichedUser;
         } catch (error) {
           set({ loading: false, error: error.message });
           throw error;

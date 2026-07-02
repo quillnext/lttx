@@ -97,6 +97,8 @@ export async function POST(req) {
       );
     }
 
+    const userRole = profile.profileType === "agency" ? "agency" : "expert";
+
     let password = generatePassword();
     let authUser = null;
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -106,7 +108,7 @@ export async function POST(req) {
       user_metadata: {
         name: profile.fullName,
         phone: profile.phone,
-        role: "expert",
+        role: userRole,
       },
     });
 
@@ -131,6 +133,7 @@ export async function POST(req) {
       is_handed_over: true,
       user_id: authUserId,
       force_password_change: true,
+      role: userRole,
       approval_timestamp: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

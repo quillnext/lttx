@@ -49,46 +49,28 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
     try {
       let expertEmail = booking.expertEmail;
       if (!expertEmail && booking.expertId) {
-        const profileRef = doc(db, "Profiles", booking.expertId);
-        const profileSnap = await getDoc(profileRef);
-        if (!profileSnap.exists()) {
-          setError("Expert document not found in Profiles collection.");
-          return;
-        }
-        expertEmail = profileSnap.data().email;
-        if (!expertEmail) {
-          setError("Expert email not found in profile.");
-          return;
-        }
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("id", booking.expertId)
+          .maybeSingle();
+        expertEmail = profileData?.email;
       }
 
       let userEmail = booking.userEmail;
-      if (!userEmail && booking.userId) {
-        const userRef = doc(db, "Users", booking.userId);
-        const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) {
-          setError("User document not found in Users collection.");
-          return;
-        }
-        userEmail = userSnap.data().email;
-        if (!userEmail) {
-          setError("User email not found in profile.");
-          return;
-        }
+      if (!userEmail) {
+        userEmail = "";
       }
 
-      if (!userEmail || !expertEmail) {
-        setError("No expert email found or no user email available.");
-        return;
-      }
+      const { error: updateError } = await supabase
+        .from("leads")
+        .update({
+          meeting_link: meetingLink,
+          status: "confirmed"
+        })
+        .eq("id", booking.id);
 
-      const bookingRef = doc(db, "Bookings", booking.id);
-      await updateDoc(bookingRef, {
-        meetingLink,
-        status: "confirmed",
-        userEmail,
-        expertEmail,
-      });
+      if (updateError) throw updateError;
 
       const response = await fetch("/api/send-meeting-link", {
         method: "POST",
@@ -103,7 +85,7 @@ const MeetingLinkModal = ({ booking, onClose, onSuccess }) => {
           bookingDate: booking.bookingDate,
           bookingTime: booking.bookingTime,
           meetingLink,
-          referredByAgencyName: booking.referredByAgencyName,
+          referredByAgencyName: booking.referredByAgencyName || "",
         }),
       });
 
@@ -199,35 +181,38 @@ function BookingOverview() {
         const fetchBookings = async () => {
             setLoading(true);
             try {
-                const q = query(collection(db, "Bookings"), orderBy("createdAt", "desc"));
-                const querySnapshot = await getDocs(q);
-                const data = await Promise.all(
-                    querySnapshot.docs.map(async (docSnap) => {
-                        const data = docSnap.data();
-                        let userEmail = data.userEmail;
-                        let expertEmail = data.expertEmail;
+                const { data: leadsData, error } = await supabase
+                    .from("leads")
+                    .select("*")
+                    .eq("service_type", "1:1 STRATEGIC CONSULTATION")
+                    .order("created_at", { ascending: false });
 
-                        if (!userEmail && data.userId) {
-                            const userRef = doc(db, "Users", data.userId);
-                            const userSnap = await getDoc(userRef);
-                            if (userSnap.exists()) userEmail = userSnap.data().email;
-                        }
+                if (error) throw error;
 
-                        if (!expertEmail && data.expertId) {
-                            const profileRef = doc(db, "Profiles", data.expertId);
-                            const profileSnap = await getDoc(profileRef);
-                            if (profileSnap.exists()) expertEmail = profileSnap.data().email;
-                        }
+                const data = (leadsData || []).map(lead => {
+                    const fd = lead.form_data || {};
+                    return {
+                        id: lead.id,
+                        userName: lead.user_name || "Traveller",
+                        userEmail: lead.user_email,
+                        userPhone: lead.user_phone,
+                        expertId: lead.expert_id,
+                        expertName: lead.expert_name || "Unknown Expert",
+                        bookingDate: fd.bookingDate,
+                        bookingTime: fd.bookingTime,
+                        status: lead.status || "pending",
+                        createdAt: lead.created_at,
+                        userMessage: fd.confusion || "",
+                        meetingLink: lead.meeting_link || ""
+                    };
+                });
 
-                        return { id: docSnap.id, ...data, userEmail, expertEmail };
-                    })
-                );
                 setBookings(data);
 
                 const now = new Date();
                 const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
                 const upcoming = data.filter(b => b.bookingDate && b.bookingTime && new Date(`${b.bookingDate}T${b.bookingTime}`) >= todayStart).length;
-                const todayBookings = data.filter(b => b.createdAt && (b.createdAt.toDate ? b.createdAt.toDate() : new Date(b.createdAt)) >= todayStart).length;
+                const todayBookings = data.filter(b => b.createdAt && new Date(b.createdAt) >= todayStart).length;
                 setStats({ total: data.length, upcoming, today: todayBookings });
             } catch (error) {
                 console.error("Error fetching bookings:", error);

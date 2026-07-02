@@ -141,12 +141,8 @@ import { supabase } from "@/lib/supabase";
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-
-
 import Image from "next/image";
 import Link from "next/link";
-
-const auth = getAuth(app);
 
 export default function ExpertResetPasswordPage() {
   const [newPassword, setNewPassword] = useState("");
@@ -156,29 +152,43 @@ export default function ExpertResetPasswordPage() {
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [fetchingEmail, setFetchingEmail] = useState(true); // For email fetching state
-  const [oobCode, setOobCode] = useState(null);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Extract oobCode and fetch the associated email
+  // Extract code and fetch the associated email or establish session
   useEffect(() => {
-    const code = searchParams.get("oobCode");
-    const mode = searchParams.get("mode");
-    if (code && mode === "resetPassword") {
-      setOobCode(code);
-      // Verify the code and fetch the email
-      verifyPasswordResetCode(auth, code)
-        .then((email) => {
-          setEmail(email); // Set the email associated with the oobCode
-          setFetchingEmail(false);
+    const code = searchParams.get("code");
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code)
+        .then(({ data, error }) => {
+          if (error) {
+            setError("Invalid or expired reset link. Please request a new one.");
+            setFetchingEmail(false);
+          } else {
+            setEmail(data.user?.email || "");
+            setFetchingEmail(false);
+          }
         })
         .catch(() => {
           setError("Invalid or expired reset link. Please request a new one.");
           setFetchingEmail(false);
         });
     } else {
-      setError("Invalid reset link. Please use the link from your email.");
-      setFetchingEmail(false);
+      // Fallback: Check if there is already an active session established by Supabase redirect handler
+      supabase.auth.getUser()
+        .then(({ data: { user } }) => {
+          if (user) {
+            setEmail(user.email || "");
+            setFetchingEmail(false);
+          } else {
+            setError("Invalid reset link. Please use the link from your email.");
+            setFetchingEmail(false);
+          }
+        })
+        .catch(() => {
+          setError("Invalid reset link. Please use the link from your email.");
+          setFetchingEmail(false);
+        });
     }
   }, [searchParams]);
 
@@ -194,27 +204,20 @@ export default function ExpertResetPasswordPage() {
       return;
     }
 
-    if (!oobCode) {
-      setError("Invalid reset link.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      await confirmPasswordReset(auth, oobCode, newPassword);
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
       setSuccess("Password reset successfully! Redirecting to login...");
       setTimeout(() => {
         router.push("/expert-login");
       }, 2000);
     } catch (err) {
       console.error("Password reset error:", err.message);
-      if (err.code === "auth/invalid-action-code") {
-        setError("Invalid or expired reset link. Please request a new one.");
-      } else if (err.code === "auth/weak-password") {
-        setError("Password is too weak. Please use a stronger password.");
-      } else {
-        setError("Failed to reset password. Please try again.");
-      }
+      setError(err.message || "Failed to reset password. Please try again.");
       setLoading(false);
     }
   };

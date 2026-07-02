@@ -10,9 +10,6 @@ import { useState, useEffect } from "react";
 
 import { CalendarCheck, User, Clock, CheckCircle, CalendarX } from "lucide-react";
 
-const auth = getAuth(app);
-
-
 export default function BookingsPage() {
     const [user, setUser] = useState(null);
     const [bookings, setBookings] = useState([]);
@@ -20,31 +17,52 @@ export default function BookingsPage() {
     const [activeTab, setActiveTab] = useState('upcoming');
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((currentUser) => {
-            setUser(currentUser);
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            const currentUser = session?.user;
+            if (currentUser) {
+                setUser({ ...currentUser, uid: currentUser.id });
+            } else {
+                setUser(null);
+            }
         });
-        return () => unsubscribe();
+        return () => subscription.unsubscribe();
     }, []);
-
     useEffect(() => {
         if (!user) return;
 
         const fetchBookings = async () => {
             setLoading(true);
             try {
-                // Removed orderBy from query to prevent composite index requirement.
-                const bookingsQuery = query(
-                    collection(db, "Bookings"),
-                    where("expertId", "==", user.uid)
-                );
-                const querySnapshot = await getDocs(bookingsQuery);
-                const bookingsData = querySnapshot.docs.map(doc => {
-                    const data = doc.data();
+                let expertId = user.uid;
+                try {
+                    const { getProfileByUidOrEmail } = await import("@/lib/supabaseProfile");
+                    const data = await getProfileByUidOrEmail(supabase, user.uid, user.email);
+                    if (data) {
+                        expertId = data.id;
+                    }
+                } catch (err) {
+                    console.error("Supabase profile fetch error:", err);
+                }
+
+                const { data: leadsData, error } = await supabase
+                    .from("leads")
+                    .select("*")
+                    .eq("expert_id", expertId)
+                    .eq("service_type", "1:1 STRATEGIC CONSULTATION");
+
+                if (error) throw error;
+
+                const bookingsData = (leadsData || []).map(lead => {
+                    const fd = lead.form_data || {};
                     return {
-                        id: doc.id,
-                        ...data,
-                        // Combine date and time for comparison
-                        bookingDateTime: new Date(`${data.bookingDate}T${data.bookingTime || '00:00'}:00`)
+                        id: lead.id,
+                        userName: lead.user_name || "Traveller",
+                        userEmail: lead.user_email,
+                        userPhone: lead.user_phone,
+                        bookingDate: fd.bookingDate,
+                        bookingTime: fd.bookingTime,
+                        status: lead.status || "pending",
+                        bookingDateTime: new Date(`${fd.bookingDate || "1970-01-01"}T${fd.bookingTime || '00:00'}:00`)
                     };
                 });
 
@@ -61,7 +79,6 @@ export default function BookingsPage() {
 
         fetchBookings();
     }, [user]);
-
     const today = new Date();
     today.setHours(0,0,0,0);
 

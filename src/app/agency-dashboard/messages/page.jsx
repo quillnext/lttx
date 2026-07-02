@@ -13,8 +13,6 @@ import { supabase } from "@/lib/supabase";
 import { mapSupabaseProfile } from "@/lib/supabaseProfile";
 import QuestionAnswerBuilder from "@/app/components/QuestionAnswerBuilder";
 
-const auth = getAuth(app);
-
 
 const parsePrescription = (reply) => {
   if (!reply || typeof reply !== "string") return null;
@@ -241,13 +239,15 @@ export default function Messages() {
   useEffect(() => {
     let channel;
     let pollInterval;
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const user = session?.user;
       if (user) {
-        fetchExpertProfile(user);
+        const userObj = { ...user, uid: user.id };
+        fetchExpertProfile(userObj);
 
         // Subscribe to real-time changes on 'leads' table
         channel = supabase
-          .channel(`expert_leads_${user.uid}`)
+          .channel(`expert_leads_${userObj.uid}`)
           .on(
             'postgres_changes',
             {
@@ -314,8 +314,8 @@ export default function Messages() {
 
         // Robust silent background polling fallback every 5 seconds
         pollInterval = setInterval(() => {
-          if (user) {
-            fetchQuestions(user.uid, profileIdRef.current);
+          if (userObj) {
+            fetchQuestions(userObj.uid, profileIdRef.current);
           }
           if (profileIdRef.current) {
             fetchLeads(profileIdRef.current);
@@ -335,7 +335,7 @@ export default function Messages() {
     });
 
     return () => {
-      unsubscribe();
+      subscription.unsubscribe();
       if (channel) {
         supabase.removeChannel(channel);
       }
@@ -364,23 +364,30 @@ export default function Messages() {
 
   const fetchQuestions = async (expertId, expertProfileId) => {
     try {
-      const q = query(collection(db, "Questions"), where("expertId", "==", expertId));
-      const querySnapshot = await getDocs(q);
-      const questionList = querySnapshot.docs.map((docSnap) => {
-        const data = docSnap.data();
-        const rawDate = data.createdAt?.toDate?.() ?? new Date(data.createdAt);
+      let questionList = [];
+      try {
+        if (typeof db !== "undefined" && typeof query !== "undefined" && typeof collection !== "undefined" && typeof where !== "undefined" && typeof getDocs !== "undefined") {
+          const q = query(collection(db, "Questions"), where("expertId", "==", expertId));
+          const querySnapshot = await getDocs(q);
+          questionList = querySnapshot.docs.map((docSnap) => {
+            const data = docSnap.data();
+            const rawDate = data.createdAt?.toDate?.() ?? new Date(data.createdAt);
 
-        return {
-          id: docSnap.id,
-          isFirebase: true,
-          ...data,
-          rawTimestamp: rawDate,
-          timestamp:
-            rawDate.toLocaleDateString("en-GB") +
-            " " +
-            rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-        };
-      });
+            return {
+              id: docSnap.id,
+              isFirebase: true,
+              ...data,
+              rawTimestamp: rawDate,
+              timestamp:
+                rawDate.toLocaleDateString("en-GB") +
+                " " +
+                rawDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+            };
+          });
+        }
+      } catch (fbError) {
+        console.warn("Firebase questions fetch skipped:", fbError.message);
+      }
 
       let supabaseQuestions = [];
       if (expertProfileId) {

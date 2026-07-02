@@ -1,21 +1,4 @@
-/**
- * AiSensy WhatsApp API helper
- *
- * Required env vars:
- *   AISENSY_API_KEY          — your AiSensy project API key
- *   AISENSY_CAMPAIGN_REPLY   — approved template campaign name for expert reply notification
- *
- * Template variables expected by AISENSY_CAMPAIGN_REPLY (in order):
- *   {{1}} - user name
- *   {{2}} - expert name
- *   {{3}} - service type  (e.g. "1:1 Strategic Consultation")
- *   {{4}} - next step CTA (e.g. "Book a Master Plan session...")
- *
- * Example approved template body:
- *   "Hi {{1}}, your expert {{2}} has replied to your {{3}} request on XmyTravel.
- *    Check your email for the full recommendation.
- *    Next step: {{4}}"
- */
+
 
 const AISENSY_API_URL = "https://backend.aisensy.com/campaign/t1/api/v2";
 
