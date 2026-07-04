@@ -20,7 +20,7 @@ if (fs.existsSync(".env.local")) {
 }
 
 const run = async () => {
-  const connectionString = "postgresql://postgres:KmHvCI7hdDbyAEemKJyNOfzm@cjlwfbusxxvvwlavdkjr.supabase.co:6543/postgres";
+  const connectionString = "postgresql://postgres:KmHvCI7hdDbyAEemKJyNOfzm@cjlwfbusxxvvwlavdkjr.supabase.co:5432/postgres";
   console.log("Connecting directly to remote Postgres via pg Client...");
 
   const client = new pg.Client({
@@ -74,7 +74,30 @@ const run = async () => {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       );`,
-      `ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;`
+      `ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;`,
+      `DROP POLICY IF EXISTS "Allow public insert on leads" ON public.leads;`,
+      `CREATE POLICY "Allow public insert on leads" ON public.leads FOR INSERT WITH CHECK (true);`,
+
+      `CREATE TABLE IF NOT EXISTS public.expert_recurring_availability (
+        expert_id text PRIMARY KEY,
+        schedule jsonb NOT NULL DEFAULT '{}'::jsonb,
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );`,
+      `ALTER TABLE public.expert_recurring_availability ENABLE ROW LEVEL SECURITY;`,
+      `DROP POLICY IF EXISTS "Allow public access to expert_recurring_availability" ON public.expert_recurring_availability;`,
+      `CREATE POLICY "Allow public access to expert_recurring_availability" ON public.expert_recurring_availability FOR ALL USING (true) WITH CHECK (true);`,
+
+      `CREATE TABLE IF NOT EXISTS public.expert_availability (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        expert_id text NOT NULL,
+        date date NOT NULL,
+        slots jsonb NOT NULL DEFAULT '[]'::jsonb,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (expert_id, date)
+      );`,
+      `ALTER TABLE public.expert_availability ENABLE ROW LEVEL SECURITY;`,
+      `DROP POLICY IF EXISTS "Allow public access to expert_availability" ON public.expert_availability;`,
+      `CREATE POLICY "Allow public access to expert_availability" ON public.expert_availability FOR ALL USING (true) WITH CHECK (true);`
     ];
 
     for (let query of queries) {

@@ -8,9 +8,10 @@ import Image from "next/image";
 
 
 
+
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { supabase } from "@/lib/supabase";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Compass, History } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Compass, History, Menu, X } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -24,7 +25,12 @@ export default function AgencyLayout({ children }) {
   const [isClient, setIsClient] = useState(false);
   const [pendingQuestionsCount, setPendingQuestionsCount] = useState(0); 
   const [pendingLeadsCount, setPendingLeadsCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const isMounted = useRef(true);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   const handleNavClick = (href) => {
     if (href !== pathname) {
@@ -149,6 +155,181 @@ export default function AgencyLayout({ children }) {
     }
   };
 
+  const renderNavLinks = (isMobile) => {
+    const spanClass = isMobile ? "inline" : "hidden md:inline";
+    return (
+      <>
+        <Link
+          href="/agency-dashboard/messages"
+          onClick={() => handleNavClick("/agency-dashboard/messages")}
+          className={`flex items-center gap-2 p-2 relative ${
+            pathname === "/agency-dashboard/messages"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Messages"
+        >
+          <MailPlus className="w-6 h-6" />
+          <span className={spanClass}>Messages</span>
+          {(pendingQuestionsCount + pendingLeadsCount) > 0 && (
+            <span className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full md:ml-2">
+              <Bell size={14} />
+              {pendingQuestionsCount + pendingLeadsCount}
+            </span>
+          )}
+        </Link>
+        <Link
+          href="/agency-dashboard/edit-profile"
+          onClick={() => handleNavClick("/agency-dashboard/edit-profile")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/edit-profile"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Edit Profile"
+        >
+          <UserPen className="w-6 h-6" />
+          <span className={spanClass}>Edit Profile</span>
+        </Link>
+        <Link
+          href="/agency-dashboard/change-password"
+          onClick={() => handleNavClick("/agency-dashboard/change-password")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/change-password"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Change Password"
+        >
+          <KeyRound className="w-6 h-6" />
+          <span className={spanClass}>Change Password</span>
+        </Link>
+        <Link
+          href="/expert-forgot-password"
+          onClick={() => handleNavClick("/expert-forgot-password")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/expert-forgot-password"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Forgot Password"
+        >
+          <Lock className="w-6 h-6" />
+          <span className={spanClass}>Forgot Password</span>
+        </Link>
+        <Link
+          href="/agency-dashboard/contact-us"
+          onClick={() => handleNavClick("/agency-dashboard/contact-us")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/contact-us"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Contact Us"
+        >
+          <HelpCircle className="w-6 h-6" /> 
+          <span className={spanClass}>Contact Us</span>
+        </Link>
+        <Link
+          href="/agency-dashboard/availability"
+          onClick={() => handleNavClick("/agency-dashboard/availability")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/availability"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Availability"
+        >
+          <CalendarDays className="w-6 h-6" /> 
+          <span className={spanClass}>Availability</span>
+        </Link>
+        <Link
+          href="/agency-dashboard/bookings"
+          onClick={() => handleNavClick("/agency-dashboard/bookings")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/bookings"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Bookings"
+        >
+          <CalendarCheck className="w-6 h-6" /> 
+          <span className={spanClass}>Bookings</span>
+        </Link>
+        <Link
+          href="/agency-dashboard/my-requests"
+          onClick={() => handleNavClick("/agency-dashboard/my-requests")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/my-requests"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="My Requests"
+        >
+          <Compass className="w-6 h-6" /> 
+          <span className={spanClass}>My Requests</span>
+        </Link>
+        <Link
+          href="/agency-dashboard/experts"
+          onClick={() => handleNavClick("/agency-dashboard/experts")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/agency-dashboard/experts"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Experts"
+        >
+          <History className="w-6 h-6" /> 
+          <span className={spanClass}>Experts</span>
+        </Link>
+      </>
+    );
+  };
+
+  const renderLogoutButton = (isMobile) => {
+    const spanClass = isMobile ? "inline" : "hidden md:inline";
+    return (
+      <button
+        onClick={handleLogout}
+        className={`bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-full w-full flex items-center justify-center gap-2 transition-colors ${
+          isLoggingOut || navLoading ? "opacity-50 cursor-not-allowed" : ""
+        }`}
+        disabled={isLoggingOut || navLoading}
+        aria-label="Logout"
+      >
+        {isLoggingOut ? (
+          <span className="flex items-center gap-2">
+            <svg
+              className="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            <span className={spanClass}>Logging out...</span>
+            {!isMobile && <span className="md:hidden">...</span>}
+          </span>
+        ) : (
+          <>
+            <LogOut className="w-6 h-6" />
+            <span className={spanClass}>Logout</span>
+          </>
+        )}
+      </button>
+    );
+  };
+
   // Always render the loading UI on the server and during initial client render
   if (loading || !isClient) {
     return (
@@ -181,9 +362,58 @@ export default function AgencyLayout({ children }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="bg-[#36013F] text-white w-16 md:w-64 p-1 md:p-5 flex flex-col justify-between h-screen">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-100 overflow-hidden">
+      {/* Mobile Top Header */}
+      <header className="flex md:hidden items-center justify-between bg-[#36013F] text-white p-4 sticky top-0 z-40 shadow-md w-full">
+        <div className="flex items-center gap-2">
+          <Image src="/favicon.svg" alt="Logo" width={32} height={32} />
+          <span className="font-bold text-sm tracking-wide">Agency Dashboard</span>
+        </div>
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-1 focus:outline-none focus:ring-2 focus:ring-[#F4D35E] rounded text-white"
+          aria-label="Open menu"
+        >
+          <Menu size={24} />
+        </button>
+      </header>
+
+      {/* Mobile Sidebar Overlay/Backdrop */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#36013F] text-white p-5 flex flex-col justify-between h-screen transform transition-transform duration-300 ease-in-out md:hidden ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div>
+          <div className="flex justify-between items-center mb-6">
+            <Image src="/dashboardlogo.svg" alt="Dashboard Logo" width={150} height={40} priority />
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 focus:outline-none focus:ring-2 focus:ring-[#F4D35E] rounded text-white"
+              aria-label="Close menu"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          <nav className="flex flex-col space-y-4">
+            {renderNavLinks(true)}
+          </nav>
+        </div>
+        <div className="mt-auto">
+          {renderLogoutButton(true)}
+        </div>
+      </aside>
+
+      {/* Desktop Sidebar */}
+      <aside className="bg-[#36013F] text-white w-16 md:w-64 p-1 md:p-5 hidden md:flex flex-col justify-between h-screen shrink-0">
         <div>
           <div className="justify-center md:justify-start mb-6 hidden md:flex">
             <Image
@@ -205,193 +435,17 @@ export default function AgencyLayout({ children }) {
               priority
             />
           </div>
-
           <nav className="flex flex-col space-y-4">
-            <Link
-              href="/agency-dashboard/messages"
-              onClick={() => handleNavClick("/agency-dashboard/messages")}
-              className={`flex items-center gap-2 p-2 relative ${
-                pathname === "/agency-dashboard/messages"
-                  ? "bg-[#F4D35E] rounded-3xl text-black"
-                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-              }`}
-              prefetch={true}
-              aria-label="Messages"
-            >
-              <MailPlus className="w-6 h-6" />
-              <span className="hidden md:inline">Messages</span>
-              {(pendingQuestionsCount + pendingLeadsCount) > 0 && (
-                <span className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1 bg-red-500 text-white text-xs font-semibold px-2 py-1 rounded-full md:ml-2">
-                  <Bell size={14} />
-                  {pendingQuestionsCount + pendingLeadsCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              href="/agency-dashboard/edit-profile"
-              onClick={() => handleNavClick("/agency-dashboard/edit-profile")}
-              className={`flex items-center gap-2 p-2 ${
-                pathname === "/agency-dashboard/edit-profile"
-                  ? "bg-[#F4D35E] rounded-3xl text-black"
-                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-              }`}
-              prefetch={true}
-              aria-label="Edit Profile"
-            >
-              <UserPen className="w-6 h-6" />
-              <span className="hidden md:inline">Edit Profile</span>
-            </Link>
-            <Link
-              href="/agency-dashboard/change-password"
-              onClick={() => handleNavClick("/agency-dashboard/change-password")}
-              className={`flex items-center gap-2 p-2 ${
-                pathname === "/agency-dashboard/change-password"
-                  ? "bg-[#F4D35E] rounded-3xl text-black"
-                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-              }`}
-              prefetch={true}
-              aria-label="Change Password"
-            >
-              <KeyRound className="w-6 h-6" />
-              <span className="hidden md:inline">Change Password</span>
-            </Link>
-            <Link
-              href="/expert-forgot-password"
-              onClick={() => handleNavClick("/expert-forgot-password")}
-              className={`flex items-center gap-2 p-2 ${
-                pathname === "/expert-forgot-password"
-                  ? "bg-[#F4D35E] rounded-3xl text-black"
-                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-              }`}
-              prefetch={true}
-              aria-label="Forgot Password"
-            >
-              <Lock className="w-6 h-6" />
-              <span className="hidden md:inline">Forgot Password</span>
-            </Link>
-            <Link
-    href="/agency-dashboard/contact-us"
-    onClick={() => handleNavClick("/agency-dashboard/contact-us")}
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/agency-dashboard/contact-us"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-    aria-label="Contact Us"
-  >
-    <HelpCircle className="w-6 h-6" /> 
-    <span className="hidden md:inline">Contact Us</span>
-  </Link>
-
-
-    <Link
-    href="/agency-dashboard/availability"
-    onClick={() => handleNavClick("/agency-dashboard/availability")}
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/agency-dashboard/availability"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-    aria-label="Contact Us"
-  >
-    <CalendarDays className="w-6 h-6" /> 
-    <span className="hidden md:inline">Availability</span>
-  </Link>
-
-  
-    <Link
-    href="/agency-dashboard/bookings"
-    onClick={() => handleNavClick("/agency-dashboard/bookings")}
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/agency-dashboard/bookings"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-    aria-label="Booking"
-  >
-    <CalendarCheck className="w-6 h-6" /> 
-    <span className="hidden md:inline">Booking</span>
-  </Link>
-
-  <Link
-    href="/agency-dashboard/experts"
-    onClick={() => handleNavClick("/agency-dashboard/experts")}
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/agency-dashboard/experts"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-    aria-label="Browse Experts"
-  >
-    <Compass className="w-6 h-6" /> 
-    <span className="hidden md:inline">Browse Experts</span>
-  </Link>
-
-  <Link
-    href="/agency-dashboard/my-requests"
-    onClick={() => handleNavClick("/agency-dashboard/my-requests")}
-    className={`flex items-center gap-2 p-2 ${
-      pathname === "/agency-dashboard/my-requests"
-        ? "bg-[#F4D35E] rounded-3xl text-black"
-        : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
-    }`}
-    prefetch={true}
-    aria-label="My Requests"
-  >
-    <History className="w-6 h-6" /> 
-    <span className="hidden md:inline">My Requests</span>
-  </Link>
-
+            {renderNavLinks(false)}
           </nav>
         </div>
-
-        <button
-          onClick={handleLogout}
-          className={`bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-full w-full flex items-center justify-center gap-2 transition-colors ${
-            isLoggingOut || navLoading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-          disabled={isLoggingOut || navLoading}
-          aria-label="Logout"
-        >
-          {isLoggingOut ? (
-            <span className="flex items-center gap-2">
-              <svg
-                className="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
-              </svg>
-              <span className="hidden md:inline">Logging out...</span>
-              <span className="md:hidden">...</span>
-            </span>
-          ) : (
-            <>
-              <LogOut className="w-6 h-6" />
-              <span className="hidden md:inline">Logout</span>
-            </>
-          )}
-        </button>
+        <div>
+          {renderLogoutButton(false)}
+        </div>
       </aside>
 
-      <main className="flex-1 bg-white overflow-auto relative">
+      {/* Main Content Area */}
+      <main className="flex-1 bg-white overflow-auto relative h-full">
         {navLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
             <div className="text-gray-600 flex items-center gap-2">
@@ -401,19 +455,8 @@ export default function AgencyLayout({ children }) {
                 fill="none"
                 viewBox="0 0 24 24"
               >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                />
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
               </svg>
               Navigating...
             </div>

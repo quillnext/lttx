@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
@@ -29,16 +29,7 @@ export async function POST(request) {
          - "destinations": 4 specific regions they are experts in.
          - "themes": 4 specialized travel styles (e.g., Adventure-Luxe, Slow Travel).
       
-      Return ONLY valid JSON matching this schema:
-      {
-        "bio": "string",
-        "about": "string",
-        "whyConsult": ["string"],
-        "experienceDNA": {
-           "destinations": ["string"],
-           "themes": ["string"]
-        }
-      }
+      Return ONLY valid JSON matching the schema.
     `;
 
     const response = await ai.models.generateContent({
@@ -46,6 +37,32 @@ export async function POST(request) {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       config: {
         responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            bio: { type: Type.STRING },
+            about: { type: Type.STRING },
+            whyConsult: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
+            },
+            experienceDNA: {
+              type: Type.OBJECT,
+              properties: {
+                destinations: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                },
+                themes: {
+                  type: Type.ARRAY,
+                  items: { type: Type.STRING }
+                }
+              },
+              required: ["destinations", "themes"]
+            }
+          },
+          required: ["bio", "about", "whyConsult", "experienceDNA"]
+        },
         thinkingConfig: { thinkingBudget: 0 }
       },
     });

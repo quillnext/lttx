@@ -485,7 +485,7 @@ export default function AvailabilityPage() {
         setWeeklySchedule(data.schedule || {});
       }
     } catch (error) {
-      console.error("Error initializing default schedule:", error);
+      console.error("Error initializing default schedule:", error.message || error);
     }
   };
 
@@ -516,6 +516,7 @@ export default function AvailabilityPage() {
   }, []);
 
   const formatDate = (date) => date.toISOString().split("T")[0];
+
   const fetchDailySchedule = useCallback(
     async (date) => {
       const expertId = supabaseProfileId || user?.uid;

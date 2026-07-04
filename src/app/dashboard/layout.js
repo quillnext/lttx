@@ -137,15 +137,38 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex flex-col md:flex-row h-screen bg-gray-100 overflow-hidden w-full">
+      {/* Mobile Top Header */}
+      <header className="flex md:hidden items-center justify-between bg-[#36013F] text-white p-4 sticky top-0 z-40 shadow-md w-full">
+        <div className="flex items-center gap-2">
+          <Image src="/favicon.svg" alt="Logo" width={32} height={32} />
+          <span className="font-bold text-sm tracking-wide">Admin Dashboard</span>
+        </div>
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="p-1 focus:outline-none focus:ring-2 focus:ring-[#F4D35E] rounded text-white"
+          aria-label="Open menu"
+        >
+          <FaBars size={24} />
+        </button>
+      </header>
+
+      {/* Mobile Sidebar Overlay/Backdrop */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className={`fixed md:relative z-50 bg-[#36013F] text-white w-64 md:flex flex-col justify-between transform ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-64"
-        } md:translate-x-0 transition-transform duration-300 ease-in-out`}
+        className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#36013F] text-white p-5 flex flex-col justify-between h-screen transform transition-transform duration-300 ease-in-out md:translate-x-0 md:relative md:flex shrink-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         <div>
-          <div className="flex justify-between items-center mb-6 p-5">
+          <div className="flex justify-between items-center mb-6">
             <Image
               className="w-[90%]"
               src="/dashboardlogo.svg"
@@ -163,7 +186,7 @@ export default function AdminLayout({ children }) {
             </button>
           </div>
 
-          <nav className="flex flex-col space-y-4 px-5">
+          <nav className="flex flex-col space-y-4">
             <Link
               href="/dashboard/profiles"
               onClick={() => handleNavClick("/dashboard/profiles")}
@@ -303,15 +326,8 @@ export default function AdminLayout({ children }) {
         </button>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 bg-white overflow-auto relative">
-        <button
-          className="md:hidden text-2xl mb-4 focus:outline-none focus:ring-2 focus:ring-[#36013F] rounded"
-          onClick={() => setIsSidebarOpen(true)}
-          aria-label="Open sidebar"
-        >
-          <FaBars />
-        </button>
+      {/* Main Content Area */}
+      <main className="flex-1 bg-white overflow-auto relative h-full p-4 md:p-6">
         {navLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-10">
             <svg

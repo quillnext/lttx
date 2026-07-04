@@ -1,16 +1,8 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-
-
-
-
 import { useState, useEffect } from "react";
-
-
 import { useRouter } from "next/navigation";
-
-
 
 export default function ContactUs() {
   const [formData, setFormData] = useState({
@@ -20,7 +12,7 @@ export default function ContactUs() {
     email: "",
     name: "",
     timestamp: null,
-    status: "pending", // Added default status
+    status: "pending",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,21 +21,22 @@ export default function ContactUs() {
 
   // Fetch current user details on mount
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        console.log("Authenticated user:", user); // Debug log
-        const name = user.displayName || user.email?.split('@')[0] || "Anonymous";
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const currentUser = session?.user;
+      if (currentUser) {
+        console.log("Authenticated user:", currentUser); // Debug log
+        const name = currentUser.email?.split('@')[0] || "Anonymous";
         setFormData((prev) => ({
           ...prev,
-          userId: user.uid,
-          email: user.email || "",
+          userId: currentUser.id,
+          email: currentUser.email || "",
           name: name,
-          timestamp: Timestamp.now(),
+          timestamp: new Date().toISOString(),
         }));
       }
     });
 
-    return () => unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleChange = (e) => {
@@ -79,12 +72,18 @@ export default function ContactUs() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Failed to send email");
 
-      // Save to Firestore with status
-      await addDoc(collection(db, "ContactQueries"), {
-        ...formData,
-        timestamp: Timestamp.now(),
-        status: formData.status, // Ensure status is saved
-      });
+      // Save to Supabase contact_queries table
+      const { error: insertError } = await supabase
+        .from("contact_queries")
+        .insert([{
+          name: formData.name,
+          email: formData.email,
+          subject: formData.subject,
+          message: formData.message,
+          status: "pending"
+        }]);
+
+      if (insertError) throw insertError;
 
       setMessage("Your message has been sent successfully! We will connect with you shortly.");
       setFormData((prev) => ({

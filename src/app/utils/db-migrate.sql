@@ -51,3 +51,37 @@ CREATE TABLE IF NOT EXISTS public.leads (
 -- Enable RLS on leads
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
 
+-- Allow public insert on leads
+DROP POLICY IF EXISTS "Allow public insert on leads" ON public.leads;
+CREATE POLICY "Allow public insert on leads" ON public.leads FOR INSERT WITH CHECK (true);
+
+-- Create expert recurring availability table
+CREATE TABLE IF NOT EXISTS public.expert_recurring_availability (
+  expert_id text PRIMARY KEY,
+  schedule jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- Enable RLS on expert recurring availability
+ALTER TABLE public.expert_recurring_availability ENABLE ROW LEVEL SECURITY;
+
+-- Allow public access to expert recurring availability
+DROP POLICY IF EXISTS "Allow public access to expert_recurring_availability" ON public.expert_recurring_availability;
+CREATE POLICY "Allow public access to expert_recurring_availability" ON public.expert_recurring_availability FOR ALL USING (true) WITH CHECK (true);
+
+-- Create custom daily availability table
+CREATE TABLE IF NOT EXISTS public.expert_availability (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  expert_id text NOT NULL,
+  date date NOT NULL,
+  slots jsonb NOT NULL DEFAULT '[]'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (expert_id, date)
+);
+
+-- Enable RLS on expert availability
+ALTER TABLE public.expert_availability ENABLE ROW LEVEL SECURITY;
+
+-- Allow public access to expert availability
+DROP POLICY IF EXISTS "Allow public access to expert_availability" ON public.expert_availability;
+CREATE POLICY "Allow public access to expert_availability" ON public.expert_availability FOR ALL USING (true) WITH CHECK (true);
