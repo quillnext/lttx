@@ -112,19 +112,20 @@ export async function POST(request) {
 
     // 6. Send WhatsApp notifications asynchronously
     try {
-      if (userProfile.phone) {
-        await sendWhatsAppServiceRequestToUser({
-          phone: userProfile.phone,
-          userName: userProfile.full_name,
-          expertName: expertProfile.full_name,
-          serviceType,
-          question: question || "Consultation request placed",
-        });
-      }
-
       if (expertProfile.phone) {
         await sendWhatsAppServiceRequestToExpert({
           phone: expertProfile.phone,
+          userName: userProfile.full_name,
+          expertName: expertProfile.full_name,
+          serviceType,
+          question: question || "A traveller has requested your consultation service.",
+        });
+      }
+
+      const adminPhone = process.env.ADMIN_PHONE;
+      if (adminPhone) {
+        await sendWhatsAppServiceRequestToExpert({
+          phone: adminPhone,
           userName: userProfile.full_name,
           expertName: expertProfile.full_name,
           serviceType,

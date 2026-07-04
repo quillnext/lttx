@@ -309,10 +309,12 @@ export async function POST(request) {
       process.env.AISENSY_CAMPAIGN_REQUEST_EXPERT ||
       process.env.AISENSY_CAMPAIGN_QUESTION_SUBMITTED;
 
-    if (process.env.AISENSY_API_KEY && userRequestCampaign && userPhone) {
+    const adminPhone = process.env.ADMIN_PHONE;
+
+    if (process.env.AISENSY_API_KEY && expertRequestCampaign && expertPhone) {
       whatsappPromises.push(
-        sendWhatsAppServiceRequestToUser({
-          phone: userPhone,
+        sendWhatsAppServiceRequestToExpert({
+          phone: expertPhone,
           userName,
           expertName,
           serviceType: serviceType || "Travel Request",
@@ -321,10 +323,10 @@ export async function POST(request) {
       );
     }
 
-    if (process.env.AISENSY_API_KEY && expertRequestCampaign && expertPhone) {
+    if (process.env.AISENSY_API_KEY && expertRequestCampaign && adminPhone) {
       whatsappPromises.push(
         sendWhatsAppServiceRequestToExpert({
-          phone: expertPhone,
+          phone: adminPhone,
           userName,
           expertName,
           serviceType: serviceType || "Travel Request",

@@ -326,17 +326,48 @@ export async function POST(request) {
 
     // WhatsApp via AiSensy (non-blocking — failure doesn't fail the whole response)
     let whatsappResult = { success: false, error: "No phone provided" };
-    if (userPhone && process.env.AISENSY_API_KEY && process.env.AISENSY_CAMPAIGN_REPLY) {
-      whatsappResult = await sendWhatsAppReply({
-        phone: userPhone,
-        userName,
-        expertName,
-        serviceType,
-        nextStepCta,
-      });
-      if (!whatsappResult.success) {
-        console.warn("WhatsApp send skipped/failed:", whatsappResult.error);
+    const whatsappPromises = [];
+
+    if (process.env.AISENSY_API_KEY && process.env.AISENSY_CAMPAIGN_REPLY) {
+      if (userPhone) {
+        whatsappPromises.push(
+          sendWhatsAppReply({
+            phone: userPhone,
+            userName,
+            expertName,
+            serviceType,
+            nextStepCta,
+          }).then((res) => {
+            whatsappResult = res;
+            if (!res.success) {
+              console.warn("WhatsApp send to user skipped/failed:", res.error);
+            }
+          })
+        );
       }
+
+      const adminPhone = process.env.ADMIN_PHONE;
+      if (adminPhone) {
+        whatsappPromises.push(
+          sendWhatsAppReply({
+            phone: adminPhone,
+            userName,
+            expertName,
+            serviceType,
+            nextStepCta,
+          }).then((res) => {
+            if (!res.success) {
+              console.warn("WhatsApp send to admin skipped/failed:", res.error);
+            }
+          })
+        );
+      }
+    }
+
+    if (whatsappPromises.length > 0) {
+      await Promise.all(whatsappPromises).catch((err) => {
+        console.error("Error sending WhatsApp notifications:", err);
+      });
     }
 
     await Promise.all(sends);
