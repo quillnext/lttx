@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { sendWhatsAppOTP } from "@/lib/aisensy";
+import { normalizePhone, getPhoneSearchFormats } from "@/lib/supabaseProfile";
 
 export async function POST(request) {
   try {
@@ -27,15 +28,16 @@ export async function POST(request) {
       .eq("email", targetEmail)
       .maybeSingle();
 
-    if (emailProfile && emailProfile.phone !== targetPhone) {
+    if (emailProfile && emailProfile.phone && normalizePhone(emailProfile.phone) !== normalizePhone(targetPhone)) {
       return NextResponse.json({ error: "Email address is already linked with another phone number." }, { status: 400 });
     }
 
     // Verify duplicate phone
+    const searchFormats = getPhoneSearchFormats(targetPhone);
     const { data: phoneProfile } = await supabase
       .from("profiles")
       .select("id, email, phone, role")
-      .eq("phone", targetPhone)
+      .in("phone", searchFormats)
       .maybeSingle();
 
     if (phoneProfile && phoneProfile.email.toLowerCase() !== targetEmail) {
@@ -69,7 +71,7 @@ export async function POST(request) {
 
     // Send the 6-digit OTP via WhatsApp using Aisensy
     const waResponse = await sendWhatsAppOTP({
-      phone: phone.trim(),
+      phone: targetPhone,
       userName: name.trim(),
       otp: otp,
     });

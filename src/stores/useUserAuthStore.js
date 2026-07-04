@@ -14,11 +14,12 @@ export const useUserAuthStore = create(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      loading: false,
+      loading: true,
       error: "",
       ...initialState,
 
       initializeAuth: async () => {
+        set({ loading: true });
         try {
           const {
             data: { session },

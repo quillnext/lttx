@@ -22,6 +22,39 @@ export async function GET(request) {
     if (walletError) throw walletError;
 
     if (!wallet) {
+      // Check if profile exists. If not, create it first.
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!profile) {
+        const { data: authData, error: authErr } = await supabase.auth.admin.getUserById(userId);
+        if (authErr || !authData?.user) {
+          throw new Error(authErr?.message || "User not found in auth.users");
+        }
+        const user = authData.user;
+        const name = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || "User";
+        const phone = user.phone || user.user_metadata?.phone || "0000000000";
+
+        const { error: createProfileErr } = await supabase
+          .from("profiles")
+          .insert({
+            id: userId,
+            email: user.email,
+            full_name: name,
+            name: name,
+            phone: phone,
+            role: user.user_metadata?.role || "user",
+            status: "approved",
+            is_public: false
+          });
+        if (createProfileErr) throw createProfileErr;
+      }
+
       const { data: newWallet, error: createError } = await supabase
         .from("wallets")
         .insert({ user_id: userId, balance: 0.00 })

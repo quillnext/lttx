@@ -7,7 +7,7 @@ import Image from "next/image";
 
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { supabase } from "@/lib/supabase";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Menu, X } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Menu, X, Wallet } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -109,7 +109,8 @@ export default function UserLayout({ children }) {
             "/expert-dashboard/change-password",
             "/expert-dashboard/contact-us",
             "/expert-dashboard/availability",
-            "/expert-dashboard/bookings"
+            "/expert-dashboard/bookings",
+            "/expert-dashboard/wallet"
           ];
           if (!allowedPaths.includes(pathname)) {
             router.push("/expert-dashboard/change-password");
@@ -186,6 +187,20 @@ export default function UserLayout({ children }) {
         >
           <UserPen className="w-6 h-6" />
           <span className={spanClass}>Edit Profile</span>
+        </Link>
+        <Link
+          href="/expert-dashboard/wallet"
+          onClick={() => handleNavClick("/expert-dashboard/wallet")}
+          className={`flex items-center gap-2 p-2 ${
+            pathname === "/expert-dashboard/wallet"
+              ? "bg-[#F4D35E] rounded-3xl text-black"
+              : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+          }`}
+          prefetch={true}
+          aria-label="Wallet"
+        >
+          <Wallet className="w-6 h-6" />
+          <span className={spanClass}>Wallet</span>
         </Link>
         <Link
           href="/expert-dashboard/change-password"

@@ -107,6 +107,7 @@ export const defaultExpertSchedule = {
   Thu: ["09:00", "13:30", "14:00"],
   Fri: ["09:00", "13:30", "14:00"],
   Sat: ["09:00", "13:30", "14:00"],
+  Mon: ["09:00", "13:30", "14:00"],
   Sun: ["14:00", "17:30"],
 };
 
@@ -159,3 +160,27 @@ export async function getProfileByUidOrEmail(supabase, uid, email) {
   return null;
 }
 
+export function normalizePhone(phone) {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) {
+    return digits.slice(2);
+  }
+  return digits;
+}
+
+export function getPhoneSearchFormats(phone) {
+  if (!phone) return [];
+  const rawDigits = phone.replace(/\D/g, "");
+  const formats = [phone.trim()];
+  if (rawDigits.length === 10) {
+    formats.push(`91${rawDigits}`);
+    formats.push(`+91${rawDigits}`);
+  } else if (rawDigits.length === 12 && rawDigits.startsWith("91")) {
+    const local = rawDigits.slice(2);
+    formats.push(local);
+    formats.push(`+91${local}`);
+    formats.push(`91${local}`);
+  }
+  return [...new Set(formats)];
+}

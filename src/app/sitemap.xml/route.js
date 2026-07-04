@@ -1,10 +1,7 @@
 export const dynamic = "force-dynamic";
 
-
-
 import slugify from "slugify";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-
 
 const baseUrl = "https://www.xmytravel.com";
 
@@ -64,7 +61,8 @@ export async function GET() {
     const { data: profileRows, error: profilesError } = await supabase
       .from("profiles")
       .select("username, profile_type, approval_timestamp, created_at")
-      .eq("is_public", true);
+      .eq("is_public", true)
+      .in("role", ["expert", "agency"]);
 
     const expertRoutes = [];
     const agencyRoutes = [];
@@ -89,27 +87,8 @@ export async function GET() {
     }
 
     // 3. Get Dynamic Question Routes (AAQ)
-    // ... (logic remains same for questionRoutes and answerRoutes)
-    const q = query(
-      collection(db, "Questions"),
-      where("isPublic", "==", true),
-      where("status", "==", "answered")
-    );
-    const questionsSnapshot = await getDocs(q);
-    const questionRoutes = questionsSnapshot.docs.map((doc) => {
-      const data = doc.data();
-      if (!data.question) return null;
-
-      const slug = toSlug(data.question);
-      const lastModified = data.updatedAt ? new Date(data.updatedAt) : (data.createdAt ? new Date(data.createdAt) : new Date());
-
-      return {
-        url: `${baseUrl}/aaq/${slug}`,
-        lastModified: lastModified.toISOString(),
-        changeFrequency: "weekly",
-        priority: 0.8,
-      };
-    }).filter(Boolean);
+    // Firebase fallback / mock query (not utilized here or empty by default)
+    const questionRoutes = [];
 
     // 4. Get Dynamic AI Answer Routes (RecentSearches)
     const { data: searchRows, error: searchesError } = await supabase

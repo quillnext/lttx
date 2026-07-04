@@ -70,7 +70,8 @@ export async function POST(request) {
       const { data: profileRows, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("is_public", true);
+        .eq("is_public", true)
+        .in("role", ["expert", "agency"]);
 
       if (profilesError) throw profilesError;
 

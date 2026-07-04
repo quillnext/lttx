@@ -1,8 +1,9 @@
-
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
 import { buildSimpleFooter } from "@/app/utils/emailComponents";
+import { normalizePhone, getPhoneSearchFormats } from "@/lib/supabaseProfile";
+
 const transporter = nodemailer.createTransport({
   host: "smtp.zoho.in",
   port: 465,
@@ -12,7 +13,6 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
-
 
 const otpEmailTemplate = ({ userName, otp, year }) => `
 <!DOCTYPE html>
@@ -85,17 +85,17 @@ export async function POST(request) {
       .eq("email", targetEmail)
       .maybeSingle();
 
-    if (phone && emailProfile && emailProfile.phone && emailProfile.phone !== phone.trim()) {
+    if (phone && emailProfile && emailProfile.phone && normalizePhone(emailProfile.phone) !== normalizePhone(phone)) {
       return NextResponse.json({ error: "Email address is already linked with another phone number." }, { status: 400 });
     }
 
     // Verify duplicate phone if provided
     if (phone) {
-      const targetPhone = phone.trim();
+      const searchFormats = getPhoneSearchFormats(phone);
       const { data: phoneProfile } = await supabaseAdmin
         .from("profiles")
         .select("id, email, phone, role")
-        .eq("phone", targetPhone)
+        .in("phone", searchFormats)
         .maybeSingle();
 
       if (phoneProfile && phoneProfile.email.toLowerCase() !== targetEmail) {

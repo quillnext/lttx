@@ -16,10 +16,12 @@ export async function GET(request) {
     const requestedTo = Number(searchParams.get("to") || from + 29);
     const to = Math.min(requestedTo, from + PAGE_SIZE_LIMIT - 1);
 
-    let query = createSupabaseAdminClient()
+    const supabase = createSupabaseAdminClient();
+    let query = supabase
       .from("profiles")
       .select("*")
-      .eq("is_public", true);
+      .eq("is_public", true)
+      .in("role", ["expert", "agency"]);
 
     if (ids?.length) {
       query = query.in("id", ids);

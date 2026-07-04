@@ -77,11 +77,13 @@ export async function GET(request) {
     }
 
     if (userId) {
-      // Firebase UID equals the Supabase profile id (set during authenticate-profile flow)
       const { data, error } = await query.eq("id", userId).single();
       if (error && error.code !== "PGRST116") throw error;
       return NextResponse.json({ profile: data ? mapSupabaseProfile(data) : null }, { status: 200 });
     }
+
+    // Only return expert and agency profiles for the main list in admin dashboard
+    query = query.in("role", ["expert", "agency"]);
 
     const { data, error } = await query.order("created_at", { ascending: false });
 

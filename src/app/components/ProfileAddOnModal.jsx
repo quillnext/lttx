@@ -267,20 +267,25 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
     setIsSubmitting(true);
 
     try {
-      const payment = await collectPayment();
-
+      const amount = getPriceAmount(data.price);
       const questionText =
         formData.itinerary?.substring(0, 300) ||
         formData.flightOptions?.substring(0, 300) ||
         `${addOnType} — ${formData.dest || formData.route || ""}`;
 
+      if (amount > 0) {
+        // Redirect to unified checkout page
+        const checkoutUrl = `/checkout?expertId=${expertData?.id || "unknown"}&serviceType=${encodeURIComponent(addOnType)}&price=${amount}&question=${encodeURIComponent(questionText)}&formData=${encodeURIComponent(JSON.stringify(formData))}`;
+        router.push(checkoutUrl);
+        return;
+      }
+
+      // Quote based or free (if any)
       const { error } = await supabase.from("leads").insert([{
         service_type: addOnType,
         form_data: {
           ...formData,
-          payment: payment
-            ? { status: "paid", amount: payment.amount, orderId: payment.response?.razorpay_order_id || payment.order?.id || null, paymentId: payment.response?.razorpay_payment_id || null }
-            : { status: "not_required" },
+          payment: { status: "not_required" },
         },
         expert_id: expertData?.id || "unknown",
         expert_name: expertData?.fullName || "Unknown Expert",

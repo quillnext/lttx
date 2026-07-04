@@ -747,9 +747,16 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
     setIsSubmitting(true);
     try {
-      const payment = await collectPayment();
-
+      const amount = getPriceAmount(data.price);
       const userPhone = formData.phone || formData.whatsapp || activeUser?.phone || "";
+      const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
+
+      if (amount > 0) {
+        // Redirect to unified checkout page
+        const checkoutUrl = `/checkout?expertId=${expertData?.id || "unknown"}&serviceType=${encodeURIComponent(serviceType)}&price=${amount}&question=${encodeURIComponent(questionText)}&formData=${encodeURIComponent(JSON.stringify({ ...formData, phone: userPhone }))}`;
+        router.push(checkoutUrl);
+        return;
+      }
 
       const { error } = await supabase
         .from('leads')
@@ -758,14 +765,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           form_data: {
             ...formData,
             phone: userPhone,
-            payment: payment
-              ? {
-                status: "paid",
-                amount: payment.amount,
-                orderId: payment.response?.razorpay_order_id || payment.order?.id || null,
-                paymentId: payment.response?.razorpay_payment_id || null,
-              }
-              : { status: "not_required" },
+            payment: { status: "not_required" },
           },
           expert_id: expertData?.id || "unknown",
           expert_name: expertData?.fullName || "Unknown Expert",
@@ -786,7 +786,6 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
         });
       }
 
-      const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
       const finalEmail = activeUser?.email;
       const finalName = activeUser?.name || "Traveller";
       const finalPhone = userPhone;

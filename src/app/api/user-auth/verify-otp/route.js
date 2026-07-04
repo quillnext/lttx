@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
+import { normalizePhone, getPhoneSearchFormats } from "@/lib/supabaseProfile";
 
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
-const normalizePhone = (phone = "") => phone.trim();
 
 export async function POST(request) {
   try {
     const { email, otp, name, phone, role } = await request.json();
     const normalizedEmail = normalizeEmail(email);
-    const normalizedPhone = normalizePhone(phone);
+    const rawPhone = phone ? phone.trim() : "";
 
     if (!normalizedEmail || !/\S+@\S+\.\S+/.test(normalizedEmail)) {
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
@@ -18,7 +18,7 @@ export async function POST(request) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    if (!normalizedPhone) {
+    if (!rawPhone) {
       return NextResponse.json({ error: "Mobile number is required" }, { status: 400 });
     }
 
@@ -35,15 +35,16 @@ export async function POST(request) {
       .eq("email", normalizedEmail)
       .maybeSingle();
 
-    if (emailProfile && emailProfile.phone && emailProfile.phone !== normalizedPhone) {
+    if (emailProfile && emailProfile.phone && normalizePhone(emailProfile.phone) !== normalizePhone(rawPhone)) {
       return NextResponse.json({ error: "Email address is already linked with another phone number." }, { status: 400 });
     }
 
     // Verify duplicate phone
+    const searchFormats = getPhoneSearchFormats(rawPhone);
     const { data: phoneProfile } = await supabase
       .from("profiles")
       .select("id, email, phone, role")
-      .eq("phone", normalizedPhone)
+      .in("phone", searchFormats)
       .maybeSingle();
 
     if (phoneProfile && phoneProfile.email.toLowerCase() !== normalizedEmail) {
@@ -81,7 +82,7 @@ export async function POST(request) {
       options: {
         data: {
           name: name.trim(),
-          phone: normalizedPhone,
+          phone: rawPhone,
           role: role || "user",
         },
       },
@@ -93,10 +94,10 @@ export async function POST(request) {
     }
 
     // 3.5 Update user's phone inside auth.users table
-    if (linkData?.user?.id && normalizedPhone) {
+    if (linkData?.user?.id && rawPhone) {
       try {
         await supabase.auth.admin.updateUserById(linkData.user.id, {
-          phone: normalizedPhone,
+          phone: rawPhone,
           phone_confirm: true,
         });
       } catch (phoneErr) {

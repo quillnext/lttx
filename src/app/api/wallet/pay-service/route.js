@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { sendWhatsAppServiceRequestToUser, sendWhatsAppServiceRequestToExpert } from "@/lib/aisensy";
+import { sendWhatsAppServiceRequestToExpert } from "@/lib/aisensy";
 
 export async function POST(request) {
   try {
-    const { userId, expertId, serviceType, price, question } = await request.json();
+    const { userId, expertId, serviceType, price, question, couponCode, formData } = await request.json();
 
     if (!userId || !expertId || !serviceType || price === undefined) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -29,11 +29,50 @@ export async function POST(request) {
     }
 
     const userWallet = userProfile.wallets;
-    if (!userWallet || parseFloat(userWallet.balance) < priceNumeric) {
+    if (!userWallet) {
+      return NextResponse.json({ error: "User wallet not found" }, { status: 404 });
+    }
+
+    // 2. Validate Coupon if provided
+    let discountAmount = 0;
+    let finalPrice = priceNumeric;
+    let couponId = null;
+
+    if (couponCode && couponCode.trim()) {
+      const { data: coupon, error: couponErr } = await supabase
+        .from("coupons")
+        .select("*")
+        .ilike("code", couponCode.trim())
+        .maybeSingle();
+
+      if (!couponErr && coupon && coupon.active) {
+        const isExpired = coupon.expiry_date && new Date(coupon.expiry_date) < new Date();
+        const meetsMinPurchase = priceNumeric >= parseFloat(coupon.min_purchase);
+
+        if (!isExpired && meetsMinPurchase) {
+          couponId = coupon.id;
+          if (coupon.discount_type === "percentage") {
+            discountAmount = (priceNumeric * parseFloat(coupon.discount_value)) / 100;
+            if (coupon.max_discount && discountAmount > parseFloat(coupon.max_discount)) {
+              discountAmount = parseFloat(coupon.max_discount);
+            }
+          } else if (coupon.discount_type === "fixed") {
+            discountAmount = parseFloat(coupon.discount_value);
+          }
+
+          if (discountAmount > priceNumeric) {
+            discountAmount = priceNumeric;
+          }
+          finalPrice = priceNumeric - discountAmount;
+        }
+      }
+    }
+
+    if (parseFloat(userWallet.balance) < finalPrice) {
       return NextResponse.json({ error: "Insufficient wallet balance" }, { status: 400 });
     }
 
-    // 2. Get expert profile and wallet
+    // 3. Get expert profile and wallet (to verify existence)
     const { data: expertProfile, error: expertError } = await supabase
       .from("profiles")
       .select("*, wallets(*)")
@@ -44,63 +83,36 @@ export async function POST(request) {
       return NextResponse.json({ error: "Expert profile or wallet not found" }, { status: 404 });
     }
 
-    const expertWallet = expertProfile.wallets;
-    if (!expertWallet) {
-      return NextResponse.json({ error: "Expert wallet not initialized" }, { status: 404 });
-    }
-
-    // 3. Deduct from User Wallet and Add to Expert Wallet
-    const newUserBalance = parseFloat(userWallet.balance) - priceNumeric;
-    const newExpertBalance = parseFloat(expertWallet.balance) + priceNumeric;
-
-    // Perform updates
+    // 4. Deduct finalPrice from User Wallet
+    const newUserBalance = parseFloat(userWallet.balance) - finalPrice;
     const { error: userWalletUpdateErr } = await supabase
       .from("wallets")
-      .update({ balance: newUserBalance })
+      .update({ balance: newUserBalance, updated_at: new Date().toISOString() })
       .eq("id", userWallet.id);
 
     if (userWalletUpdateErr) throw userWalletUpdateErr;
 
-    const { error: expertWalletUpdateErr } = await supabase
-      .from("wallets")
-      .update({ balance: newExpertBalance })
-      .eq("id", expertWallet.id);
-
-    if (expertWalletUpdateErr) throw expertWalletUpdateErr;
-
-    // 4. Create Transactions
+    // 5. Create Debit Transaction for User
     const { error: debitTxErr } = await supabase
       .from("wallet_transactions")
       .insert({
         wallet_id: userWallet.id,
-        amount: -priceNumeric,
+        amount: -finalPrice,
         transaction_type: "debit",
         status: "success",
-        description: `Paid for ${serviceType} consultation`,
+        description: `Paid for ${serviceType} consultation${couponCode ? ` (Coupon: ${couponCode})` : ""}`,
       });
 
     if (debitTxErr) console.error("Failed to create user debit transaction record:", debitTxErr);
 
-    const { error: creditTxErr } = await supabase
-      .from("wallet_transactions")
-      .insert({
-        wallet_id: expertWallet.id,
-        amount: priceNumeric,
-        transaction_type: "credit",
-        status: "success",
-        description: `Earned from ${serviceType} consultation by ${userProfile.full_name}`,
-      });
-
-    if (creditTxErr) console.error("Failed to create expert credit transaction record:", creditTxErr);
-
-    // 5. Create Service Request
+    // 6. Create Service Request
     const { data: serviceReq, error: serviceReqErr } = await supabase
       .from("service_requests")
       .insert({
         user_id: userId,
         expert_id: expertId,
         service_type: serviceType,
-        price: priceNumeric,
+        price: finalPrice,
         status: "pending",
         payment_status: "paid",
         question: question || "",
@@ -110,7 +122,42 @@ export async function POST(request) {
 
     if (serviceReqErr) throw serviceReqErr;
 
-    // 6. Send WhatsApp notifications asynchronously
+    // 7. Create a corresponding Lead so it appears in the expert & admin dashboards
+    const calculatedPayout = parseFloat((finalPrice * 0.70).toFixed(2));
+    const userPhone = formData?.phone || formData?.whatsapp || userProfile.phone || "";
+
+    const { error: leadErr } = await supabase
+      .from("leads")
+      .insert({
+        service_type: serviceType,
+        form_data: {
+          ...formData,
+          phone: userPhone,
+          payment: {
+            status: "paid",
+            amount: finalPrice,
+            method: "wallet",
+            couponCode: couponCode || null,
+            discount: discountAmount,
+          },
+        },
+        expert_id: expertId,
+        expert_name: expertProfile.full_name,
+        status: "pending",
+        user_name: userProfile.full_name,
+        user_email: userProfile.email,
+        destination: formData?.destination || formData?.dest || "",
+        trip_dates: (formData?.startDate && formData?.endDate) ? `${formData.startDate} to ${formData.endDate}` : (formData?.dates || ""),
+        source: "checkout_wallet",
+        payout_amount: calculatedPayout,
+        payout_status: "pending",
+      });
+
+    if (leadErr) {
+      console.error("Failed to create lead record for expert dashboard:", leadErr);
+    }
+
+    // 8. Send WhatsApp notifications asynchronously
     try {
       if (expertProfile.phone) {
         await sendWhatsAppServiceRequestToExpert({
@@ -139,6 +186,8 @@ export async function POST(request) {
     return NextResponse.json({
       success: true,
       serviceRequest: serviceReq,
+      finalPrice,
+      discountAmount,
     }, { status: 200 });
   } catch (error) {
     console.error("Error processing service payment:", error.message);

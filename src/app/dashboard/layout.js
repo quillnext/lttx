@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
-import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList } from "lucide-react";
+import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList, Landmark } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
@@ -280,6 +280,18 @@ export default function AdminLayout({ children }) {
               }`}
             >
               <CalendarClock /> Scheduling
+            </Link>
+
+            <Link
+              href="/dashboard/withdrawals"
+              onClick={() => handleNavClick("/dashboard/withdrawals")}
+              className={`flex items-center gap-2 p-2 ${
+                pathname === "/dashboard/withdrawals"
+                  ? "bg-[#F4D35E] rounded-3xl text-black"
+                  : "hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+              }`}
+            >
+              <Landmark /> Withdrawal Approvals
             </Link>
 
           </nav>
