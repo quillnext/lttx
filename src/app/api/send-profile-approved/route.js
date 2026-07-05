@@ -159,13 +159,29 @@ export async function POST(req) {
     if (deleteError) throw deleteError;
 
     const slug = profile.username.toLowerCase().replace(/\s+/g, "-");
+
+    // Generate recovery link (set password link)
+    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+      type: "recovery",
+      email: profile.email,
+      options: {
+        redirectTo: `${new URL(req.url).origin}/expert-reset-password?mode=setup`,
+      }
+    });
+
+    if (linkErr) {
+      console.error("Failed to generate recovery link:", linkErr);
+    }
+    const actionLink = linkData?.properties?.action_link || "";
+
     await sendApprovalNotificationEmail({
       fullName: profile.fullName,
       email: profile.email,
       slug,
       generatedReferralCode: profile.generatedReferralCode || requestProfile.generated_referral_code || "N/A",
       username: profile.username,
-      password,
+      actionLink,
+      phone: profile.phone,
     });
 
     return NextResponse.json({ success: true, newProfileId: approvedProfile.id }, { status: 200 });

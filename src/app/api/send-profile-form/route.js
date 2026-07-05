@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabaseAdmin";
-import { mapProfileFormToSupabase, mapSupabaseProfile } from "@/lib/supabaseProfile";
+import { mapProfileFormToSupabase, mapSupabaseProfile, getPhoneSearchFormats } from "@/lib/supabaseProfile";
 import { sendProfileSubmissionEmails } from "@/app/utils/sendProfileSubmissionEmails";
 
 const MISSING_PROFILE_REQUESTS = "Supabase table profile_requests is missing. Run scripts/supabase-complete-profile.sql first.";
@@ -20,6 +20,17 @@ const isMissingRelationError = (error) =>
 async function existsByColumn(supabase, table, column, value) {
   if (!value) return false;
   const { data, error } = await supabase.from(table).select("id").eq(column, value).limit(1);
+  if (error) {
+    if (table === "profile_requests" && isMissingRelationError(error)) return false;
+    throw error;
+  }
+  return (data || []).length > 0;
+}
+
+async function existsPhone(supabase, table, phone) {
+  if (!phone) return false;
+  const formats = getPhoneSearchFormats(phone);
+  const { data, error } = await supabase.from(table).select("id").in("phone", formats).limit(1);
   if (error) {
     if (table === "profile_requests" && isMissingRelationError(error)) return false;
     throw error;
@@ -125,18 +136,29 @@ export async function POST(req) {
       if (error) throw error;
     } else {
       if (!["Yes", "No"].includes(referred)) throw new Error("Referred must be 'Yes' or 'No'");
-      if (!/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username)) {
-        throw new Error("Username must be 3-20 characters, start with a letter, and contain only letters, numbers, or underscores");
+      if (!/^[a-zA-Z][a-zA-Z0-9_]{2,49}$/.test(username)) {
+        throw new Error("Username must be 3-50 characters, start with a letter, and contain only letters, numbers, or underscores");
       }
 
-      const [usernameInProfiles, usernameInRequests, emailInProfiles] = await Promise.all([
+      const [
+        usernameInProfiles,
+        usernameInRequests,
+        emailInProfiles,
+        emailInRequests,
+        phoneInProfiles,
+        phoneInRequests
+      ] = await Promise.all([
         existsByColumn(supabase, "profiles", "username", username),
         existsByColumn(supabase, "profile_requests", "username", username),
         existsByColumn(supabase, "profiles", "email", email),
+        existsByColumn(supabase, "profile_requests", "email", email),
+        existsPhone(supabase, "profiles", phone),
+        existsPhone(supabase, "profile_requests", phone),
       ]);
 
       if (usernameInProfiles || usernameInRequests) throw new Error("Username is already taken");
-      if (emailInProfiles) throw new Error("User already exists. No duplicate profile allowed.");
+      if (emailInProfiles || emailInRequests) throw new Error("Email address is already registered.");
+      if (phoneInProfiles || phoneInRequests) throw new Error("Mobile number is already registered.");
 
       if (referred === "Yes") {
         if (!referralCode) throw new Error("Referral code is required when referred is 'Yes'");
@@ -144,9 +166,10 @@ export async function POST(req) {
           .from("profiles")
           .select("id")
           .eq("generated_referral_code", referralCode)
-          .limit(1);
+          .limit(1)
+          .maybeSingle();
         if (error) throw error;
-        if (!data?.length) throw new Error("Invalid referral code");
+        if (!data) throw new Error("Invalid referral code");
       }
 
       const { data, error } = await supabase

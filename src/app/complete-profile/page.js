@@ -447,8 +447,17 @@ export default function CompleteProfile() {
     setErrors(prev => ({ ...prev, [name]: '' }));
     if (name === 'username') {
       setUsernameStatus('');
-      if (value.trim()) checkUsernameAvailability(value);
+      const val = value.trim();
+      if (!val) {
+        setErrors(prev => ({ ...prev, username: 'This field is required' }));
+      } else if (!/^[a-zA-Z][a-zA-Z0-9_]{2,49}$/.test(val)) {
+        setErrors(prev => ({ ...prev, username: 'Username must be 3-50 characters, start with a letter, and contain only letters, numbers, or underscores' }));
+      } else {
+        setErrors(prev => ({ ...prev, username: '' }));
+        checkUsernameAvailability(val);
+      }
     }
+
     if (name === 'referralCode') checkReferralCode(value);
     if (name === 'referred' && value === 'No') {
       setFormData(prev => ({ ...prev, referralCode: '' }));
@@ -498,7 +507,7 @@ export default function CompleteProfile() {
 
   const validateEmail = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = phone => /^\+?[0-9]{7,15}$/.test(phone);
-  const validateUsername = username => /^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(username);
+  const validateUsername = username => /^[a-zA-Z][a-zA-Z0-9_]{2,49}$/.test(username);
 
   const validateDateOfBirth = date => {
     if (!date) return true;

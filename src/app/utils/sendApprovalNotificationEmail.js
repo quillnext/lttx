@@ -1,22 +1,38 @@
 import { sendEmail } from "@/lib/email";
 import { buildEmailFooter } from "@/app/utils/emailComponents";
+import {
+  sendWhatsAppProfileApprovedToExpert,
+  sendWhatsAppProfileApprovedToAdmin
+} from "@/lib/aisensy";
 
-export async function sendApprovalNotificationEmail({ fullName, email, slug, generatedReferralCode, username, password }) {
-  console.log("Preparing approval email for:", email);
+export async function sendApprovalNotificationEmail({
+  fullName,
+  email,
+  slug,
+  generatedReferralCode,
+  username,
+  actionLink,
+  phone
+}) {
+  console.log("Preparing approval email notifications for:", email);
 
   const profileUrl = `https://www.xmytravel.com/experts/${slug}`;
   const year = new Date().getFullYear();
   const footer = buildEmailFooter({ expertUsername: slug, year });
 
-  // Define login credentials section without password
+  // Define login credentials section with Set Password link
   const loginCredentialsSection = `
-    <p>Your profile has been approved! You can log in to your dashboard at <a href="https://xmytravel.com/expert-login">https://xmytravel.com/expert-login</a>.</p>
+    <p>Your profile has been approved! To set up your account password and log in to your dashboard, please click the button below:</p>
+    <div style="text-align: center; margin: 24px 0;">
+      <a href="${actionLink || 'https://xmytravel.com/expert-login'}" class="cta-button" style="background: #36013F; color: white; padding: 12px 24px; border-radius: 24px; display: inline-block; text-decoration: none; font-weight: bold;">Set Your Password & Log In</a>
+    </div>
     <p><strong>Your Login Details:</strong></p>
-    <p>Username: ${username}<br>Email: ${email}</p>
-    <p>If you are a new user, please use the <a href="https://xmytravel.com/expert-forgot-password">password reset link</a> to set your password, or contact support at <a href="mailto:info@xmytravel.com">info@xmytravel.com</a>.</p>
+    <p>Username: ${username || "N/A"}<br>Email: ${email}</p>
+    <p>If the button doesn't work, copy and paste this link into your browser:<br/>
+    <a href="${actionLink || 'https://xmytravel.com/expert-login'}">${actionLink || 'https://xmytravel.com/expert-login'}</a></p>
   `;
 
-  const html = `
+  const expertHtml = `
     <!DOCTYPE html>
     <html>
       <head>
@@ -54,15 +70,6 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
           .content {
             padding: 32px;
           }
-          .cta-button {
-            background: #36013F;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 24px;
-            display: inline-block;
-            margin-top: 20px;
-            text-decoration: none;
-          }
           .footer {
             text-align: center;
             font-size: 13px;
@@ -80,19 +87,17 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
         <div class="container">
           <img src="https://www.xmytravel.com/emailbanner.jpeg" class="banner" alt="XmyTravel Banner" />
           <div class="content">
-            <h2 style="color:#36013F">Hello ${fullName},</h2>
+            <h2 style="color:#36013F">Hello ${fullName || "Travel Expert"},</h2>
             <p>🎉 Congratulations! Your expert profile has been reviewed and officially approved by our team.</p>
             <p>Your profile is now live on <strong>XmyTravel</strong> and ready to be discovered by travellers around the world.</p>
             ${loginCredentialsSection}
-            <p>You can access your profile below:</p>
-            <a href="${profileUrl}" class="cta-button">View My Profile</a>
-            <p style="font-size: 13px; margin-top: 16px;">
-              Or copy and paste this link:<br />
-              <a href="${profileUrl}">${profileUrl}</a>
-            </p>
+            <p>You can access your live public profile below:</p>
+            <div style="text-align: center; margin: 16px 0;">
+              <a href="${profileUrl}" style="color: #36013F; font-weight: bold; text-decoration: underline;">View Live Profile</a>
+            </div>
             <p style="margin-top: 24px; font-size: 15px;">
               If you know someone with proven expertise in the travel domain, you can refer them to join XmyTravel.
-              Here’s your referral code: ${generatedReferralCode}
+              Here’s your referral code: ${generatedReferralCode || "N/A"}
             </p>
             <p style="margin-top: 24px; font-size: 15px;">
               <a href="https://xmytravel.com/experts/refer">Know an Experienced Travel Expert?</a>
@@ -109,9 +114,88 @@ export async function sendApprovalNotificationEmail({ fullName, email, slug, gen
     </html>
   `;
 
-  await sendEmail({
-    to: email,
-    subject: "Your Expert Profile Is Live on XmyTravel",
-    html,
-  });
+  const adminHtml = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+          body { font-family: 'Inter', sans-serif; background: #f3f3f3; color: #333; padding: 40px 0; }
+          .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #e2e2e2;
+            overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+          }
+          .content { padding: 32px; }
+          a { color: #36013F; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <img src="https://www.xmytravel.com/emailbanner.jpeg" style="width:100%; display:block; border-radius:16px 16px 0 0;" alt="Banner" />
+          <div class="content">
+            <h2 style="color: #36013F;">✅ Expert Profile Approved</h2>
+            <p>An expert profile has been reviewed and officially approved:</p>
+            <p>
+              <strong>Name:</strong> ${fullName || "N/A"}<br/>
+              <strong>Email:</strong> ${email || "N/A"}<br/>
+              <strong>Phone:</strong> ${phone || "N/A"}<br/>
+              <strong>Profile URL:</strong> <a href="${profileUrl}">${profileUrl}</a>
+            </p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const notificationPromises = [
+    // Send Approval Email to Expert
+    sendEmail({
+      to: email,
+      subject: "Your Expert Profile Is Live on XmyTravel",
+      html: expertHtml,
+    }),
+    // Send Approval Email to Admin
+    sendEmail({
+      to: process.env.ADMIN_EMAIL,
+      cc: process.env.ADMIN_EMAIL_CC,
+      bcc: process.env.ADMIN_EMAIL_BCC,
+      subject: `✅ Profile Approved: ${fullName}`,
+      html: adminHtml,
+    })
+  ];
+
+  // Send WhatsApp to Expert
+  if (phone) {
+    notificationPromises.push(
+      sendWhatsAppProfileApprovedToExpert({
+        phone,
+        userName: fullName,
+        profileUrl,
+        actionLink
+      }).catch(err => console.error("WhatsApp Expert Approval notification failed:", err))
+    );
+  }
+
+  // Send WhatsApp to Admin
+  if (process.env.ADMIN_PHONE) {
+    notificationPromises.push(
+      sendWhatsAppProfileApprovedToAdmin({
+        phone: process.env.ADMIN_PHONE,
+        userName: fullName,
+        email
+      }).catch(err => console.error("WhatsApp Admin Approval notification failed:", err))
+    );
+  }
+
+  try {
+    await Promise.all(notificationPromises);
+  } catch (error) {
+    console.error("Error sending profile approval notifications:", error);
+  }
 }

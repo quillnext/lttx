@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import "react-phone-input-2/lib/style.css";
+import "react-datepicker/dist/react-datepicker.css";
 import _ from "lodash";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -352,12 +353,15 @@ export default function EditProfileForm({ initialData, onSave }) {
                 <DatePicker 
                   selected={formData.dateOfBirth} 
                   onChange={d => setFormData({...formData, dateOfBirth: d})} 
-                  dateFormat="yyyy-MM-dd" 
+                  dateFormat="dd/MM/yyyy" 
                   maxDate={new Date()}
+                  showMonthDropdown
                   showYearDropdown
                   scrollableYearDropdown
+                  dropdownMode="select"
                   yearDropdownItemNumber={80}
                   className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-[#36013F] transition-all" 
+                  wrapperClassName="w-full"
                 />
               </div>
             )}
@@ -463,9 +467,14 @@ export default function EditProfileForm({ initialData, onSave }) {
                             <DatePicker 
                                 selected={exp.startDate ? new Date(exp.startDate) : null} 
                                 onChange={d => handleExperienceChange(idx, 'startDate', d)} 
-                                dateFormat="yyyy-MM" 
+                                dateFormat="MM/yyyy" 
                                 showMonthYearPicker 
+                                showYearDropdown
+                                scrollableYearDropdown
+                                dropdownMode="select"
+                                yearDropdownItemNumber={30}
                                 className="w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800" 
+                                wrapperClassName="w-full"
                             />
                         </div>
                         <div>
@@ -475,9 +484,14 @@ export default function EditProfileForm({ initialData, onSave }) {
                                     disabled={exp.endDate === 'Present'} 
                                     selected={exp.endDate && exp.endDate !== 'Present' ? new Date(exp.endDate) : null} 
                                     onChange={d => handleExperienceChange(idx, 'endDate', d)} 
-                                    dateFormat="yyyy-MM" 
+                                    dateFormat="MM/yyyy" 
                                     showMonthYearPicker 
+                                    showYearDropdown
+                                    scrollableYearDropdown
+                                    dropdownMode="select"
+                                    yearDropdownItemNumber={30}
                                     className="w-full bg-white border border-gray-100 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-800 disabled:opacity-50" 
+                                    wrapperClassName="w-full"
                                 />
                                 <button type="button" onClick={() => handleExperienceChange(idx, 'endDate', exp.endDate === 'Present' ? null : 'Present')} className={`px-2 py-2.5 rounded-xl text-[10px] font-black border transition-all ${exp.endDate === 'Present' ? 'bg-[#36013F] text-white border-[#36013F]' : 'bg-white text-gray-400 border-gray-200'}`}>PRESENT</button>
                             </div>

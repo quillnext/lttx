@@ -134,8 +134,8 @@ export default function Step3_Experience({
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                   <div className="md:col-span-3"><label className="block text-xs font-semibold text-gray-500 mb-1">Title</label><input type="text" placeholder="Title" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white" value={exp.title} onChange={e => handleExperienceChange(index, 'title', e.target.value)} /></div>
                   <div className="md:col-span-3"><label className="block text-xs font-semibold text-gray-500 mb-1">Company</label><input type="text" placeholder="Company" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white" value={exp.company} onChange={e => handleExperienceChange(index, 'company', e.target.value)} /></div>
-                  <div className="md:col-span-3"><label className="block text-xs font-semibold text-gray-500 mb-1">Start Date</label><div className="w-full"><DatePicker selected={exp.startDate} onChange={date => handleExperienceChange(index, 'startDate', date)} dateFormat="yyyy-MM" placeholderText="Select Month" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white" maxDate={new Date()} showMonthYearPicker wrapperClassName="w-full" /></div></div>
-                  <div className="md:col-span-3"><label className="block text-xs font-semibold text-gray-500 mb-1">End Date</label><div className="flex items-center gap-2"><div className="flex-grow w-full"><DatePicker selected={exp.endDate === 'Present' ? null : exp.endDate} onChange={date => handleExperienceChange(index, 'endDate', date)} dateFormat="yyyy-MM" placeholderText="Select Month" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white disabled:bg-gray-100" maxDate={new Date()} showMonthYearPicker disabled={exp.endDate === 'Present'} wrapperClassName="w-full" /></div><label className="flex items-center gap-1 cursor-pointer bg-gray-100 px-2 py-2 rounded-lg border border-gray-200 shrink-0"><input type="checkbox" checked={exp.endDate === 'Present'} onChange={e => handleExperienceChange(index, 'endDate', e.target.checked ? 'Present' : null)} className="accent-green-600" /><span className="text-xs font-medium">Present</span></label></div></div>
+                  <div className="md:col-span-3"><label className="block text-xs font-semibold text-gray-500 mb-1">Start Date</label><div className="w-full"><DatePicker selected={exp.startDate} onChange={date => handleExperienceChange(index, 'startDate', date)} dateFormat="MM/yyyy" placeholderText="MM/YYYY" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white" maxDate={new Date()} showMonthYearPicker showYearDropdown scrollableYearDropdown dropdownMode="select" yearDropdownItemNumber={30} wrapperClassName="w-full" /></div></div>
+                  <div className="md:col-span-3"><label className="block text-xs font-semibold text-gray-500 mb-1">End Date</label><div className="flex items-center gap-2"><div className="flex-grow w-full"><DatePicker selected={exp.endDate === 'Present' ? null : exp.endDate} onChange={date => handleExperienceChange(index, 'endDate', date)} dateFormat="MM/yyyy" placeholderText="MM/YYYY" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-50 focus:bg-white disabled:bg-gray-100" maxDate={new Date()} showMonthYearPicker showYearDropdown scrollableYearDropdown dropdownMode="select" yearDropdownItemNumber={30} disabled={exp.endDate === 'Present'} wrapperClassName="w-full" /></div><label className="flex items-center gap-1 cursor-pointer bg-gray-100 px-2 py-2 rounded-lg border border-gray-200 shrink-0"><input type="checkbox" checked={exp.endDate === 'Present'} onChange={e => handleExperienceChange(index, 'endDate', e.target.checked ? 'Present' : null)} className="accent-green-600" /><span className="text-xs font-medium">Present</span></label></div></div>
                 </div>
                 {formData.experience.length > 1 && <button type="button" className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-50 shadow-md border border-gray-200" onClick={() => removeExperience(index)}>✕</button>}
               </div>
@@ -172,11 +172,13 @@ export default function Step3_Experience({
                 <DatePicker
                     selected={formData.dateOfBirth}
                     onChange={date => handleChange({ target: { name: 'dateOfBirth', value: date } })}
-                    dateFormat="yyyy-MM-dd"
-                    placeholderText="YYYY-MM-DD"
+                    dateFormat="dd/MM/yyyy"
+                    placeholderText="DD/MM/YYYY"
                     className={`w-full px-4 py-3 border rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary transition-all outline-none border-gray-200`}
                     maxDate={new Date()}
+                    showMonthDropdown
                     showYearDropdown
+                    dropdownMode="select"
                     yearDropdownItemNumber={100}
                     scrollableYearDropdown
                 />

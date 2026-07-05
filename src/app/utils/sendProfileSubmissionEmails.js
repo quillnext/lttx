@@ -1,6 +1,21 @@
-
 import { sendEmail } from "@/lib/email";
 import { buildSimpleFooter } from "./emailComponents";
+import {
+  sendWhatsAppProfileSubmittedToExpert,
+  sendWhatsAppProfileSubmittedToAdmin
+} from "@/lib/aisensy";
+
+const renderRow = (label, val) => {
+  if (!val) return '';
+  if (Array.isArray(val)) {
+    const filtered = val.filter(Boolean);
+    if (filtered.length === 0) return '';
+    return `<tr><td style="padding: 8px 12px; border: 1px solid #e0e0e0;"><strong>${label}</strong></td><td style="padding: 8px 12px; border: 1px solid #e0e0e0;">${filtered.join(", ")}</td></tr>`;
+  }
+  const cleanStr = String(val).trim();
+  if (!cleanStr || cleanStr === 'undefined' || cleanStr === 'null') return '';
+  return `<tr><td style="padding: 8px 12px; border: 1px solid #e0e0e0;"><strong>${label}</strong></td><td style="padding: 8px 12px; border: 1px solid #e0e0e0;">${cleanStr}</td></tr>`;
+};
 
 const emailTemplate = ({ data, year, isAdmin }) => {
   const {
@@ -40,7 +55,6 @@ const emailTemplate = ({ data, year, isAdmin }) => {
           margin-top: 40px;
         }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-        td { padding: 8px 12px; border: 1px solid #e0e0e0; }
         h2 { color: #36013F; margin-bottom: 16px; }
         p { font-size: 15px; line-height: 1.6; }
         a { color: #36013F; }
@@ -54,23 +68,23 @@ const emailTemplate = ({ data, year, isAdmin }) => {
             <h2>📥 New Profile Submission</h2>
             <p>You’ve received a new profile form submission:</p>
             <table>
-              <tr><td><strong>Full Name</strong></td><td>${fullName}</td></tr>
-              <tr><td><strong>Email</strong></td><td>${email}</td></tr>
-              <tr><td><strong>Phone</strong></td><td>${phone}</td></tr>
-              <tr><td><strong>Tagline</strong></td><td>${tagline}</td></tr>
-              <tr><td><strong>Location</strong></td><td>${location}</td></tr>
-              <tr><td><strong>Languages</strong></td><td>${languages}</td></tr>
-              <tr><td><strong>Response Time</strong></td><td>${responseTime}</td></tr>
-              <tr><td><strong>Pricing</strong></td><td>${pricing}</td></tr>
-              <tr><td><strong>About</strong></td><td>${about}</td></tr>
-              <tr><td><strong>Services</strong></td><td>${services?.join(", ")}</td></tr>
-              <tr><td><strong>Regions</strong></td><td>${regions?.join(", ")}</td></tr>
-              <tr><td><strong>Companies</strong></td><td>${companies}</td></tr>
-              <tr><td><strong>Certifications</strong></td><td>${certifications}</td></tr>
-              <tr><td><strong>Referral Code</strong></td><td>${generatedReferralCode}</td></tr>
+              ${renderRow("Full Name", fullName)}
+              ${renderRow("Email", email)}
+              ${renderRow("Phone", phone)}
+              ${renderRow("Tagline", tagline)}
+              ${renderRow("Location", location)}
+              ${renderRow("Languages", languages)}
+              ${renderRow("Response Time", responseTime)}
+              ${renderRow("Pricing", pricing)}
+              ${renderRow("About", about)}
+              ${renderRow("Services", services)}
+              ${renderRow("Regions", regions)}
+              ${renderRow("Companies", companies)}
+              ${renderRow("Certifications", certifications)}
+              ${renderRow("Referral Code", generatedReferralCode)}
             </table>
           ` : `
-            <h2>Hello ${fullName},</h2>
+            <h2>Hello ${fullName || "Travel Expert"},</h2>
             <p>Thank you for submitting your profile request on <strong>XmyTravel</strong>.</p>
             <p>Our team will review your information and notify you once it's approved.</p>
           `}
@@ -86,13 +100,13 @@ export async function sendProfileSubmissionEmails(formData) {
   const year = new Date().getFullYear();
 
   const emailPromises = [
-    // Send to User
+    // Send to User Email
     sendEmail({
       to: formData.email,
       subject: "Profile Submission Received – XmyTravel",
       html: emailTemplate({ data: formData, year, isAdmin: false }),
     }),
-    // Send to Admin
+    // Send to Admin Email
     sendEmail({
       to: process.env.ADMIN_EMAIL,
       cc: process.env.ADMIN_EMAIL_CC,
@@ -101,6 +115,27 @@ export async function sendProfileSubmissionEmails(formData) {
       html: emailTemplate({ data: formData, year, isAdmin: true }),
     })
   ];
+
+  // Send WhatsApp to Expert
+  if (formData.phone) {
+    emailPromises.push(
+      sendWhatsAppProfileSubmittedToExpert({
+        phone: formData.phone,
+        userName: formData.fullName,
+      }).catch(err => console.error("WhatsApp Expert Submission notification failed:", err))
+    );
+  }
+
+  // Send WhatsApp to Admin
+  if (process.env.ADMIN_PHONE) {
+    emailPromises.push(
+      sendWhatsAppProfileSubmittedToAdmin({
+        phone: process.env.ADMIN_PHONE,
+        userName: formData.fullName,
+        email: formData.email,
+      }).catch(err => console.error("WhatsApp Admin Submission notification failed:", err))
+    );
+  }
 
   try {
     await Promise.all(emailPromises);

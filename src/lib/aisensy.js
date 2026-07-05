@@ -221,3 +221,43 @@ export const sendWhatsAppOTP = async ({ phone, userName, otp }) => {
   });
 };
 
+export const sendWhatsAppProfileSubmittedToExpert = async ({ phone, userName }) =>
+  sendAiSensyCampaign({
+    phone,
+    campaign: process.env.AISENSY_CAMPAIGN_PROFILE_SUBMITTED_EXPERT || "profile_submitted_expert",
+    userName: userName || "Expert",
+    templateParams: [userName || "Expert"],
+    source: "profile-submitted-expert",
+  });
+
+export const sendWhatsAppProfileSubmittedToAdmin = async ({ phone, userName, email }) =>
+  sendAiSensyCampaign({
+    phone,
+    campaign: process.env.AISENSY_CAMPAIGN_PROFILE_SUBMITTED_ADMIN || "profile_submitted_admin",
+    userName: "Admin",
+    templateParams: [userName || "Expert", email || "N/A"],
+    source: "profile-submitted-admin",
+  });
+
+export const sendWhatsAppProfileApprovedToExpert = async ({ phone, userName, profileUrl, actionLink }) =>
+  sendAiSensyCampaign({
+    phone,
+    campaign: process.env.AISENSY_CAMPAIGN_PROFILE_APPROVED_EXPERT || "profile_approved_expert_v2",
+    userName: userName || "Expert",
+    templateParams: [
+      userName || "Expert",
+      profileUrl || "https://xmytravel.com",
+      actionLink || "https://xmytravel.com/expert-forgot-password"
+    ],
+    source: "profile_approved_expert_v2",
+  });
+
+export const sendWhatsAppProfileApprovedToAdmin = async ({ phone, userName, email }) =>
+  sendAiSensyCampaign({
+    phone,
+    campaign: process.env.AISENSY_CAMPAIGN_PROFILE_APPROVED_ADMIN || "profile_approved_admin",
+    userName: "Admin",
+    templateParams: [userName || "Expert", email || "N/A"],
+    source: "profile-approved-admin",
+  });
+
