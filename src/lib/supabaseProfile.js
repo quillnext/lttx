@@ -56,6 +56,7 @@ export function mapProfileFormToSupabase(formData = {}) {
   const profileType = formData.profileType || "expert";
   return {
     username: formData.username || "",
+    name: formData.fullName || "",
     full_name: formData.fullName || "",
     email: formData.email || "",
     phone: formData.phone || "",

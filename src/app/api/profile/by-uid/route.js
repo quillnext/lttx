@@ -88,8 +88,7 @@ export async function POST(request) {
 
     const { data, error } = await supabase
       .from("profiles")
-      .update(filteredPayload)
-      .eq("id", profileId)
+      .upsert({ id: profileId, ...filteredPayload })
       .select()
       .maybeSingle();
 

@@ -7,7 +7,7 @@ import Image from "next/image";
 
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import { supabase } from "@/lib/supabase";
-import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Menu, X, Wallet } from "lucide-react";
+import { KeyRound, LogOut, MailPlus, UserPen, Lock, Bell, HelpCircle, CalendarDays, CalendarCheck, Menu, X, Wallet, UserCog } from "lucide-react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -269,9 +269,21 @@ export default function UserLayout({ children }) {
           prefetch={true}
           aria-label="Bookings"
         >
-          <CalendarCheck className="w-6 h-6" /> 
+          <CalendarCheck className="w-6 h-6" />
           <span className={spanClass}>Bookings</span>
         </Link>
+        {user?.role === "admin" && (
+          <Link
+            href="/dashboard/profiles"
+            onClick={() => handleNavClick("/dashboard/profiles")}
+            className="flex items-center gap-2 p-2 mt-4 border-t border-purple-800 pt-4 text-yellow-300 font-bold hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl"
+            prefetch={true}
+            aria-label="Admin Mode"
+          >
+            <UserCog className="w-6 h-6" />
+            <span className={spanClass}>Admin Mode</span>
+          </Link>
+        )}
       </>
     );
   };

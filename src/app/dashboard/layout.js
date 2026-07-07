@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { FaBars, FaTimes } from "react-icons/fa";
 import Image from "next/image";
 import Cookies from "js-cookie";
-import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList, Landmark } from "lucide-react";
+import { BookText, FileQuestion, GitPullRequestArrow, LogOut, UserCog, Bell, HelpCircle, CalendarClock, ClipboardList, Landmark, Briefcase } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
@@ -292,6 +292,14 @@ export default function AdminLayout({ children }) {
               }`}
             >
               <Landmark /> Withdrawal Approvals
+            </Link>
+
+            <Link
+              href="/expert-dashboard"
+              onClick={() => handleNavClick("/expert-dashboard")}
+              className={`flex items-center gap-2 p-2 mt-4 border-t border-purple-800 pt-4 text-yellow-300 font-bold hover:bg-[#F4D35E] hover:text-black hover:rounded-3xl`}
+            >
+              <Briefcase /> Expert Mode
             </Link>
 
           </nav>

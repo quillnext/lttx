@@ -65,7 +65,19 @@ export default function UserEditProfile() {
             officePhotos: safeArray(mapped.officePhotos),
           });
         } else {
-          console.error("Profile not found for user in Supabase:", user.id);
+          setProfileData({
+            fullName: user.name || "Admin Expert",
+            email: user.email || "",
+            phone: user.phone || "",
+            languages: [],
+            expertise: [],
+            certifications: [],
+            services: [""],
+            regions: [],
+            experience: [{ title: "", company: "", startDate: null, endDate: null }],
+            certificates: [],
+            officePhotos: [],
+          });
         }
       } catch (error) {
         console.error("Error fetching profile:", error);

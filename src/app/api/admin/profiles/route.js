@@ -54,11 +54,16 @@ const mapPartialProfileUpdates = (updates = {}) => {
     role: "role",
   };
 
-  return Object.fromEntries(
+  const result = Object.fromEntries(
     Object.entries(keyMap)
       .filter(([source]) => Object.prototype.hasOwnProperty.call(updates, source))
       .map(([, target]) => [target, full[target]])
   );
+
+  if (updates.fullName !== undefined) {
+    result.name = full.name;
+  }
+  return result;
 };
 
 export async function GET(request) {
@@ -115,9 +120,26 @@ export async function POST(request) {
       updated_at: new Date().toISOString(),
     });
 
+    // Fetch actual columns in the profiles table to dynamically filter out any unsupported/missing columns
+    const { data: colSample, error: colError } = await supabase
+      .from("profiles")
+      .select("*")
+      .limit(1);
+
+    let filteredProfileData = { ...profileData };
+    if (!colError && colSample && colSample.length > 0) {
+      const allowedColumns = new Set(Object.keys(colSample[0]));
+      filteredProfileData = {};
+      for (const key of Object.keys(profileData)) {
+        if (allowedColumns.has(key)) {
+          filteredProfileData[key] = profileData[key];
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from("profiles")
-      .insert(profileData)
+      .insert(filteredProfileData)
       .select("*")
       .single();
 
@@ -143,14 +165,33 @@ export async function PATCH(request) {
       return NextResponse.json({ error: "id and updates are required" }, { status: 400 });
     }
 
+    const supabase = createSupabaseAdminClient();
+
     const updatePayload = cleanPayload({
       ...mapPartialProfileUpdates(updates),
       updated_at: new Date().toISOString(),
     });
 
-    const { data, error } = await createSupabaseAdminClient()
+    // Fetch actual columns in the profiles table to dynamically filter out any unsupported/missing columns
+    const { data: colSample, error: colError } = await supabase
       .from("profiles")
-      .update(updatePayload)
+      .select("*")
+      .limit(1);
+
+    let filteredUpdatePayload = { ...updatePayload };
+    if (!colError && colSample && colSample.length > 0) {
+      const allowedColumns = new Set(Object.keys(colSample[0]));
+      filteredUpdatePayload = {};
+      for (const key of Object.keys(updatePayload)) {
+        if (allowedColumns.has(key)) {
+          filteredUpdatePayload[key] = updatePayload[key];
+        }
+      }
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .update(filteredUpdatePayload)
       .eq("id", id)
       .select("*")
       .single();
