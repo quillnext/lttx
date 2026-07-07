@@ -203,8 +203,8 @@ const emailTemplate = ({ userName, expertName, expertPhoto, caseTitle, serviceTy
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
                 <td valign="middle">
-                  <div style="font-size:20px;font-weight:800;color:#36013F;line-height:1;">XMyTravel</div>
-                  <div style="font-size:11px;color:#9a8ea0;margin-top:3px;">Expert Travel Advisory</div>
+                  <img src="https://www.xmytravel.com/logolttx.svg" alt="LTTX Logo" style="height: 36px; width: auto; display: block;" />
+                  <div style="font-size:11px;color:#9a8ea0;margin-top:6px;">Expert Travel Advisory</div>
                 </td>
                 <td align="right" valign="middle" style="padding-left:16px;">
                   ${isAdmin
