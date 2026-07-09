@@ -127,7 +127,7 @@ const loadRazorpayScript = () =>
     document.body.appendChild(script);
   });
 
-export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData }) {
+export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, expertData, onRequireLogin }) {
   const { user: supabaseUser, updateUser } = useUserAuthStore();
   const router = useRouter();
 
@@ -316,19 +316,23 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
   useEffect(() => {
     if (isOpen && !loadingActiveUser) {
       if (!activeUser) {
-        const isAgencyDashboard = pathname?.startsWith("/agency-dashboard");
-        if (isAgencyDashboard) {
-          router.push("/expert-login");
+        if (onRequireLogin) {
+          onRequireLogin();
         } else {
-          const params = new URLSearchParams(searchParams.toString());
-          params.set("openService", serviceType);
-          const currentUrl = `${pathname}?${params.toString()}`;
-          router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+          const isAgencyDashboard = pathname?.startsWith("/agency-dashboard");
+          if (isAgencyDashboard) {
+            router.push("/expert-login");
+          } else {
+            const params = new URLSearchParams(searchParams.toString());
+            params.set("openService", serviceType);
+            const currentUrl = `${pathname}?${params.toString()}`;
+            router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+          }
         }
         onClose();
       }
     }
-  }, [isOpen, activeUser, loadingActiveUser, router, onClose, pathname, searchParams, serviceType]);
+  }, [isOpen, activeUser, loadingActiveUser, router, onClose, pathname, searchParams, serviceType, onRequireLogin]);
 
   if (!isOpen || !serviceType) return null;
 
@@ -361,7 +365,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
         e.confusion = `Too short — write at least 80 characters (${formData.confusion.trim().length}/80)`;
       }
       if (!formData.booked) e.booked = "Please select your booking status";
-      if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+      if (!activeUser && !formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
       if (!formData.bookingDate) e.bookingDate = "Please select a date for your consultation";
       if (!formData.bookingTime) e.bookingTime = "Please select a time slot for your consultation";
     }
@@ -373,7 +377,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       } else if (formData.context.trim().length < 50) {
         e.context = `Too short — write at least 50 characters (${formData.context.trim().length}/50)`;
       }
-      if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+      if (!activeUser && !formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
     }
 
     if (serviceType === "THE MASTER PLAN") {
@@ -385,7 +389,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       if (!formData.budget) e.budget = "Please select your approximate budget";
       if (!formData.type?.length) e.type = "Please select at least one trip type";
       if (!formData.structure?.length) e.structure = "Please select at least one area for the expert to help with";
-      if (!formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
+      if (!activeUser && !formData.phone?.trim()) e.phone = "Please enter your WhatsApp / phone number";
     }
 
     if (serviceType === "CUSTOM LUXE PACKAGE") {
@@ -393,7 +397,7 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       if (!formData.pax) e.pax = "Please enter the number of travellers";
       if (!formData.budget) e.budget = "Please select your budget expectation";
       if (!formData.exp?.trim()) e.exp = "Please describe the experience you're looking for";
-      if (!formData.whatsapp?.trim()) e.whatsapp = "Please enter your WhatsApp number";
+      if (!activeUser && !formData.whatsapp?.trim()) e.whatsapp = "Please enter your WhatsApp number";
     }
 
     return e;
@@ -403,16 +407,19 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
 
   const renderContactInfo = () => null;
 
-  const renderPhoneField = () => (
-    <CustomInput
-      label="WhatsApp / Phone number"
-      required
-      placeholder="e.g. +91 98765 43210"
-      value={formData.phone || ""}
-      onChange={(e) => updateForm("phone", e.target.value)}
-      error={fieldErrors.phone}
-    />
-  );
+  const renderPhoneField = () => {
+    if (activeUser) return null;
+    return (
+      <CustomInput
+        label="WhatsApp / Phone number"
+        required
+        placeholder="e.g. +91 98765 43210"
+        value={formData.phone || ""}
+        onChange={(e) => updateForm("phone", e.target.value)}
+        error={fieldErrors.phone}
+      />
+    );
+  };
 
   const renderFormContent = () => {
     switch (serviceType) {
@@ -644,7 +651,9 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
             <CustomInput label="Number of travellers" type="number" required placeholder="e.g. 4" value={formData.pax || ""} onChange={e => updateForm("pax", e.target.value)} error={fieldErrors.pax} />
             <ChipSelect label="Budget expectation" required options={["₹1L to ₹2L pp", "₹2L to ₹4L pp", "₹4L+ pp", "Not sure yet"]} selected={formData.budget} onChange={val => updateForm("budget", val)} error={fieldErrors.budget} />
             <CustomInput label="What kind of experience are you looking for?" type="textarea" required placeholder="private transfers, premium stays, relaxed pace, scenic places, good food, minimal planning stress" value={formData.exp || ""} onChange={e => updateForm("exp", e.target.value)} error={fieldErrors.exp} />
-            <CustomInput label="WhatsApp number" required placeholder="Enter WhatsApp number" value={formData.whatsapp || ""} onChange={e => updateForm("whatsapp", e.target.value)} error={fieldErrors.whatsapp} />
+            {!activeUser && (
+              <CustomInput label="WhatsApp number" required placeholder="Enter WhatsApp number" value={formData.whatsapp || ""} onChange={e => updateForm("whatsapp", e.target.value)} error={fieldErrors.whatsapp} />
+            )}
           </>
         );
 
@@ -751,9 +760,66 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
       const userPhone = formData.phone || formData.whatsapp || activeUser?.phone || "";
       const questionText = formData.confusion || formData.question || formData.exp || formData.mustHaves || `Lead form submitted for ${serviceType}`;
 
+      let targetExpert = expertData;
+      if (!targetExpert) {
+        const queryText = formData.destination || formData.dest || formData.route || questionText || "";
+        if (queryText) {
+          try {
+            const aiRes = await fetch("/api/ai-search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: queryText, action: "initial" }),
+            });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              if (aiData.matches && aiData.matches.length > 0) {
+                const topMatch = aiData.matches[0];
+                const { data: profileRow } = await supabase
+                  .from("profiles")
+                  .select("id, email, phone, full_name, role")
+                  .eq("id", topMatch.id)
+                  .maybeSingle();
+
+                if (profileRow) {
+                  targetExpert = {
+                    id: profileRow.id,
+                    email: profileRow.email,
+                    phone: profileRow.phone,
+                    fullName: profileRow.full_name,
+                    role: profileRow.role
+                  };
+                }
+              }
+            }
+          } catch (aiErr) {
+            console.error("AI Matchmaking failed, falling back to default:", aiErr);
+          }
+        }
+      }
+
+      if (!targetExpert) {
+        const { data: fallbackProfiles } = await supabase
+          .from("profiles")
+          .select("id, email, phone, full_name, role")
+          .eq("is_public", true)
+          .in("role", ["expert", "agency"])
+          .limit(1);
+
+        if (fallbackProfiles && fallbackProfiles.length > 0) {
+          const profileRow = fallbackProfiles[0];
+          targetExpert = {
+            id: profileRow.id,
+            email: profileRow.email,
+            phone: profileRow.phone,
+            fullName: profileRow.full_name,
+            role: profileRow.role
+          };
+        }
+      }
+
       if (amount > 0) {
         // Redirect to unified checkout page
-        const checkoutUrl = `/checkout?expertId=${expertData?.id || "unknown"}&serviceType=${encodeURIComponent(serviceType)}&price=${amount}&question=${encodeURIComponent(questionText)}&formData=${encodeURIComponent(JSON.stringify({ ...formData, phone: userPhone }))}`;
+        const checkoutUrl = `/checkout?expertId=${targetExpert?.id || "unknown"}&serviceType=${encodeURIComponent(serviceType)}&price=${amount}&question=${encodeURIComponent(questionText)}&formData=${encodeURIComponent(JSON.stringify({ ...formData, phone: userPhone }))}`;
         router.push(checkoutUrl);
         return;
       }
@@ -767,8 +833,8 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
             phone: userPhone,
             payment: { status: "not_required" },
           },
-          expert_id: expertData?.id || "unknown",
-          expert_name: expertData?.fullName || "Unknown Expert",
+          expert_id: targetExpert?.id || "unknown",
+          expert_name: targetExpert?.fullName || "Unknown Expert",
           status: "pending",
           user_name: activeUser?.name || firebaseUser?.displayName || supabaseUser?.name || "Traveller",
           user_email: activeUser?.email || firebaseUser?.email || supabaseUser?.email || "",
@@ -795,13 +861,13 @@ export default function ProfileServiceDrawer({ isOpen, onClose, serviceType, exp
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            expertId: expertData?.id,
+            expertId: targetExpert?.id,
             userName: finalName,
             userEmail: finalEmail,
             userPhone: finalPhone,
-            expertName: expertData?.fullName || "XMyTravel Expert",
-            expertEmail: expertData?.email || "",
-            expertPhone: expertData?.phone || "",
+            expertName: targetExpert?.fullName || "XMyTravel Expert",
+            expertEmail: targetExpert?.email || "",
+            expertPhone: targetExpert?.phone || "",
             serviceType,
             question: questionText,
             isHandedOver: true

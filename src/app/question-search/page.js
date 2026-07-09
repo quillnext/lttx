@@ -79,11 +79,12 @@ export default function QuestionSearchPage() {
           return map;
         }, {});
 
+        const uniqueExpertIds = [...new Set(questionList.map((q) => q.expertId))].filter(Boolean);
         const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
         const { data: profileRows, error: profileErr } = await supabase
           .from("profiles")
-          .select("full_name, username, photo_url, tagline")
-          .in("full_name", uniqueExpertNames);
+          .select("id, full_name, username, photo_url, tagline")
+          .in("id", uniqueExpertIds);
 
         if (profileErr) throw profileErr;
 
@@ -193,13 +194,11 @@ export default function QuestionSearchPage() {
                     onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
                     className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
                   >
-                    <Image
+                    <img
                       src={profile.profilePhoto || "/default.jpg"}
                       alt={`${featuredQuestion.expertName || "Expert"}'s profile photo`}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                      onError={(e) => (e.target.src = "/default.jpg")}
+                      className="object-cover w-full h-full"
+                      onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                     />
                   </button>
                   <div>
@@ -283,13 +282,11 @@ export default function QuestionSearchPage() {
                                 onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
                                 className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
                               >
-                                <Image
+                                <img
                                   src={profile.profilePhoto || "/default.jpg"}
                                   alt={`${q.expertName || "Expert"}'s profile photo`}
-                                  fill
-                                  sizes="40px"
-                                  className="object-cover"
-                                  onError={(e) => (e.target.src = "/default.jpg")}
+                                  className="object-cover w-full h-full"
+                                  onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                                 />
                               </button>
                               <div>
@@ -374,13 +371,11 @@ export default function QuestionSearchPage() {
                             onClick={() => openLightbox(profile.profilePhoto)}
                             className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-[#36013F]"
                           >
-                            <Image
+                            <img
                               src={profile.profilePhoto}
                               alt={`${expert.expertName || "Expert"}'s profile photo`}
-                              fill
-                              sizes="56px"
-                              className="object-cover object-center"
-                              onError={(e) => (e.target.src = "/default.jpg")}
+                              className="object-cover object-center w-full h-full"
+                              onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                             />
                           </button>
                           <div className="flex flex-col">

@@ -60,7 +60,9 @@ async function fetchData() {
         tagline = doc.tagline || "No tagline available";
         fullName = doc.full_name;
       }
-      return { expertId, username, photo, tagline, expertName: fullName || "Unknown Expert", answerCount: answerCountMap[expertId] || 0 };
+      const firstQ = questionList.find((q) => q.expertId === expertId);
+      const fallbackName = firstQ ? firstQ.expertName : "Unknown Expert";
+      return { expertId, username, photo, tagline, expertName: fullName || fallbackName, answerCount: answerCountMap[expertId] || 0 };
     });
 
     const profileResults = await Promise.all(profilePromises);
@@ -70,6 +72,7 @@ async function fetchData() {
           username: result.username,
           photo: result.photo || "/default.jpg",
           tagline: result.tagline,
+          expertName: result.expertName,
         };
       }
       return map;

@@ -4,11 +4,12 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { FaSearch, FaChevronDown } from "react-icons/fa";
+import { FaSearch, FaChevronDown, FaThumbsUp, FaThumbsDown, FaRegThumbsUp, FaRegThumbsDown } from "react-icons/fa";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import AskQuestionModal from "@/app/components/AskQuestionModal";
 import { supabase } from "@/lib/supabase";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 const truncateByChars = (text, maxLength) => {
   if (!text) return "";
@@ -39,6 +40,7 @@ export default function QuestionSearchPage() {
   const searchTermFromQuery = searchParams.get("search") || "";
   const searchTermFromSlug = pathname.startsWith('/aaq/') ? fromSlug(pathname.replace('/aaq/', '')) : "";
   const searchTermFromUrl = searchTermFromQuery || searchTermFromSlug;
+  const { isAuthenticated } = useUserAuthStore();
   const [questions, setQuestions] = useState([]);
   const [topExperts, setTopExperts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +86,8 @@ export default function QuestionSearchPage() {
             status: row.status,
             isPublic: row.is_public,
             createdAt: row.created_at,
+            likes: row.likes || 0,
+            dislikes: row.dislikes || 0,
             timestamp:
               rawDate.toLocaleDateString("en-GB") +
               " " +
@@ -99,11 +103,12 @@ export default function QuestionSearchPage() {
           return map;
         }, {});
 
+        const uniqueExpertIds = [...new Set(questionList.map((q) => q.expertId))].filter(Boolean);
         const uniqueExpertNames = [...new Set(questionList.map((q) => q.expertName))].filter(Boolean);
         const { data: profileRows, error: profileErr } = await supabase
           .from("profiles")
-          .select("full_name, username, photo_url, tagline")
-          .in("full_name", uniqueExpertNames);
+          .select("id, full_name, username, photo_url, tagline")
+          .in("id", uniqueExpertIds);
 
         if (profileErr) throw profileErr;
 
@@ -146,6 +151,50 @@ export default function QuestionSearchPage() {
 
     fetchQuestionsAndUsernames();
   }, []);
+
+  const handleLikeDislike = async (questionIds, action) => {
+    if (!isAuthenticated) {
+      alert("Please log in to rate this answer!");
+      return;
+    }
+    const alreadyRated = questionIds.some(id => localStorage.getItem(`rated_${id}`));
+    if (alreadyRated) {
+      alert("You have already rated this answer!");
+      return;
+    }
+
+    setQuestions(prev => prev.map(q => {
+      if (questionIds.includes(q.id)) {
+        return {
+          ...q,
+          likes: action === 'like' ? (q.likes || 0) + 1 : (q.likes || 0),
+          dislikes: action === 'dislike' ? (q.dislikes || 0) + 1 : (q.dislikes || 0)
+        };
+      }
+      return q;
+    }));
+
+    questionIds.forEach(id => localStorage.setItem(`rated_${id}`, action));
+
+    try {
+      for (const id of questionIds) {
+        const { data: row } = await supabase
+          .from("questions")
+          .select("likes, dislikes")
+          .eq("id", id)
+          .single();
+        if (row) {
+          const currentCount = (action === 'like' ? row.likes : row.dislikes) || 0;
+          await supabase
+            .from("questions")
+            .update({ [action === 'like' ? 'likes' : 'dislikes']: currentCount + 1 })
+            .eq("id", id);
+        }
+      }
+    } catch (err) {
+      console.error("Error rating answer:", err);
+    }
+  };
 
   const filteredQuestions = searchTerm
     ? questions.filter(
@@ -238,13 +287,11 @@ export default function QuestionSearchPage() {
                     onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
                     className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
                   >
-                    <Image
+                    <img
                       src={profile.profilePhoto || "/default.jpg"}
                       alt={`${featuredQuestion.expertName || "Expert"}'s profile photo`}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                      onError={(e) => (e.target.src = "/default.jpg")}
+                      className="object-cover w-full h-full"
+                      onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                     />
                   </button>
                   <div>
@@ -261,19 +308,47 @@ export default function QuestionSearchPage() {
                     )}
                   </div>
                 </div>
-                <button
-                  onClick={() =>
-                    setModalExpert({
-                      fullName: featuredQuestion.expertName,
-                      username: profile.username,
-                      profilePhoto: profile.profilePhoto || "/default.jpg",
-                      tagline: profile.tagline,
-                    })
-                  }
-                  className="bg-[#36013F] text-white py-1.5 px-4 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
-                >
-                  Ask a New Question
-                </button>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleLikeDislike([featuredQuestion.id], 'like')}
+                      className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-green-600 transition-colors cursor-pointer"
+                      title="Like this answer"
+                    >
+                      {typeof window !== 'undefined' && localStorage.getItem(`rated_${featuredQuestion.id}`) === 'like' ? (
+                        <FaThumbsUp className="w-3.5 h-3.5 text-green-600" />
+                      ) : (
+                        <FaRegThumbsUp className="w-3.5 h-3.5" />
+                      )}
+                      <span>{featuredQuestion.likes || 0}</span>
+                    </button>
+                    <button
+                      onClick={() => handleLikeDislike([featuredQuestion.id], 'dislike')}
+                      className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
+                      title="Dislike this answer"
+                    >
+                      {typeof window !== 'undefined' && localStorage.getItem(`rated_${featuredQuestion.id}`) === 'dislike' ? (
+                        <FaThumbsDown className="w-3.5 h-3.5 text-red-600" />
+                      ) : (
+                        <FaRegThumbsDown className="w-3.5 h-3.5" />
+                      )}
+                      <span>{featuredQuestion.dislikes || 0}</span>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() =>
+                      setModalExpert({
+                        fullName: featuredQuestion.expertName,
+                        username: profile.username,
+                        profilePhoto: profile.profilePhoto || "/default.jpg",
+                        tagline: profile.tagline,
+                      })
+                    }
+                    className="bg-[#36013F] text-white py-1.5 px-4 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
+                  >
+                    Ask a New Question
+                  </button>
+                </div>
               </div>
             </div>
           </section>
@@ -328,13 +403,11 @@ export default function QuestionSearchPage() {
                                 onClick={() => openLightbox(profile.profilePhoto || "/default.jpg")}
                                 className="relative w-10 h-10 overflow-hidden rounded-full border-2 border-[#F4D35E] flex-shrink-0"
                               >
-                                <Image
+                                <img
                                   src={profile.profilePhoto || "/default.jpg"}
                                   alt={`${q.expertName || "Expert"}'s profile photo`}
-                                  fill
-                                  sizes="40px"
-                                  className="object-cover"
-                                  onError={(e) => (e.target.src = "/default.jpg")}
+                                  className="object-cover w-full h-full"
+                                  onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                                 />
                               </button>
                               <div>
@@ -351,19 +424,47 @@ export default function QuestionSearchPage() {
                                 )}
                               </div>
                             </div>
-                            <button
-                              onClick={() =>
-                                setModalExpert({
-                                  fullName: q.expertName,
-                                  username: profile.username,
-                                  profilePhoto: profile.profilePhoto || "/default.jpg",
-                                  tagline: profile.tagline,
-                                })
-                              }
-                              className="bg-[#36013F] text-white py-1.5 px-4 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
-                            >
-                              Ask a New Question
-                            </button>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-3">
+                                <button
+                                  onClick={() => handleLikeDislike([q.id], 'like')}
+                                  className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-green-600 transition-colors cursor-pointer"
+                                  title="Like this answer"
+                                >
+                                  {typeof window !== 'undefined' && localStorage.getItem(`rated_${q.id}`) === 'like' ? (
+                                    <FaThumbsUp className="w-3.5 h-3.5 text-green-600" />
+                                  ) : (
+                                    <FaRegThumbsUp className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>{q.likes || 0}</span>
+                                </button>
+                                <button
+                                  onClick={() => handleLikeDislike([q.id], 'dislike')}
+                                  className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
+                                  title="Dislike this answer"
+                                >
+                                  {typeof window !== 'undefined' && localStorage.getItem(`rated_${q.id}`) === 'dislike' ? (
+                                    <FaThumbsDown className="w-3.5 h-3.5 text-red-600" />
+                                  ) : (
+                                    <FaRegThumbsDown className="w-3.5 h-3.5" />
+                                  )}
+                                  <span>{q.dislikes || 0}</span>
+                                </button>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  setModalExpert({
+                                    fullName: q.expertName,
+                                    username: profile.username,
+                                    profilePhoto: profile.profilePhoto || "/default.jpg",
+                                    tagline: profile.tagline,
+                                  })
+                                }
+                                className="bg-[#36013F] text-white py-1.5 px-4 rounded-full hover:bg-opacity-90 transition-all text-sm cursor-pointer"
+                              >
+                                Ask a New Question
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </details>
@@ -419,13 +520,11 @@ export default function QuestionSearchPage() {
                             onClick={() => openLightbox(profile.profilePhoto)}
                             className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-[#36013F]"
                           >
-                            <Image
+                            <img
                               src={profile.profilePhoto}
                               alt={`${expert.expertName || "Expert"}'s profile photo`}
-                              fill
-                              sizes="56px"
-                              className="object-cover object-center"
-                              onError={(e) => (e.target.src = "/default.jpg")}
+                              className="object-cover object-center w-full h-full"
+                              onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                             />
                           </button>
                           <div className="flex flex-col">

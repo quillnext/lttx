@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
-import { FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
+import { FaSearch, FaChevronDown, FaExternalLinkAlt, FaThumbsUp, FaThumbsDown, FaRegThumbsUp, FaRegThumbsDown } from "react-icons/fa";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import Navbar from "../components/Navbar";
@@ -12,6 +12,7 @@ import Footer from "../pages/Footer";
 import slugify from "slugify";
 import PrescriptionUserView from "../components/PrescriptionUserView";
 import { useRouter } from "next/navigation";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 
 const truncateByChars = (text, maxLength) => {
   if (!text) return "";
@@ -35,6 +36,7 @@ export default function FAQPage({
   initialExpertProfileMap = {}
 }) {
   const router = useRouter();
+  const { isAuthenticated } = useUserAuthStore();
   const [groupedQuestions, setGroupedQuestions] = useState([]);
   const [topExperts, setTopExperts] = useState(initialTopExperts);
   const [loading, setLoading] = useState(false);
@@ -149,9 +151,34 @@ export default function FAQPage({
     if (newPage > 0 && newPage <= totalPages) setCurrentPage(newPage);
   };
 
-  const handleLikeDislike = async (ids, action) => {
+  const handleLikeDislike = async (originalQuestion, reply, action) => {
+    if (!isAuthenticated) {
+      alert("Please log in to rate this answer!");
+      return;
+    }
+    const newGrouped = [...groupedQuestions];
+    const group = newGrouped.find(g => g.originalQuestion === originalQuestion);
+    if (!group) return;
+    const ag = group.answerGroupsArray.find(a => a.reply === reply);
+    if (!ag) return;
+    
+    const alreadyRated = ag.ids.some(id => localStorage.getItem(`rated_${id}`));
+    if (alreadyRated) {
+      alert("You have already rated this answer!");
+      return;
+    }
+    
+    if (action === 'like') {
+      ag.totalLikes = (ag.totalLikes || 0) + 1;
+    } else {
+      ag.totalDislikes = (ag.totalDislikes || 0) + 1;
+    }
+    setGroupedQuestions(newGrouped);
+    
+    ag.ids.forEach(id => localStorage.setItem(`rated_${id}`, action));
+
     try {
-      for (const id of ids) {
+      for (const id of ag.ids) {
         const { data: row } = await supabase
           .from("questions")
           .select("likes, dislikes")
@@ -269,13 +296,12 @@ export default function FAQPage({
                                   {/* Timeline avatar / connector dot */}
                                   <div className="absolute -left-[35px] sm:-left-[43px] top-5 w-6 h-6 rounded-full border-2 border-white bg-gray-200 overflow-hidden shadow-sm flex items-center justify-center">
                                     {isSingleExpert && profile ? (
-                                      <Image
+                                      <img
                                         src={profile.photo || "/default.jpg"}
-                                        alt={`${singleExpertName || "Expert"}'s avatar`}
-                                        width={24}
-                                        height={24}
+                                        alt={`${singleExpertName || (profile && profile.expertName) || "Expert"}'s avatar`}
                                         className="object-cover w-full h-full cursor-pointer"
                                         onClick={() => profile.photo && openLightbox(profile.photo)}
+                                        onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                                       />
                                     ) : (
                                       <span className="text-[8px] font-bold text-gray-600 bg-gray-300 w-full h-full flex items-center justify-center">EXP</span>
@@ -303,26 +329,52 @@ export default function FAQPage({
                                               href={`/experts/${profile.username}`}
                                               className="inline-block text-[#36013F] font-bold hover:underline"
                                             >
-                                              {singleExpertName}
+                                              {singleExpertName || profile.expertName || "Unknown Expert"}
                                             </Link>
                                           ) : (
-                                            <span className="font-bold text-gray-600">{singleExpertName || "Unknown Expert"}</span>
+                                            <span className="font-bold text-gray-600">{singleExpertName || (profile && profile.expertName) || "Unknown Expert"}</span>
                                           )}
                                         </div>
                                       ) : (
                                         <p className="text-sm font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                      <p className="text-xs text-gray-500">{ag.timestamp}</p>
-                                      <Link
-                                        href={`/aaq/${toSlug(group.originalQuestion)}`}
-                                        className="text-[#36013F] hover:text-[#F4D35E] p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                                        title="View full page"
-                                      >
-                                        <FaExternalLinkAlt className="w-3.5 h-3.5" />
-                                      </Link>
-                                    </div>
+                                     <div className="flex items-center gap-4">
+                                       <p className="text-xs text-gray-500">{ag.timestamp}</p>
+                                       <div className="flex items-center gap-3">
+                                         <button
+                                           onClick={() => handleLikeDislike(group.originalQuestion, ag.reply, 'like')}
+                                           className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-green-600 transition-colors cursor-pointer"
+                                           title="Like this answer"
+                                         >
+                                           {ag.ids.some(id => typeof window !== 'undefined' && localStorage.getItem(`rated_${id}`) === 'like') ? (
+                                             <FaThumbsUp className="w-3.5 h-3.5 text-green-600" />
+                                           ) : (
+                                             <FaRegThumbsUp className="w-3.5 h-3.5" />
+                                           )}
+                                           <span>{ag.totalLikes || 0}</span>
+                                         </button>
+                                         <button
+                                           onClick={() => handleLikeDislike(group.originalQuestion, ag.reply, 'dislike')}
+                                           className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
+                                           title="Dislike this answer"
+                                         >
+                                           {ag.ids.some(id => typeof window !== 'undefined' && localStorage.getItem(`rated_${id}`) === 'dislike') ? (
+                                             <FaThumbsDown className="w-3.5 h-3.5 text-red-600" />
+                                           ) : (
+                                             <FaRegThumbsDown className="w-3.5 h-3.5" />
+                                           )}
+                                           <span>{ag.totalDislikes || 0}</span>
+                                         </button>
+                                       </div>
+                                       <Link
+                                         href={`/aaq/${toSlug(group.originalQuestion)}`}
+                                         className="text-[#36013F] hover:text-[#F4D35E] p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                                         title="View full page"
+                                       >
+                                         <FaExternalLinkAlt className="w-3.5 h-3.5" />
+                                       </Link>
+                                     </div>
                                   </div>
                                 </div>
                               );
@@ -379,12 +431,11 @@ export default function FAQPage({
                               onClick={() => openLightbox(profile.photo || "/default.jpg")}
                               className="relative w-14 h-14 flex-shrink-0 overflow-hidden rounded-full border-2 border-[#36013F]"
                             >
-                              <Image
+                              <img
                                 src={profile.photo || "/default.jpg"}
                                 alt={`${expert.expertName || "Expert"}'s profile photo`}
-                                fill
-                                sizes="56px"
-                                className="object-cover object-center"
+                                className="object-cover object-center w-full h-full"
+                                onError={(e) => { e.currentTarget.src = "/default.jpg"; }}
                               />
                             </button>
                             <div className="flex flex-col">

@@ -2,15 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
-import { FaSearch, FaChevronDown, FaExternalLinkAlt } from "react-icons/fa";
+import { FaSearch, FaChevronDown, FaExternalLinkAlt, FaThumbsUp, FaThumbsDown, FaRegThumbsUp, FaRegThumbsDown } from "react-icons/fa";
 import Lightbox from "react-image-lightbox";
 import "react-image-lightbox/style.css";
 import AskQuestionModal from "@/app/components/AskQuestionModal";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import slugify from "slugify";
+import { useUserAuthStore } from "@/stores/useUserAuthStore";
 import Navbar from "@/app/components/Navbar";
 import Footer from "@/app/pages/Footer";
 import PrescriptionUserView from "@/app/components/PrescriptionUserView";
@@ -62,6 +64,7 @@ export default function QuestionClient({
     slug = ""
 }) {
     const router = useRouter();
+    const { isAuthenticated } = useUserAuthStore();
 
     // If slug is provided, we can derive the search term from it
     // But we typically want to respect what's passed or the URL
@@ -88,6 +91,50 @@ export default function QuestionClient({
         // strict check if slug changed or if we need to update search term
         setSearchTerm(searchTermFromUrl);
     }, [searchTermFromUrl]);
+
+    const handleLikeDislike = async (questionIds, action) => {
+        if (!isAuthenticated) {
+            toast.error("Please log in to rate this answer!");
+            return;
+        }
+        const alreadyRated = questionIds.some(id => localStorage.getItem(`rated_${id}`));
+        if (alreadyRated) {
+            toast.info("You have already rated this answer!");
+            return;
+        }
+
+        setQuestions(prev => prev.map(q => {
+            if (questionIds.includes(q.id)) {
+                return {
+                    ...q,
+                    likes: action === 'like' ? (q.likes || 0) + 1 : (q.likes || 0),
+                    dislikes: action === 'dislike' ? (q.dislikes || 0) + 1 : (q.dislikes || 0)
+                };
+            }
+            return q;
+        }));
+
+        questionIds.forEach(id => localStorage.setItem(`rated_${id}`, action));
+
+        try {
+            for (const id of questionIds) {
+                const { data: row } = await supabase
+                    .from("questions")
+                    .select("likes, dislikes")
+                    .eq("id", id)
+                    .single();
+                if (row) {
+                    const currentCount = (action === 'like' ? row.likes : row.dislikes) || 0;
+                    await supabase
+                        .from("questions")
+                        .update({ [action === 'like' ? 'likes' : 'dislikes']: currentCount + 1 })
+                        .eq("id", id);
+                }
+            }
+        } catch (err) {
+            console.error("Error rating answer:", err);
+        }
+    };
 
     // We are NOT fetching data here anymore because it is passed from the server
     // IF for some reason initialQuestions is empty, we might want to fetch, 
@@ -314,8 +361,34 @@ export default function QuestionClient({
                                                         <p className="text-sm font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-4">
                                                     <p className="text-xs text-gray-500">{ag.timestamp}</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <button
+                                                            onClick={() => handleLikeDislike(ag.ids, 'like')}
+                                                            className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-green-600 transition-colors cursor-pointer"
+                                                            title="Like this answer"
+                                                        >
+                                                            {ag.ids.some(id => typeof window !== 'undefined' && localStorage.getItem(`rated_${id}`) === 'like') ? (
+                                                                <FaThumbsUp className="w-3.5 h-3.5 text-green-600" />
+                                                            ) : (
+                                                                <FaRegThumbsUp className="w-3.5 h-3.5" />
+                                                            )}
+                                                            <span>{ag.totalLikes || 0}</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleLikeDislike(ag.ids, 'dislike')}
+                                                            className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
+                                                            title="Dislike this answer"
+                                                        >
+                                                            {ag.ids.some(id => typeof window !== 'undefined' && localStorage.getItem(`rated_${id}`) === 'dislike') ? (
+                                                                <FaThumbsDown className="w-3.5 h-3.5 text-red-600" />
+                                                            ) : (
+                                                                <FaRegThumbsDown className="w-3.5 h-3.5" />
+                                                            )}
+                                                            <span>{ag.totalDislikes || 0}</span>
+                                                        </button>
+                                                    </div>
                                                     {isSingleExpert && (
                                                         <button
                                                             onClick={() =>
@@ -443,8 +516,34 @@ export default function QuestionClient({
                                                                                 <p className="text-sm font-bold text-gray-600">Verified by {ag.experts.size}+ experts</p>
                                                                             )}
                                                                         </div>
-                                                                        <div className="flex items-center gap-3">
+                                                                        <div className="flex items-center gap-4">
                                                                             <p className="text-xs text-gray-500">{ag.timestamp}</p>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <button
+                                                                                    onClick={() => handleLikeDislike(ag.ids, 'like')}
+                                                                                    className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-green-600 transition-colors cursor-pointer"
+                                                                                    title="Like this answer"
+                                                                                >
+                                                                                    {ag.ids.some(id => typeof window !== 'undefined' && localStorage.getItem(`rated_${id}`) === 'like') ? (
+                                                                                        <FaThumbsUp className="w-3.5 h-3.5 text-green-600" />
+                                                                                    ) : (
+                                                                                        <FaRegThumbsUp className="w-3.5 h-3.5" />
+                                                                                    )}
+                                                                                    <span>{ag.totalLikes || 0}</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleLikeDislike(ag.ids, 'dislike')}
+                                                                                    className="flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-red-600 transition-colors cursor-pointer"
+                                                                                    title="Dislike this answer"
+                                                                                >
+                                                                                    {ag.ids.some(id => typeof window !== 'undefined' && localStorage.getItem(`rated_${id}`) === 'dislike') ? (
+                                                                                        <FaThumbsDown className="w-3.5 h-3.5 text-red-600" />
+                                                                                    ) : (
+                                                                                        <FaRegThumbsDown className="w-3.5 h-3.5" />
+                                                                                    )}
+                                                                                    <span>{ag.totalDislikes || 0}</span>
+                                                                                </button>
+                                                                            </div>
                                                                             <Link
                                                                                 href={`/aaq/${toSlug(group.originalQuestion)}`}
                                                                                 className="text-[#36013F] hover:text-[#F4D35E] p-1.5 rounded-full hover:bg-gray-100 transition-colors"

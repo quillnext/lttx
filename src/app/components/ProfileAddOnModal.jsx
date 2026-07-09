@@ -105,7 +105,7 @@ const Chips = ({ label, required, options, multi = false, selected, onChange, er
   </div>
 );
 
-export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertData }) {
+export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertData, onRequireLogin }) {
   const { user: supabaseUser } = useUserAuthStore();
   const router = useRouter();
   const pathname = usePathname();
@@ -157,18 +157,22 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
   useEffect(() => {
     if (isOpen && !loadingActiveUser) {
       if (!activeUser) {
-        const isAgencyDashboard = pathname?.startsWith("/agency-dashboard");
-        if (isAgencyDashboard) {
-          router.push("/expert-login");
+        if (onRequireLogin) {
+          onRequireLogin();
         } else {
-          const qs = searchParams.toString();
-          const currentUrl = `${pathname}${qs ? `?${qs}` : ""}`;
-          router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+          const isAgencyDashboard = pathname?.startsWith("/agency-dashboard");
+          if (isAgencyDashboard) {
+            router.push("/expert-login");
+          } else {
+            const qs = searchParams.toString();
+            const currentUrl = `${pathname}${qs ? `?${qs}` : ""}`;
+            router.push(`/user-login?returnTo=${encodeURIComponent(currentUrl)}`);
+          }
         }
         onClose();
       }
     }
-  }, [isOpen, activeUser, loadingActiveUser, router, onClose, pathname, searchParams]);
+  }, [isOpen, activeUser, loadingActiveUser, router, onClose, pathname, searchParams, onRequireLogin]);
 
   if (!isOpen || !addOnType) return null;
   const data = ADDON_DATA[addOnType];
@@ -273,9 +277,64 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
         formData.flightOptions?.substring(0, 300) ||
         `${addOnType} — ${formData.dest || formData.route || ""}`;
 
+      let targetExpert = expertData;
+      if (!targetExpert) {
+        const queryText = formData.dest || formData.route || questionText || "";
+        if (queryText) {
+          try {
+            const aiRes = await fetch("/api/ai-search", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: queryText, action: "initial" }),
+            });
+            if (aiRes.ok) {
+              const aiData = await aiRes.json();
+              if (aiData.matches && aiData.matches.length > 0) {
+                const topMatch = aiData.matches[0];
+                const { data: profileRow } = await supabase
+                  .from("profiles")
+                  .select("id, email, phone, full_name")
+                  .eq("id", topMatch.id)
+                  .maybeSingle();
+
+                if (profileRow) {
+                  targetExpert = {
+                    id: profileRow.id,
+                    email: profileRow.email,
+                    phone: profileRow.phone,
+                    fullName: profileRow.full_name
+                  };
+                }
+              }
+            }
+          } catch (aiErr) {
+            console.error("AI Matchmaking failed, falling back to default:", aiErr);
+          }
+        }
+      }
+
+      if (!targetExpert) {
+        const { data: fallbackProfiles } = await supabase
+          .from("profiles")
+          .select("id, email, phone, full_name")
+          .eq("is_public", true)
+          .in("role", ["expert", "agency"])
+          .limit(1);
+
+        if (fallbackProfiles && fallbackProfiles.length > 0) {
+          const profileRow = fallbackProfiles[0];
+          targetExpert = {
+            id: profileRow.id,
+            email: profileRow.email,
+            phone: profileRow.phone,
+            fullName: profileRow.full_name
+          };
+        }
+      }
+
       if (amount > 0) {
         // Redirect to unified checkout page
-        const checkoutUrl = `/checkout?expertId=${expertData?.id || "unknown"}&serviceType=${encodeURIComponent(addOnType)}&price=${amount}&question=${encodeURIComponent(questionText)}&formData=${encodeURIComponent(JSON.stringify(formData))}`;
+        const checkoutUrl = `/checkout?expertId=${targetExpert?.id || "unknown"}&serviceType=${encodeURIComponent(addOnType)}&price=${amount}&question=${encodeURIComponent(questionText)}&formData=${encodeURIComponent(JSON.stringify(formData))}`;
         router.push(checkoutUrl);
         return;
       }
@@ -287,8 +346,8 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
           ...formData,
           payment: { status: "not_required" },
         },
-        expert_id: expertData?.id || "unknown",
-        expert_name: expertData?.fullName || "Unknown Expert",
+        expert_id: targetExpert?.id || "unknown",
+        expert_name: targetExpert?.fullName || "Unknown Expert",
         status: "pending",
         user_name: activeUser?.name || "Traveller",
         user_email: activeUser?.email || "",
@@ -304,13 +363,13 @@ export default function ProfileAddOnModal({ isOpen, onClose, addOnType, expertDa
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            expertId: expertData?.id,
+            expertId: targetExpert?.id,
             userName: activeUser?.name || "Traveller",
             userEmail: activeUser.email,
             userPhone: activeUser?.phone || "",
-            expertName: expertData?.fullName || "XMyTravel Expert",
-            expertEmail: expertData?.email || "",
-            expertPhone: expertData?.phone || "",
+            expertName: targetExpert?.fullName || "XMyTravel Expert",
+            expertEmail: targetExpert?.email || "",
+            expertPhone: targetExpert?.phone || "",
             serviceType: addOnType,
             question: questionText,
             isHandedOver: true,
